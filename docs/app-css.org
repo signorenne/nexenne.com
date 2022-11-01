@@ -1,0 +1,17 @@
+#+TITLE: src/app.css
+
+=src/app.css= is the global stylesheet and the visual system.
+
+* What It Covers
+
+- Defines design tokens.
+- Defines theme and accent variables.
+- Sets base document styles.
+- Holds component and page-level styles.
+- Styles generated article HTML and highlighted code.
+
+* Scope
+
+Most styling is kept here instead of scattered through component-local style
+blocks. That makes the whole visual system easier to scan. The tradeoff is that
+class names need to stay deliberate.

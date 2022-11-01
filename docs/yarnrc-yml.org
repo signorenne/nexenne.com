@@ -1,0 +1,24 @@
+#+TITLE: .yarnrc.yml
+
+=.yarnrc.yml= is Yarn 4's per-project config file.
+
+* In This File
+
+- =nodeLinker: node-modules= keeps the familiar =node_modules/= layout
+  instead of Yarn's Plug'n'Play. PnP is faster and stricter, but Vite and
+  SvelteKit have rough edges with it, so the classic layout is the safer
+  default for this project.
+- =yarnPath: .yarn/releases/yarn-4.15.0.cjs= tells the Yarn launcher to run
+  the project-pinned release that lives under =.yarn/releases/=. That file
+  is committed; the rest of =.yarn/= is gitignored.
+
+* Changing The Pinned Yarn
+
+Run:
+
+#+begin_src sh
+yarn set version stable
+#+end_src
+
+That downloads the new release into =.yarn/releases/=, updates =yarnPath=
+here, and updates =packageManager= in =package.json=. Commit all three.

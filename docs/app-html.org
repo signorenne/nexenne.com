@@ -1,0 +1,22 @@
+#+TITLE: src/app.html
+
+=src/app.html= is the document shell SvelteKit renders into.
+
+* What Lives Here
+
+- Defines the document structure.
+- Loads the favicon.
+- Sets viewport metadata.
+- Preconnects and loads fonts.
+- Exposes the SvelteKit head and body placeholders.
+
+* Boot Tweaks
+
+The inline script reads stored visual preferences before Svelte starts. Without
+it, the page can briefly paint with the wrong theme, accent, font, density, or
+motion setting.
+
+* SvelteKit Placeholders
+
+- =%sveltekit.head%= is where route head tags go.
+- =%sveltekit.body%= is where the app goes.

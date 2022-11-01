@@ -1,0 +1,37 @@
+#+TITLE: Components
+
+Reusable UI lives in =src/lib/components/=. Route-specific markup can stay in a
+route until another page needs it.
+
+* Navigation And Layout
+
+- =Nav.svelte= top navigation and utility controls
+- =SideMap.svelte= left-side route map
+- =Footer.svelte= footer
+- =PageStamp.svelte= route/status stamp
+- =PageTransition.svelte= animated navigation overlay
+
+* Home And Visual Components
+
+- =Hero.svelte= home hero
+- =OrbitConstellation.svelte= orbit visual used by the hero
+- =StackStage.svelte= layered stack visual
+- =GlitchRotator.svelte= rotating identity label
+- =Marquee.svelte= scrolling tag row
+- =CursorDot.svelte= custom pointer dot
+
+* Content Components
+
+- =ArticleNav.svelte= article table of contents and progress
+- =TranslatedBanner.svelte= auto-translation notice
+- =CodeBlock.svelte= small code-display helper
+
+* Tools
+
+- =CommandPalette.svelte= keyboard/search palette
+- =Tweaks.svelte= visual preference panel
+
+* When To Extract
+
+Extract a component when it has its own behavior, is reused, or makes a route
+hard to read. Avoid tiny wrappers that only rename a =div=.

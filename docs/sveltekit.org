@@ -1,0 +1,37 @@
+#+TITLE: How SvelteKit Works Here
+
+Svelte handles the components. SvelteKit handles the site around them: routes,
+layouts, loaders, generated types, errors, and the static adapter.
+
+* Routes
+
+The router is just the filesystem. Files under =src/routes/= become URLs:
+
+- =src/routes/+page.svelte= renders =/=
+- =src/routes/about/+page.svelte= renders =/about/=
+- =src/routes/blog/[slug]/+page.svelte= renders a dynamic blog page
+
+The special filenames matter:
+
+- =+page.svelte= renders a page.
+- =+page.server.ts= loads server-only data for that page.
+- =+layout.svelte= wraps child routes.
+- =+layout.server.ts= loads server-only data for a layout.
+- =+error.svelte= renders route errors.
+
+* Static Output
+
+=src/routes/+layout.ts= sets:
+
+#+begin_src ts
+export const prerender = true;
+export const trailingSlash = 'always';
+#+end_src
+
+That tells SvelteKit to generate static pages and use trailing slashes. The
+static adapter in =svelte.config.js= writes the result to =build/=.
+
+* Imports
+
+=$lib/...= points at =src/lib/=. Use it for shared components, stores, data,
+and content helpers.

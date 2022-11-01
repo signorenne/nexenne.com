@@ -1,0 +1,15 @@
+#+TITLE: yarn.lock
+
+=yarn.lock= is Yarn's receipt for the dependency tree.
+
+* Why It Matters
+
+- Everyone installs the same versions.
+- Integrity hashes protect downloaded packages.
+- Yarn installs faster because the tree is already solved.
+- Dependency changes show up clearly in git.
+
+* Rule
+
+Commit it, but do not edit it by hand. Let Yarn update it through
+=yarn install=, =yarn add=, =yarn up=, or =yarn remove=.

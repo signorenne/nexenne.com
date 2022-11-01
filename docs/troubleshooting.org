@@ -1,0 +1,64 @@
+#+TITLE: Troubleshooting
+
+* node Or yarn Not Found
+
+The shell cannot see Node or the Yarn launcher. Fix =PATH= (or install Node
+and =npm i -g yarn=) before running Yarn commands. The project pins Yarn 4
+itself, so you only need a launcher that can read =yarnPath= from
+=.yarnrc.yml=.
+
+* Wrong Yarn Version Reported
+
+=yarn --version= should report =4.15.0= when run from inside the project.
+If it reports a different version, check that =.yarn/releases/yarn-4.15.0.cjs=
+exists and =.yarnrc.yml= still points at it.
+
+* Svelte Types Look Stale
+
+Run:
+
+#+begin_src sh
+yarn check
+#+end_src
+
+This runs =svelte-kit sync= and refreshes generated files under =.svelte-kit/=.
+
+* Content Does Not Appear
+
+Check:
+
+- The file is under =content/blog/= or =content/work/=.
+- The extension is =.md= or =.org=.
+- Required frontmatter fields exist.
+- =draft= is not true in a production build.
+- The slug is the filename without extension or language suffix.
+- The route loader is using the right content helper.
+
+* Build Fails On Frontmatter
+
+Look at the Zod schema in:
+
+- =src/lib/content/blog.server.ts=
+- =src/lib/content/work.server.ts=
+- =src/lib/content/resume.server.ts=
+
+Most of the time, a required field is missing or a value has the wrong shape.
+
+* Styles Look Wrong On First Paint
+
+Check the boot script in =src/app.html= and the corresponding values in
+=src/lib/tweaks.ts=. The script must stay in sync with the stored tweak shape.
+
+* Links Work In Dev But Not Build
+
+Check:
+
+- =trailingSlash= in =src/routes/+layout.ts=
+- =BASE_PATH= in production
+- Internal links generated from content
+- The rehype link handling in =src/lib/content/parser.server.ts=
+
+* Prettier Tries To Format Org Files
+
+This repo does not format Org mode with Prettier. Keep =.org= files out of the
+Prettier globs unless an Org parser is added.

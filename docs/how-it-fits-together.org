@@ -1,0 +1,32 @@
+#+TITLE: How It Fits Together
+
+This site is static at the edge, but it still has a build-time app behind it.
+Most problems make more sense if you keep that split in mind.
+
+* Build Flow
+
+1. Yarn reads =package.json= and installs exactly what =yarn.lock= says.
+2. =yarn dev= or =yarn build= starts Vite.
+3. Vite loads =vite.config.ts=.
+4. The SvelteKit plugin pulls in =svelte.config.js=.
+5. SvelteKit scans =src/routes/= and builds the route tree.
+6. Server loaders call helpers in =src/lib/content/=.
+7. Those helpers read =content/blog= and =content/work= at build time.
+8. Markdown and Org files become HTML.
+9. =adapter-static= writes the prerendered site to =build/=.
+
+* Runtime Shape
+
+- =src/app.html= is the outer document shell.
+- =src/routes/+layout.svelte= wraps every page.
+- =src/routes/+layout.server.ts= provides blog and work metadata to the layout.
+- Route-level =+page.server.ts= files load page-specific data.
+- Route-level =+page.svelte= files render the UI.
+- =src/lib/components/= keeps reusable Svelte components.
+- =src/lib/stores/= keeps client-side state.
+
+* Checks
+
+- =yarn check= catches broken Svelte and TypeScript contracts.
+- =yarn lint= catches suspicious JS, TS, and Svelte code.
+- =yarn build= proves the whole static site can be generated.

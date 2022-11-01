@@ -1,0 +1,35 @@
+#+TITLE: nexenne.com
+
+Personal site for nexenne.com.
+
+Built with SvelteKit, generated as static HTML, and fed by local Markdown and
+Org content.
+
+* Use
+
+#+begin_src sh
+yarn install
+yarn dev
+yarn check
+yarn build
+#+end_src
+
+The project uses [[https://yarnpkg.com/][Yarn 4]], pinned via =packageManager= in
+=package.json= and shipped in =.yarn/releases/=. You only need a Yarn launcher
+on =PATH= (=npm i -g yarn= installs the classic shim, which delegates to the
+pinned 4.x release).
+
+* Map
+
+- =src/routes/= pages, layouts, and route loaders
+- =src/lib/= shared code: components, stores, data, content loaders
+- =content/= articles, case studies, and resume source
+- =static/= files served as-is
+- =docs/= short notes about how the project is put together
+
+* Docs
+
+- [[file:docs/index.org][Docs index]]
+- [[file:docs/how-it-fits-together.org][How the project fits together]]
+- [[file:docs/sveltekit.org][How SvelteKit works here]]
+- [[file:docs/content-pipeline.org][Content pipeline]]

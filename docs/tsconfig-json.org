@@ -1,0 +1,19 @@
+#+TITLE: tsconfig.json
+
+=tsconfig.json= tells TypeScript how to read this project.
+
+* In This File
+
+It extends SvelteKit's generated =.svelte-kit/tsconfig.json=. That generated
+file provides route types, aliases, and framework settings from =svelte-kit
+sync=.
+
+* Important Settings
+
+- =strict= keeps TypeScript honest.
+- =allowJs= and =checkJs= include JavaScript config files in checking.
+- =moduleResolution: bundler= matches how Vite resolves imports.
+- =resolveJsonModule= allows JSON imports.
+- =esModuleInterop= makes CommonJS packages less awkward to import.
+- =skipLibCheck= skips dependency declaration files.
+- =sourceMap= keeps debugging readable.

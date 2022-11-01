@@ -1,0 +1,23 @@
+#+TITLE: vite.config.ts
+
+=vite.config.ts= is intentionally tiny.
+
+Vite is still the dev server and bundler, but SvelteKit owns most of the app
+behavior. This file mainly turns on the SvelteKit plugin.
+
+* Current Config
+
+#+begin_src ts
+import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [sveltekit()]
+});
+#+end_src
+
+* What This Means
+
+The =sveltekit()= plugin connects Vite to SvelteKit. It teaches Vite how to
+compile Svelte files, understand routes, serve the dev app, and build the
+production output.

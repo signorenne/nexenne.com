@@ -1,0 +1,49 @@
+#+TITLE: Deployment
+
+The deploy artifact is just static files.
+
+* Build
+
+#+begin_src sh
+yarn check
+yarn build
+#+end_src
+
+The build writes the final site to =build/=.
+
+* Preview
+
+#+begin_src sh
+yarn preview
+#+end_src
+
+Use preview after a build to inspect what will actually be deployed.
+
+* Static Adapter
+
+=svelte.config.js= uses =@sveltejs/adapter-static=. Pages are prerendered, so
+the host does not need a Node server.
+
+* Base Path
+
+Production builds can set =BASE_PATH=:
+
+#+begin_src sh
+BASE_PATH=/subdir yarn build
+#+end_src
+
+Use this only when the site lives under a subdirectory. Leave it empty for a
+root domain.
+
+* Output
+
+- Upload =build/=.
+- Keep source assets in =static/=.
+- Never patch files directly inside =build/=.
+
+* Before Shipping
+
+- =yarn check=
+- =yarn build=
+- =yarn preview=
+- Check a blog post, a work page, RSS, sitemap, and 404.

@@ -1,0 +1,22 @@
+#+TITLE: eslint.config.js
+
+=eslint.config.js= is the lint ruleset.
+
+It uses ESLint's flat config format and covers JavaScript, TypeScript, and
+Svelte files.
+
+* Main Blocks
+
+- JavaScript recommended rules.
+- TypeScript parser and TypeScript recommended rules.
+- Svelte parser and Svelte recommended rules.
+- Prettier compatibility.
+- Ignores for generated folders, static assets, and authored content.
+
+* Local Choices
+
+- Unused variables warn instead of failing. Prefix with =_= for intentionally
+  unused names.
+- Empty =catch= blocks are allowed.
+- =svelte/no-at-html-tags= is disabled because article HTML is rendered from
+  trusted local content.

@@ -1,0 +1,27 @@
+#+TITLE: src Layout
+
+=src/= is the app. Content lives next to it in =content/=, but this is where
+SvelteKit starts.
+
+* Root Files
+
+- =app.html= outer document shell.
+- =app.css= global styling.
+- =app.d.ts= ambient TypeScript declarations.
+
+* lib
+
+=src/lib/= is shared code. Import it with =$lib/...=.
+
+- =components/= reusable Svelte components.
+- =content/= server-only content loading and parsing.
+- =stores/= client-side stores.
+- =data.ts= static site data.
+- =i18n.ts= language data and helpers.
+- =tweaks.ts= visual preference state.
+
+* routes
+
+=src/routes/= is the router. Folders become URL segments. =+page.svelte=
+renders a page, =+page.server.ts= loads data for it, and =+layout.svelte= wraps
+child routes.

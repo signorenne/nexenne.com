@@ -1,0 +1,26 @@
+#+TITLE: svelte.config.js
+
+=svelte.config.js= is where SvelteKit gets the project-level options that do
+not belong in route files.
+
+* In This File
+
+- Enables Svelte preprocessing through =vitePreprocess=.
+- Uses =@sveltejs/adapter-static=.
+- Sets a fallback page for static hosting.
+- Applies =BASE_PATH= during production builds.
+
+* Adapter
+
+The static adapter writes prerendered pages to =build/=. The =404.html=
+fallback gives static hosts a not-found page.
+
+* Base Path
+
+In dev, the base path stays empty. In production, =BASE_PATH= can prefix routes
+for subdirectory deploys.
+
+* Type Comment
+
+The JSDoc =@type= comment is worth keeping. It gives this JavaScript config
+file useful editor/type support.

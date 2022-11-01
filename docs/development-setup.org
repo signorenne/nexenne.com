@@ -1,0 +1,58 @@
+#+TITLE: Development Setup
+
+* Requirements
+
+- Node.js
+- Yarn launcher on =PATH= (any version; project pins its own)
+- Project dependencies installed with =yarn install=
+
+The project pins Yarn 4 via the =packageManager= field in =package.json= and
+ships the actual binary in =.yarn/releases/yarn-4.15.0.cjs=. You do not need
+to install Yarn 4 yourself. Any Yarn launcher on =PATH= (Yarn classic, or
+Corepack) will read =yarnPath= from =.yarnrc.yml= and delegate to the pinned
+release.
+
+The simplest setup is:
+
+#+begin_src sh
+npm install -g yarn   # installs Yarn classic as a launcher
+#+end_src
+
+If a shell cannot find =node= or =yarn=, fix the shell path first. The repo
+commands assume those names exist.
+
+* Commands
+
+#+begin_src sh
+yarn install
+yarn dev
+yarn check
+yarn build
+yarn preview
+#+end_src
+
+Yarn 4 forwards unknown subcommands to =package.json= scripts, so =yarn build=
+runs the =build= script directly, with no =run= keyword needed.
+
+* Daily Loop
+
+1. Start =yarn dev=.
+2. Open the Vite URL it prints.
+3. Edit =src/= for app code or =content/= for writing.
+4. Run =yarn check= before committing.
+5. Run =yarn build= before deploying.
+
+* Generated Folders
+
+- =node_modules/= dependencies installed by Yarn (=nodeLinker: node-modules=)
+- =.svelte-kit/= generated SvelteKit files and types
+- =build/= static production output
+- =.yarn/cache/= Yarn's package cache (gitignored)
+
+Do not edit these by hand. Delete and regenerate them if they get weird.
+
+* Local Shell Note
+
+Some sandboxed editors do not expose system Node. In that case, add the system
+Node path, or the local wrapper scripts, to =PATH= before running yarn
+commands.

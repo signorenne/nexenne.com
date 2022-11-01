@@ -1,0 +1,66 @@
+#+TITLE: Routes
+
+SvelteKit maps =src/routes/= directly to URLs. If a page exists on the site,
+there is almost always a folder for it here.
+
+The site is bilingual: English lives at the root and Italian under =/it/=. To
+make that work, every page lives inside an optional language group folder,
+=src/routes/[[lang=lang]]/=. The matcher =src/params/lang.ts= matches only =it=,
+so =/about/= is English and =/it/about/= is Italian. See
+[[file:features-and-integrations.org][Features, services & integrations]] for the
+full routing picture, and always build internal links through =src/lib/paths.ts=.
+
+* Global Route Files (root level)
+
+- =+layout.ts= sets prerendering and trailing slashes.
+- =+layout.server.ts= loads blog and work metadata once for the layout.
+- =+layout.svelte= is the shared shell: nav, side map, footer, tools, the
+  language store, and the in-page search highlight.
+- =+error.svelte= is the route error page.
+- =hooks.server.ts= (in =src/=, not =routes/=) stamps the html lang attribute
+  during prerender.
+
+* Pages (inside =[[lang=lang]]/=)
+
+- =+page.svelte= home
+- =about/+page.svelte= about
+- =services/+page.svelte= services
+- =contact/+page.svelte= contact (Web3Forms form)
+- =uses/+page.svelte= tools and stack
+- =now/+page.svelte= current work
+- =resume/+page.svelte= resume
+- =card/+page.svelte= business card generator
+- =colophon/+page.svelte= site colophon
+
+The =404/+page.svelte= not-found page stays at the root, because it is a single
+page shared by both languages.
+
+* Content Routes (inside =[[lang=lang]]/=)
+
+- =blog/+page.svelte= and =blog/+page.server.ts= blog index and its list data
+- =blog/[slug]/+page.svelte= and =blog/[slug]/+page.server.ts= one post, plus
+  its next and related posts
+- =work/+page.svelte= and =work/+page.server.ts= work index and its list data
+- =work/[slug]/+page.svelte= and =work/[slug]/+page.server.ts= one case study
+- =resume/+page.server.ts= loads the resume content
+
+Each =[slug]= loader must emit both languages from its =entries= generator (one
+with =lang: ''= and one with =lang: 'it'=) so both URLs prerender.
+
+* Endpoints (root level, language independent)
+
+- =feed.xml/+server.ts= English RSS feed
+- =it/feed.xml/+server.ts= Italian RSS feed
+- =sitemap.xml/+server.ts= sitemap with hreflang alternates
+- =search.json/+server.ts= prerendered search index for the command palette
+- =og/[slug].png/+server.ts= per-article Open Graph image
+
+* Adding A Page
+
+1. Create =src/routes/[[lang=lang]]/<name>/+page.svelte=.
+2. Add =+page.server.ts= only if the page needs server or build-time data.
+3. Add the route to =src/lib/data.ts= if it belongs in navigation.
+4. Add labels to =src/lib/i18n.ts= in both languages (the parity test enforces
+   this).
+5. Use =lpath=, =lhref=, or =lgoto= from =src/lib/paths.ts= for every internal
+   link, never a hand-written path.
