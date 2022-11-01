@@ -1,0 +1,35 @@
+#!/usr/bin/env sh
+
+# Make node findable when commit is run from GUIs (VS Code, GitHub
+# Desktop, ...) that don't inherit the user's shell PATH.
+export PATH="$HOME/.local/bin:$HOME/.volta/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+# Locate a working node binary. Everything downstream is invoked through
+# this binary so we don't depend on shebangs or process.execPath, which
+# can point at stale flatpak paths like /usr/bin/node24.
+NODE_BIN=""
+for candidate in "$HOME/.local/bin/node" "/usr/local/bin/node" "/opt/homebrew/bin/node" "$(command -v node 2>/dev/null)"; do
+	if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+		NODE_BIN="$candidate"
+		break
+	fi
+done
+
+if [ -z "$NODE_BIN" ]; then
+	echo "husky: node not found - skipping format" >&2
+	exit 0
+fi
+
+# Collect staged files we want to format.
+FILES=$(git diff --cached --name-only --diff-filter=ACMR \
+	| grep -E '\.(ts|js|mjs|cjs|svelte|css|html|json|md)$' || true)
+
+if [ -z "$FILES" ]; then
+	exit 0
+fi
+
+# Run prettier directly via the located node. No lint-staged, no eslint.
+echo "$FILES" | xargs "$NODE_BIN" node_modules/prettier/bin/prettier.cjs --write --ignore-unknown
+
+# Re-stage whatever prettier touched.
+echo "$FILES" | xargs git add
