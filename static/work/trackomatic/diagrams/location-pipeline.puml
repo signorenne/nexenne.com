@@ -1,0 +1,17 @@
+@startuml
+title TrackOMatic location pipeline
+
+rectangle "Fused Location Provider" as Provider
+rectangle "SharedLocationManager" as Manager
+rectangle "TrackingDataSource" as Source
+rectangle "TrackingRepository" as Repository
+rectangle "TrackingServices\nforeground lifecycle" as Service
+rectangle "ToMViewModel\nscreen state" as ViewModel
+
+Provider -down-> Manager : location updates
+Manager -down-> Source : cold Flow
+Source -down-> Repository : normalized points
+Repository -down-> Service : active session
+Repository -down-> ViewModel : observable state
+
+@enduml

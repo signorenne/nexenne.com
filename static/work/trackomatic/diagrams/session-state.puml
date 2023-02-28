@@ -1,0 +1,17 @@
+@startuml
+title TrackOMatic session state
+
+left to right direction
+
+[*] --> IDLE
+IDLE --> STARTED : start
+STARTED --> PAUSED : pause
+PAUSED --> STARTED : resume
+STARTED --> CANCELED : cancel
+PAUSED --> CANCELED : cancel
+STARTED --> FINISHED : save
+PAUSED --> FINISHED : save
+CANCELED --> [*]
+FINISHED --> [*]
+
+@enduml

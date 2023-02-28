@@ -1,0 +1,13 @@
+@startuml
+title TrackOMatic navigation responsibilities
+
+rectangle "RootNavGraph" as Root
+rectangle "LaunchNavGraph\nstartup and loading" as Launch
+rectangle "AuthNavGraph\nsign-in and registration" as Auth
+rectangle "MainNavGraph\ntracking, sessions,\nprofile, settings" as Main
+
+Root --> Launch
+Root --> Auth
+Root --> Main
+
+@enduml

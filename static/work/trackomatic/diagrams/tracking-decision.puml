@@ -1,0 +1,20 @@
+@startuml
+title TrackOMatic handling a new location
+
+start
+:Receive a new location;
+if (Session state is STARTED?) then (yes)
+  :Validate and append the point;
+  fork
+    :Update map polyline;
+  fork again
+    :Update distance and statistics;
+  fork again
+    :Update foreground notification;
+  end fork
+else (no)
+  :Do not extend the session;
+endif
+stop
+
+@enduml

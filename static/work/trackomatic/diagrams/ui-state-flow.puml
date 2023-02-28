@@ -1,0 +1,18 @@
+@startuml
+title TrackOMatic unidirectional UI state
+
+left to right direction
+
+actor User
+rectangle "Composable" as View
+rectangle "UIEvent" as Event
+rectangle "ViewModel\nvalidation and use cases" as ViewModel
+rectangle "StateFlow<UIState>" as State
+
+User --> View : action
+View --> Event
+Event --> ViewModel
+ViewModel --> State : immutable update
+State --> View : render
+
+@enduml

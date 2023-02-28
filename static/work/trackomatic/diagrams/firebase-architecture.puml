@@ -1,0 +1,27 @@
+@startuml
+title TrackOMatic Firebase integration
+
+rectangle "TrackOMatic repositories" as App
+
+package "Firebase" {
+  rectangle "Authentication" as Auth
+  database "Firestore" as Store
+  rectangle "Storage" as Storage
+  rectangle "Cloud Functions" as Functions
+}
+
+package "Data ownership" {
+  database "users\napplication identity" as Users
+  database "profiles\nstatistics data" as Profiles
+  database "settings\npresentation preferences" as Settings
+}
+
+App --> Auth
+App --> Store
+App --> Storage
+App --> Functions
+Store --> Users
+Store --> Profiles
+Store --> Settings
+
+@enduml

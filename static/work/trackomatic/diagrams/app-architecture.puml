@@ -1,0 +1,32 @@
+@startuml
+title TrackOMatic application architecture
+
+left to right direction
+
+package "Presentation" {
+  rectangle "Composable" as View
+  rectangle "UIState and UIEvent" as UIState
+  rectangle "ViewModel" as ViewModel
+}
+
+package "Domain" {
+  rectangle "Use cases" as UseCases
+  rectangle "Models" as Models
+}
+
+package "Data" {
+  rectangle "Repository" as Repository
+  rectangle "Data sources" as Sources
+}
+
+cloud "Firebase and\nGoogle services" as Services
+
+View --> UIState
+UIState --> ViewModel
+ViewModel --> UseCases
+UseCases --> Models
+UseCases --> Repository
+Repository --> Sources
+Sources --> Services
+
+@enduml
