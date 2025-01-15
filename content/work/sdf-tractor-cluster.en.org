@@ -1,0 +1,154 @@
+#+TITLE: SDF Group · embedded software and HMI for iCluster
+#+LANG: en
+#+TRANSLATED_FROM: it
+#+AUTO_TRANSLATED: false
+#+CLIENT: SDF Group · SAME Deutz-Fahr · via Re:Lab R&D
+#+ROLE: Embedded and HMI developer
+#+YEAR: Since January 2025 · active development
+#+SUMMARY: I contribute to the embedded software and HMI of the digital cabin cluster, turning machine information into a clear and useful experience for the operator.
+#+TAGS: Embedded software, HMI, C++, Qt/QML, Integration, Validation
+#+COLOR: lime
+#+ACCENT: Embedded software · HMI · product integration
+#+COVER: /work/sdf-tractor-cluster/series-8-ttv.webp
+#+SPOTLIGHT: true
+#+FEATURE: true
+#+METRICS: Scope :: Digital cabin cluster ; Contribution :: Embedded software and HMI ; Mode :: On site · Treviglio ; Status :: Active development
+
+* Clear information in a complex machine
+
+The new DEUTZ-FAHR Series 8 TTV presents a digital cabin built around two displays: iCluster and iMonitor. The two surfaces work together to provide machine information, operating functions, and tools for precision farming.
+
+In this context, the display in front of the operator needs to communicate what matters immediately. The quality of the experience depends on turning a complex system into information that is readable, coherent, and suited to the current task.
+
+[[/work/sdf-tractor-cluster/series-8-ttv.webp]]
+
+/DEUTZ-FAHR Series 8 TTV, publicly presented at Agritechnica 2025./
+
+Public documentation describes iCluster as the 15-inch display placed in the operator's field of view and iMonitor as the surface for operating functions, settings, and Smart Farming.
+
+[[/work/sdf-tractor-cluster/diagrams/public-experience.svg]]
+
+/Road and field contexts require different information distributed across the two cabin displays. The diagram summarizes only behavior described on public product pages./
+
+* My contribution
+
+I work with the SDF Group R&D team through Re:Lab, contributing to the embedded software and HMI of the digital cluster.
+
+My work includes:
+
+- turning product requirements into clear behavior on the display;
+- developing software components and parts of the interface;
+- connecting machine information with its graphical presentation;
+- keeping pages, indicators, and interactions coherent;
+- integrating and validating features on the reference display;
+- investigating development issues together with the team.
+
+The contribution spans development and interaction. A function should not only be technically available: it should appear at the right moment and in a form the operator can understand without losing focus on the work.
+
+My role requires moving between requirements, software, and the real product. A request can begin as technical data or behavior, but it needs to become a page, indicator, or interface response with immediate meaning for the person in the cabin.
+
+* Not showing everything, showing what matters
+
+A complex machine produces much more information than it is useful to display at one time.
+
+HMI work therefore includes building a hierarchy:
+
+- information required to understand the current state;
+- elements that should remain recognizable across different pages;
+- content connected to the operating context;
+- feedback that confirms a command;
+- conditions that require greater attention.
+
+Quality does not depend on the number of values on the display. It depends on making what matters evident while keeping the rest available without creating noise.
+
+That perspective shapes my contribution both when I develop one part of the interface and when I validate the complete behavior on the display.
+
+* From requirement to display experience
+
+Developing an embedded HMI requires attention to clarity, continuity, and real use. The interface must remain readable in different conditions and respond predictably as the machine and its functions change state.
+
+In my work, I therefore keep information, behavior, and representation closely connected. This supports the development of new pages and components without losing the overall coherence of the cluster.
+
+A requirement moves through several questions before becoming part of the HMI:
+
+1. What does the operator need to understand?
+2. In which context is the information useful?
+3. Which visual form makes it readable?
+4. How should the interface respond when the situation changes?
+5. How can the outcome be validated on the real product?
+
+Following that path prevents the screen from becoming a collection of values. Each element maintains a clear relationship with an operating need.
+
+* Consistency across pages and components
+
+A cluster is not used as one screen. The operator moves between different contexts and functions but should continue to recognize the same visual and behavioral language.
+
+My contribution considers:
+
+- the position and hierarchy of information;
+- the behavior of controls;
+- visual responses to actions;
+- moments when information is not available;
+- continuity across components that represent similar concepts;
+- readability during extended use.
+
+The goal is for new parts of the interface to reinforce the system rather than introduce exceptions visible to the operator.
+
+* Embedded software and interaction
+
+Working on a cabin HMI means keeping two perspectives close.
+
+The software requires predictable behavior, understandable responsibilities, and integration with the platform. The operator needs clarity, appropriate response times, and a representation that does not require interpreting the internal operation of the machine.
+
+My embedded and HMI profile allows me to work across that boundary. I do not consider the screen separate from the system behind it, but evaluate the technical result through what becomes visible and usable.
+
+* Validation on the real product
+
+An important part of my contribution takes place directly on the display and reference platform.
+
+Testing makes it possible to assess qualities that do not fully emerge during desktop development:
+
+- readability;
+- clear priorities;
+- response to controls;
+- continuity between screens;
+- perceived interaction quality;
+- integration with the wider product.
+
+This step connects the code with the operator's actual experience.
+
+Validation also reveals the relationship between several elements. A change can be correct in isolation and still become unclear when used with other content, controls, or changes of context.
+
+For that reason, I do not stop at the ideal case. I repeat sequences, compare different situations, and check that the interface retains the same meaning as the product evolves.
+
+* Collaborating close to the product
+
+Working on site with the R&D team makes comparison between software, requirements, and behavior on the display immediate.
+
+When a difference emerges between what was expected and what is perceived, I can investigate it with the people who understand the machine, the platform, and the operating experience. This reduces isolated interpretations and turns the issue into a change that can be verified.
+
+Collaboration is therefore part of the technical result: it keeps the software aligned with a complex product and the real priorities of its use.
+
+* Outcome
+
+The work contributes to a digital cluster where embedded software and interface work together to make a complex machine understandable.
+
+The project represents my profile well: I develop firmware and software close to the hardware, while evaluating each decision through the effect it has on the person using the system.
+
+It is work where quality is not limited to the correctness of a value. It includes when that value appears, how it is interpreted, and the confidence with which the operator can use it.
+
+* What this project says about my work
+
+The iCluster project highlights:
+
+- embedded software development integrated with a complex HMI;
+- translation of technical requirements into understandable behavior;
+- attention to hierarchy, consistency, and readability;
+- validation directly on the reference platform;
+- daily collaboration with a multidisciplinary R&D team;
+- the ability to connect technical quality and operator experience.
+
+* Official references
+
+- [[https://www.sdfgroup.com/it-it/sdfinside/DEUTZ_FAHR_lancia_la_nuova_Serie_8_TTV][SDF Group · DEUTZ-FAHR launches the new Series 8 TTV]]
+- [[https://www.deutz-fahr.com/en-eu/new-age][DEUTZ-FAHR · New Series 8]]

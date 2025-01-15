@@ -1,0 +1,25 @@
+@startuml
+title DEUTZ-FAHR Series 8 public cabin experience
+
+top to bottom direction
+
+actor Operator
+
+rectangle "Road context" as Road
+rectangle "Field context" as Field
+
+package "SigmaVision cabin" {
+  rectangle "iCluster\nessential machine information" as Cluster
+  rectangle "iMonitor\noperation and Smart Farming" as Monitor
+}
+
+rectangle "A connected and\nreadable cabin experience" as Outcome
+
+Operator --> Road
+Operator --> Field
+Road --> Cluster
+Field --> Cluster
+Field --> Monitor
+Cluster --> Outcome
+Monitor --> Outcome
+@enduml

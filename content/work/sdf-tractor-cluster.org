@@ -1,0 +1,152 @@
+#+TITLE: SDF Group · software embedded e HMI per iCluster
+#+LANG: it
+#+CLIENT: SDF Group · SAME Deutz-Fahr · tramite Re:Lab R&D
+#+ROLE: Sviluppatore embedded e HMI
+#+YEAR: Da gennaio 2025 · sviluppo attivo
+#+SUMMARY: Contribuisco al software embedded e alla HMI del cluster digitale di cabina, trasformando informazioni della macchina in un'esperienza chiara e utile per l'operatore.
+#+TAGS: Software embedded, HMI, C++, Qt/QML, Integrazione, Validazione
+#+COLOR: lime
+#+ACCENT: Software embedded · HMI · integrazione di prodotto
+#+COVER: /work/sdf-tractor-cluster/series-8-ttv.webp
+#+SPOTLIGHT: true
+#+FEATURE: true
+#+METRICS: Ambito :: Cluster digitale di cabina ; Contributo :: Software embedded e HMI ; Modalità :: In sede · Treviglio ; Stato :: Sviluppo attivo
+
+* Informazioni chiare in una macchina complessa
+
+La nuova Serie 8 TTV di DEUTZ-FAHR presenta una cabina digitale costruita attorno a due display: iCluster e iMonitor. Le superfici lavorano insieme per rendere disponibili informazioni della macchina, funzioni operative e strumenti dedicati all'agricoltura di precisione.
+
+In questo contesto, il display davanti all'operatore deve comunicare ciò che serve in modo immediato. La qualità dell'esperienza dipende dalla capacità di trasformare un sistema complesso in informazioni leggibili, coerenti e adatte al momento operativo.
+
+[[/work/sdf-tractor-cluster/series-8-ttv.webp]]
+
+/DEUTZ-FAHR Serie 8 TTV, presentata pubblicamente ad Agritechnica 2025./
+
+La documentazione pubblica descrive iCluster come il display da 15 pollici collocato nel campo visivo dell'operatore e iMonitor come la superficie dedicata a funzioni operative, impostazioni e Smart Farming.
+
+[[/work/sdf-tractor-cluster/diagrams/public-experience.svg]]
+
+/I contesti di strada e campo richiedono informazioni differenti, distribuite tra i due display della cabina. Il diagramma riassume esclusivamente il comportamento descritto nelle pagine pubbliche./
+
+* Il mio contributo
+
+Lavoro con il team R&D di SDF Group tramite Re:Lab, contribuendo al software embedded e alla HMI del cluster digitale.
+
+Il mio lavoro comprende:
+
+- trasformare requisiti di prodotto in comportamenti chiari sul display;
+- sviluppare componenti software e parti dell'interfaccia;
+- collegare informazioni della macchina e presentazione grafica;
+- mantenere coerenza tra pagine, indicatori e interazioni;
+- integrare e verificare le funzioni sul display di riferimento;
+- analizzare i problemi emersi durante lo sviluppo insieme al team.
+
+Il contributo attraversa sviluppo e interazione. Una funzione non deve soltanto essere tecnicamente disponibile: deve presentarsi nel momento corretto e in una forma che l'operatore possa comprendere senza distogliere l'attenzione dal lavoro.
+
+Il mio ruolo richiede di muovermi tra requisiti, software e prodotto reale. Una richiesta può nascere come dato o comportamento tecnico, ma deve diventare una pagina, un indicatore o una risposta dell'interfaccia con un significato immediato per la persona in cabina.
+
+* Non mostrare tutto, mostrare ciò che serve
+
+Una macchina complessa produce molte più informazioni di quante sia utile mostrare nello stesso momento.
+
+Il lavoro sulla HMI consiste anche nel costruire una gerarchia:
+
+- informazioni necessarie per comprendere lo stato corrente;
+- elementi che devono rimanere riconoscibili tra pagine differenti;
+- contenuti legati al contesto operativo;
+- feedback che conferma un comando;
+- condizioni che richiedono maggiore attenzione.
+
+La qualità non dipende quindi dal numero di valori presenti sul display. Dipende dalla capacità di rendere evidente ciò che serve, mantenendo il resto disponibile senza creare rumore.
+
+Questa prospettiva orienta il mio contributo sia quando sviluppo una parte dell'interfaccia sia quando verifico il comportamento completo sul display.
+
+* Dal requisito all'esperienza sul display
+
+Lo sviluppo di una HMI embedded richiede attenzione a chiarezza, continuità e utilizzo reale. L'interfaccia deve rimanere leggibile in condizioni differenti e deve reagire in modo prevedibile mentre la macchina e le sue funzioni cambiano stato.
+
+Nel mio lavoro cerco quindi di mantenere vicino il rapporto tra informazione, comportamento e rappresentazione. Questo permette di sviluppare nuove pagine e componenti senza perdere la coerenza complessiva del cluster.
+
+Un requisito attraversa più domande prima di diventare parte della HMI:
+
+1. Che cosa deve comprendere l'operatore?
+2. In quale contesto l'informazione è utile?
+3. Quale forma visiva la rende leggibile?
+4. Come deve reagire l'interfaccia quando la situazione cambia?
+5. Come verificare il risultato sul prodotto reale?
+
+Seguire questo percorso evita che la schermata diventi una semplice raccolta di valori. Ogni elemento mantiene un rapporto chiaro con un bisogno operativo.
+
+* Coerenza tra pagine e componenti
+
+Un cluster non viene utilizzato come una singola schermata. L'operatore passa tra contesti e funzioni differenti, ma deve continuare a riconoscere lo stesso linguaggio visivo e comportamentale.
+
+Nel mio contributo considero:
+
+- posizione e gerarchia delle informazioni;
+- comportamento dei controlli;
+- risposta visiva alle azioni;
+- gestione dei momenti in cui un'informazione non è disponibile;
+- continuità tra componenti che rappresentano concetti simili;
+- leggibilità durante un utilizzo prolungato.
+
+L'obiettivo è fare in modo che nuove parti dell'interfaccia rafforzino il sistema invece di introdurre eccezioni percepibili dall'operatore.
+
+* Software embedded e interazione
+
+Lavorare su una HMI di cabina significa mantenere vicini due punti di vista.
+
+Dal lato software servono comportamento prevedibile, responsabilità comprensibili e integrazione con la piattaforma. Dal lato dell'operatore servono chiarezza, tempi di risposta appropriati e una rappresentazione che non richieda di interpretare il funzionamento interno della macchina.
+
+Il mio profilo embedded e HMI mi permette di lavorare su questo confine. Non considero la schermata separata dal sistema che la alimenta, ma valuto il risultato tecnico attraverso ciò che diventa visibile e utilizzabile.
+
+* Verifica sul prodotto reale
+
+Una parte importante del contributo avviene direttamente sul display e sulla piattaforma di riferimento.
+
+Le prove permettono di valutare aspetti che non emergono completamente durante lo sviluppo su computer:
+
+- leggibilità;
+- chiarezza delle priorità;
+- risposta ai comandi;
+- continuità tra schermate;
+- qualità percepita dell'interazione;
+- integrazione con il resto del prodotto.
+
+Questo passaggio collega il codice all'esperienza effettiva dell'operatore.
+
+La verifica permette anche di osservare la relazione tra più elementi. Una modifica può essere corretta isolatamente e risultare comunque poco chiara quando viene utilizzata insieme ad altri contenuti, comandi o cambiamenti di contesto.
+
+Per questo non mi fermo al caso ideale. Ripeto sequenze, confronto situazioni differenti e controllo che l'interfaccia mantenga lo stesso significato mentre il prodotto evolve.
+
+* Collaborare vicino al prodotto
+
+Il lavoro in sede con il team R&D rende rapido il confronto tra software, requisiti e comportamento sul display.
+
+Quando emerge una differenza tra ciò che era previsto e ciò che viene percepito, posso analizzarla insieme alle persone che conoscono la macchina, la piattaforma e l'esperienza operativa. Questo riduce interpretazioni isolate e permette di trasformare il problema in una modifica verificabile.
+
+La collaborazione è quindi parte del risultato tecnico: rende possibile mantenere il software allineato a un prodotto complesso e alle priorità reali del suo utilizzo.
+
+* Risultato
+
+Il lavoro contribuisce a un cluster digitale in cui software embedded e interfaccia collaborano per rendere comprensibile una macchina complessa.
+
+Il progetto rappresenta bene il mio profilo: sviluppo firmware e software vicino all'hardware, ma valuto ogni scelta anche per l'effetto che produce sulla persona che utilizza il sistema.
+
+È un lavoro in cui la qualità non coincide soltanto con la correttezza di un valore. Comprende il momento in cui viene mostrato, il modo in cui viene interpretato e la fiducia con cui l'operatore può utilizzarlo.
+
+* Cosa racconta del mio lavoro
+
+Il progetto iCluster mette in evidenza:
+
+- sviluppo di software embedded integrato con una HMI complessa;
+- trasformazione di requisiti tecnici in comportamenti comprensibili;
+- attenzione a gerarchia, coerenza e leggibilità;
+- verifica direttamente sulla piattaforma di riferimento;
+- collaborazione quotidiana con un team R&D multidisciplinare;
+- capacità di collegare qualità tecnica ed esperienza dell'operatore.
+
+* Approfondimenti ufficiali
+
+- [[https://www.sdfgroup.com/it-it/sdfinside/DEUTZ_FAHR_lancia_la_nuova_Serie_8_TTV][SDF Group · DEUTZ-FAHR lancia la nuova Serie 8 TTV]]
+- [[https://www.deutz-fahr.com/it-it/nuova-era][DEUTZ-FAHR · Nuova Serie 8]]
