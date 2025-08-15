@@ -1,0 +1,32 @@
+@startuml
+title Creator Micro 2 public product experience
+
+left to right direction
+
+actor Creator
+
+package "Creator Micro 2" {
+  rectangle "Mechanical keys" as Keys
+  rectangle "Dial" as Dial
+  rectangle "Joystick menu" as Joystick
+  rectangle "RGB feedback" as RGB
+}
+
+rectangle "Work Louder Input" as Input
+rectangle "Layers and\ncontextual presets" as Config
+rectangle "Personalized\nactions" as Actions
+rectangle "Compact creative\nworkflow" as Outcome
+
+Creator --> Keys
+Creator --> Dial
+Creator --> Joystick
+Creator --> Input
+
+Input --> Config
+Config --> Actions
+Keys --> Actions
+Dial --> Actions
+Joystick --> Actions
+Actions --> RGB
+Actions --> Outcome
+@enduml
