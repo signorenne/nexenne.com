@@ -1,0 +1,33 @@
+@startuml
+title Knob1 public product experience
+
+left to right direction
+
+actor User
+
+package "Knob1" {
+  rectangle "Full keyboard" as Keyboard
+  rectangle "Two programmable knobs" as Knobs
+  rectangle "Panoramic display" as Display
+}
+
+rectangle "Work Louder Input" as Input
+rectangle "Typing and shortcuts" as Typing
+rectangle "Physical adjustments" as Control
+rectangle "Information, timers,\nand wallpapers" as Visual
+rectangle "An adaptable\ndesktop workspace" as Outcome
+
+User --> Keyboard
+User --> Knobs
+User --> Input
+
+Keyboard --> Typing
+Knobs --> Control
+Input --> Keyboard
+Input --> Knobs
+Display --> Visual
+
+Typing --> Outcome
+Control --> Outcome
+Visual --> Outcome
+@enduml
