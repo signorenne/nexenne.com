@@ -271,7 +271,9 @@ const mdProcessor = unified()
 	.use(rehypeStringify, { allowDangerousHtml: true });
 
 const orgProcessor = unified()
-	.use(uniorgParse)
+	// Do not turn snake_case (e.g. can_protocol) into subscripts. '{}' keeps the
+	// Org sub/superscript syntax available only when braces are explicit (x_{i}).
+	.use(uniorgParse, { useSubSuperscripts: '{}' })
 	.use(uniorgRehype)
 	.use(rehypeOrgCodeNormalize)
 	.use(rehypeHighlight, { detect: true, ignoreMissing: true })

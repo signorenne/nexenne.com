@@ -123,6 +123,17 @@ Body text.
 		expect(out.toc.length).toBeGreaterThanOrEqual(1);
 		expect(out.toc[0].text).toBe('A Section');
 	});
+
+	it('keeps snake_case literal instead of rendering subscripts', () => {
+		const html = parseOrg('#+TITLE: T\n\nThe can_protocol frame.\n').html;
+		expect(html).toContain('can_protocol');
+		expect(html).not.toContain('<sub>');
+	});
+
+	it('still honors explicit brace subscripts', () => {
+		const html = parseOrg('#+TITLE: T\n\nValue x_{i} here.\n').html;
+		expect(html).toContain('<sub>');
+	});
 });
 
 describe('parseByPath', () => {
