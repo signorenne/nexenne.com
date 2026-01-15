@@ -1,0 +1,32 @@
+@startuml
+title XYZ Work Board r2 public product experience
+
+left to right direction
+
+actor User
+
+package "XYZ Work Board r2" {
+  rectangle "47 keys" as Keys
+  rectangle "Encoder" as Encoder
+  rectangle "Touch control" as Touch
+  rectangle "LED feedback" as LEDs
+}
+
+rectangle "Work Louder Input" as Input
+rectangle "Profiles, layers,\nand actions" as Config
+rectangle "Configured desktop\ncommands" as Actions
+rectangle "A compact personal\nworkflow" as Outcome
+
+User --> Input
+User --> Keys
+User --> Encoder
+User --> Touch
+
+Input --> Config
+Config --> Actions
+Keys --> Actions
+Encoder --> Actions
+Touch --> Actions
+Actions --> LEDs
+Actions --> Outcome
+@enduml
