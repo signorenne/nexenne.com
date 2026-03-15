@@ -1,0 +1,32 @@
+@startuml
+title Nomad E2 public product experience
+
+left to right direction
+
+actor User
+
+package "Nomad E2" {
+  rectangle "Mechanical keyboard" as Keyboard
+  rectangle "Three knobs and\nadditional controls" as Controls
+  rectangle "Color display" as Display
+  rectangle "RGB lighting" as Lighting
+}
+
+rectangle "Work Louder Input" as Input
+rectangle "Configurable actions" as Actions
+rectangle "On-device tools\nand feedback" as Tools
+rectangle "A focused and\npersonal workspace" as Outcome
+
+User --> Keyboard
+User --> Controls
+User --> Input
+
+Input --> Actions
+Keyboard --> Actions
+Controls --> Actions
+Display --> Tools
+Lighting --> Tools
+
+Actions --> Outcome
+Tools --> Outcome
+@enduml
