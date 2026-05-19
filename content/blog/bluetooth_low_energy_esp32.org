@@ -1,0 +1,1258 @@
+#+TITLE: Bluetooth Low Energy su ESP32: GATT, sicurezza, privacy e parametri di progetto
+#+LANG: it
+#+DATE: 2026-05-19
+#+LASTMOD: 2026-07-12
+#+DESC: Guida pratica al BLE su ESP32: ruoli, advertising, GATT, MTU, throughput, sicurezza, privacy e parametri di configurazione.
+#+IMAGE: /blog/covers/bluetooth_low_energy_esp32.webp
+#+READ: 40 min
+#+TAGS: ESP32, BLE, Bluetooth, IoT, Embedded, Sicurezza
+#+CATEGORIES: Embedded, Tutorial, Sicurezza
+
+** Abstract
+
+Durante lo sviluppo di dispositivi configurabili da smartphone mi sono accorto che BLE viene spesso presentato come una semplice "seriale wireless a basso consumo". È una descrizione comoda, ma porta rapidamente a errori: advertising e connessione sono fasi diverse, GAP e GATT descrivono ruoli differenti, una characteristic scrivibile non è necessariamente accessibile e un link cifrato non rende automaticamente sicuro il protocollo applicativo.
+
+Ho quindi deciso di ricostruire il funzionamento di Bluetooth Low Energy partendo dai livelli dello stack e arrivando alle scelte che incidono davvero su un prodotto: database GATT, MTU, throughput, consumo, pairing, autorizzazione, privacy e coesistenza con Wi-Fi. L'obiettivo non è soltanto far comparire un ESP32 nell'applicativo di scansione, ma capire quali garanzie fornisce ogni meccanismo e quali controlli restano responsabilità del firmware.
+
+Il *Bluetooth Low Energy*, o più semplicemente *BLE*, è una tecnologia radio nella banda a 2,4 GHz progettata per scambi brevi e consumi contenuti. Su ESP32 permette a sensori, dispositivi IoT, wearable e prodotti in provisioning di comunicare con smartphone, gateway o altri microcontrollori senza mantenere la radio continuamente attiva.
+
+È però doveroso chiarire subito l'ambito della guida. L'ESP32 originale supporta Bluetooth dual-mode 4.2 ed è certificato anche come Bluetooth LE 5.0, ma il suo controller non implementa 2M PHY, Coded PHY o advertising extensions. Queste funzioni sono disponibili su ESP32-C3, ESP32-S3 ed ESP32-C6 nelle versioni recenti di ESP-IDF; lo stato preciso va comunque verificato nella matrice relativa al chip, al controller, allo stack host e alla release usata.
+
+Vediamo dunque come progettare un collegamento BLE evitando di confondere capacità dichiarate, API dello stack e proprietà effettive del link.
+
+** BLE non è Bluetooth Classic
+
+Bluetooth Classic e Bluetooth Low Energy condividono il nome Bluetooth, ma non vanno trattati come la stessa tecnologia.
+
+*Bluetooth Classic* nasce per collegamenti più continui: audio, cuffie, speaker, tastiere, mouse, profili seriali classici e stream persistenti. È adatto a comunicazioni più stabili nel tempo, ma in genere consuma di più.
+
+*BLE*, invece, nasce per comunicazioni brevi. Un dispositivo può dormire, svegliarsi, trasmettere pochi pacchetti, ricevere una risposta e tornare in sleep. È questo comportamento a renderlo adatto a sensori e dispositivi a batteria.
+
+Su ESP32 la scelta dello stack dipende dal progetto.
+
+| Esigenza                                       | Scelta tipica    |
+|------------------------------------------------+------------------|
+| Solo BLE                                       | NimBLE           |
+| BLE + Bluetooth Classic                        | Bluedroid        |
+| Firmware leggero                               | NimBLE           |
+| Compatibilità con esempi ESP-IDF storici       | Bluedroid        |
+| Gateway BLE, sensori, provisioning, app mobile | di solito NimBLE |
+| Profili Classic come SPP o A2DP                | Bluedroid        |
+
+In ESP-IDF, *Bluedroid* è lo stack predefinito e supporta sia Bluetooth Classic sia BLE. *NimBLE* è dedicato a BLE, richiede meno memoria ed è spesso preferibile nei progetti che non usano profili Classic.
+
+Nel resto dell'articolo, le API con prefisso =esp_ble_= appartengono a Bluedroid. NimBLE implementa gli stessi concetti fondamentali, ma usa API, callback e configurazioni differenti. Questa distinzione evita un errore piuttosto comune: copiare una funzione Bluedroid in un progetto NimBLE e concludere che il chip non supporti quella funzione.
+
+** Architettura dello stack BLE su ESP32
+
+BLE non è una seriale wireless. È uno stack multilivello.
+
+Uno schema semplice è questo:
+
+| Livello     | Cosa fa                                                      |
+|-------------+--------------------------------------------------------------|
+| Application | codice applicativo: sensori, comandi, stato, logica prodotto |
+| Host        | GAP, GATT, ATT, SMP, L2CAP                                   |
+| Controller  | Link Layer, PHY, radio, canali, pacchetti                    |
+
+L'applicazione decide cosa deve succedere: leggere un sensore, accendere un LED, inviare una notifica, ricevere una configurazione. L'host organizza la comunicazione usando protocolli standard. Il controller gestisce radio, canali, sincronizzazione e pacchetti fisici.
+
+I protocolli principali sono:
+
+| Protocollo | Nome                                         | Ruolo                                              |
+|------------+----------------------------------------------+----------------------------------------------------|
+| GAP        | Generic Access Profile                       | advertising, scanning, connessione, ruoli, privacy |
+| ATT        | Attribute Protocol                           | accesso agli attributi                             |
+| GATT       | Generic Attribute Profile                    | servizi, caratteristiche, descrittori              |
+| SMP        | Security Manager Protocol                    | pairing, bonding, chiavi, cifratura                |
+| L2CAP      | Logical Link Control and Adaptation Protocol | multiplexing e trasporto logico                    |
+| HCI        | Host Controller Interface                    | interfaccia tra host e controller                  |
+
+ATT è il protocollo che permette a un client di leggere, scrivere, notificare o indicare attributi esposti da un server. GATT costruisce sopra ATT una struttura più leggibile: servizi, caratteristiche e descrittori.
+
+[[/blog/images/bluetooth_low_energy_esp32/ble-stack.svg]]
+
+/Lo stack BLE su ESP32 è diviso tra logica applicativa, protocolli host, controller e attività radio./
+
+** Ruoli BLE: GAP e GATT sono due cose diverse
+
+Uno degli errori più comuni è confondere i ruoli GAP con i ruoli GATT.
+
+*** Ruoli GAP
+
+GAP riguarda scoperta, advertising, scanning e connessione.
+
+| Ruolo GAP   | Significato                                     |
+|-------------+-------------------------------------------------|
+| Advertiser  | trasmette pacchetti advertising                 |
+| Scanner     | ascolta pacchetti advertising                   |
+| Initiator   | avvia una connessione                           |
+| Peripheral  | dispositivo connesso che di solito espone dati  |
+| Central     | dispositivo che avvia e gestisce la connessione |
+| Broadcaster | trasmette dati senza connessione                |
+| Observer    | ascolta dati broadcast senza connettersi        |
+
+Esempio tipico: un sensore ESP32 è *peripheral*, lo smartphone è *central*.
+
+*** Ruoli GATT
+
+GATT riguarda invece il modello dati.
+
+| Ruolo GATT  | Significato                                           |
+|-------------+-------------------------------------------------------|
+| GATT Server | contiene servizi, caratteristiche e valori            |
+| GATT Client | scopre, legge, scrive e si iscrive ai dati del server |
+
+Nella maggior parte dei progetti un ESP32 è *GAP peripheral* e *GATT server*. Lo smartphone è *GAP central* e *GATT client*.
+
+Non è però una regola obbligatoria. Un ESP32 può anche lavorare come central e client, per esempio quando deve leggere sensori BLE esterni. In alcuni casi può anche far convivere GATT server e GATT client.
+
+** Advertising: come un ESP32 si fa trovare
+
+L'advertising è il meccanismo con cui un dispositivo BLE annuncia la propria presenza.
+
+Un ESP32 può trasmettere pacchetti advertising per dire:
+
+- sono disponibile;
+- espongo questo servizio;
+- questo è il mio nome;
+- questi sono alcuni dati minimi;
+- posso accettare una connessione.
+
+L'advertising può servire a due cose:
+
+- farsi trovare da un central che poi si connetterà;
+- trasmettere piccoli dati senza connessione, come fa un beacon.
+
+Nel legacy advertising lo spazio è molto limitato. Advertising data e scan response possono contenere fino a 31 byte ciascuno, inclusi lunghezza e tipo delle strutture AD. I byte realmente disponibili per il dato applicativo sono quindi meno di 31 e vanno pianificati con attenzione.
+
+*** Canali advertising
+
+BLE usa tre canali principali per advertising: *37, 38 e 39*.
+
+Sono distribuiti nella banda a 2,4 GHz per ridurre la probabilità che vengano disturbati tutti insieme dal Wi-Fi.
+
+*** Advertising interval
+
+L'*advertising interval* indica ogni quanto il dispositivo invia un evento advertising.
+
+| Intervallo   | Effetto                              |
+|--------------+--------------------------------------|
+| 20-100 ms    | discovery molto rapida, consumo alto |
+| 100-500 ms   | buon compromesso                     |
+| 500 ms - 2 s | adatto a molti dispositivi IoT       |
+| 2-10 s       | basso consumo, scoperta lenta        |
+
+In ESP-IDF, =adv_int_min= e =adv_int_max= sono espressi in unità da 0,625 ms. Un valore 160 corrisponde quindi a 100 ms.
+
+I valori in tabella sono indicativi. Il range valido e il comportamento effettivo dipendono dal tipo di advertising; nel legacy advertising ordinario il limite superiore arriva a 10,24 s, mentre l'high-duty directed advertising segue regole differenti.
+
+*** Tipi di advertising
+
+| Tipo            | Significato                               |
+|-----------------+-------------------------------------------|
+| Connectable     | il dispositivo accetta connessioni        |
+| Non-connectable | trasmette dati ma non accetta connessioni |
+| Scannable       | può rispondere a scan request             |
+| Non-scannable   | non invia scan response                   |
+| Directed        | advertising rivolto a un peer specifico   |
+| Undirected      | advertising generico                      |
+
+Per un sensore controllato da app si usa spesso advertising *connectable undirected*. Per un beacon si usa advertising *non-connectable*.
+
+*** Advertising e privacy
+
+L'advertising è visibile a chiunque sia nelle vicinanze. Va quindi trattato come pubblico.
+
+Non mettere mai in advertising data o scan response:
+
+- password;
+- token;
+- dati sanitari;
+- seriali permanenti non necessari;
+- nome completo dell'utente;
+- identificativi facilmente tracciabili;
+- stato sensibile del dispositivo;
+- informazioni cloud o credenziali.
+
+Usare indirizzi privati è utile, ma non basta se poi il payload advertising contiene sempre lo stesso identificativo. Un dispositivo con RPA ma con manufacturer data fisso resta comunque tracciabile.
+
+** Scanning: come ESP32 trova dispositivi BLE vicini
+
+Lo scanning è la procedura con cui un dispositivo ascolta gli advertising packet trasmessi da altri dispositivi.
+
+I parametri principali sono:
+
+| Parametro     | Significato                               |
+|---------------+-------------------------------------------|
+| Scan interval | ogni quanto parte la scansione            |
+| Scan window   | quanto tempo resta in ascolto             |
+| Scan type     | passivo o attivo                          |
+| Filter policy | accetta tutti o solo dispositivi filtrati |
+
+Se =scan window= è uguale a =scan interval=, lo scanner ascolta quasi continuamente. È rapido, ma consuma molto. Se la window è piccola rispetto all'interval, il consumo scende, ma aumenta il tempo necessario per trovare dispositivi.
+
+Nel BLE legacy entrambi i parametri sono espressi in unità da 0,625 ms e la scan window non può superare lo scan interval. Anche con duty cycle teorico del 100%, scheduling dello stack e coesistenza radio possono comunque introdurre brevi interruzioni.
+
+In ESP-IDF si usano funzioni come =esp_ble_gap_set_scan_params()= e =esp_ble_gap_start_scanning()=. Una durata pari a 0 indica scanning continuo finché non viene fermato esplicitamente.
+
+*** Passive scanning
+
+Nel *passive scanning*, ESP32 ascolta soltanto. Riceve advertising packet, ma non chiede dati aggiuntivi.
+
+Vantaggi:
+
+- consuma meno;
+- genera meno traffico radio;
+- è più discreto.
+
+Limite:
+
+- vede solo quello che è contenuto nell'advertising packet.
+
+*** Active scanning
+
+Nell'*active scanning*, ESP32 invia una scan request a un advertiser scannable. Il dispositivo può rispondere con uno scan response.
+
+Vantaggi:
+
+- permette di leggere dati aggiuntivi;
+- è utile per nome completo, UUID extra o manufacturer data più estesi.
+
+Svantaggi:
+
+- consuma di più;
+- crea più traffico radio;
+- rivela la presenza dello scanner.
+
+** Connessione BLE: connection event, interval, latency e timeout
+
+Quando un central si connette a un peripheral, la comunicazione non diventa continua. I due dispositivi si sincronizzano e comunicano in finestre periodiche chiamate *connection event*.
+
+*** Connection interval
+
+Il *connection interval* è il tempo tra due connection event.
+
+Più è basso, più la comunicazione è reattiva. Però il consumo sale.
+
+Nel collegamento LE tradizionale è espresso in unità da 1,25 ms e può variare da 7,5 ms a 4 s. Il central decide i parametri finali: il peripheral può proporli, ma non può assumere che vengano accettati esattamente.
+
+| Caso d'uso                          | Connection interval indicativo |
+|-------------------------------------+--------------------------------|
+| telecomando o input rapido          | 7,5-30 ms                      |
+| sensore con aggiornamenti frequenti | 30-100 ms                      |
+| configurazione via app              | 30-200 ms                      |
+| sensore a basso consumo             | 250 ms - 1 s o più             |
+
+*** Peripheral latency
+
+La *peripheral latency* permette al peripheral di saltare alcuni connection event quando non ha dati da inviare.
+
+Esempio:
+
+- connection interval: 30 ms;
+- latency: 9.
+
+Il peripheral può saltare fino a 9 eventi. In pratica può svegliarsi circa ogni 300 ms se non ha dati, risparmiando energia senza perdere la connessione.
+
+Questa è una possibilità, non una periodicità garantita: traffico pendente, procedure di controllo e richieste del central possono costringere il peripheral a partecipare prima.
+
+*** Supervision timeout
+
+Il *supervision timeout* è il tempo massimo senza comunicazioni valide prima di considerare persa la connessione.
+
+In ESP-IDF è espresso in unità da 10 ms. Nelle connessioni LE tradizionali il valore ammesso va da 100 ms a 32 s e deve rispettare il vincolo dello standard:
+
+#+begin_src text
+supervision_timeout > 2 * (1 + peripheral_latency) * connection_interval
+#+end_src
+
+Con le funzioni più recenti, come connection subrating, entra nella formula anche il subrate factor. Per un progetto ESP32 classico, tuttavia, la relazione precedente è il controllo essenziale.
+
+Regola pratica: non impostarlo troppo basso, altrimenti compaiono disconnessioni casuali. Non impostarlo nemmeno troppo alto, altrimenti il sistema impiega troppo tempo a capire che il peer è sparito.
+
+** GATT: servizi, caratteristiche, descrittori e attributi
+
+GATT è il modello dati del BLE.
+
+Non si inviano byte "a caso". Un dispositivo espone una tabella di attributi organizzata in servizi, caratteristiche e descrittori.
+
+*** Attribute
+
+Un *attributo* è l'unità base di ATT/GATT.
+
+Ha questi elementi:
+
+| Campo       | Significato                            |
+|-------------+----------------------------------------|
+| Handle      | identificatore numerico dell'attributo |
+| UUID        | tipo dell'attributo                    |
+| Permissions | regole di accesso                      |
+| Value       | valore contenuto                       |
+| Length      | dimensione del valore                  |
+
+L'handle permette al client di riferirsi in modo preciso a quell'attributo.
+
+*** Service
+
+Un *servizio* rappresenta una funzione logica.
+
+Esempi:
+
+| Servizio                   | Uso                             |
+|----------------------------+---------------------------------|
+| Battery Service            | livello batteria                |
+| Heart Rate Service         | battito cardiaco                |
+| Device Information Service | informazioni dispositivo        |
+| Environmental Sensing      | temperatura, umidità, pressione |
+| Servizio custom            | funzioni proprietarie           |
+
+Un servizio può essere *primary* o *secondary*. I servizi primari rappresentano le funzioni principali scoperte dal client; quelli secondari sono ausiliari e possono essere inclusi da altri servizi.
+
+*** Characteristic
+
+Una *characteristic* rappresenta un dato o un comando.
+
+Esempi:
+
+| Characteristic       | Direzione tipica   |
+|----------------------+--------------------|
+| Temperatura          | ESP32 -> smartphone |
+| Stato LED            | ESP32 -> smartphone |
+| Comando LED          | smartphone -> ESP32 |
+| Configurazione Wi-Fi | smartphone -> ESP32 |
+| Livello batteria     | ESP32 -> smartphone |
+| Stream dati sensore  | ESP32 -> gateway    |
+
+Una characteristic non è solo un valore. In GATT è composta da più attributi:
+
+- *Characteristic Declaration*, con proprietà e handle del valore.
+- *Characteristic Value*, con UUID e valore vero.
+- eventuali *descriptor*, come il CCCD.
+
+*** Descriptor
+
+Un *descrittore* aggiunge metadati a una characteristic.
+
+| Descriptor                      |      UUID | Uso                            |
+|---------------------------------+-----------+--------------------------------|
+| CCCD                            |    0x2902 | abilita notify/indicate        |
+| Characteristic User Description |    0x2901 | descrizione leggibile          |
+| Presentation Format             |    0x2904 | formato e unità                |
+| Valid Range                     |    0x2906 | intervallo valido del valore   |
+
+Il descrittore più importante è il *CCCD*, Client Characteristic Configuration Descriptor.
+
+Quando una characteristic supporta notifiche o indicazioni, il client deve scrivere nel CCCD per abilitarle o disabilitarle. Senza CCCD configurato correttamente, notify e indicate spesso non funzionano come previsto.
+
+** Properties e permissions: una distinzione importante
+
+In GATT ci sono due concetti diversi: *properties* e *permissions*.
+
+*** Characteristic properties
+
+Le properties dicono cosa una characteristic può fare.
+
+| Property               | Significato                           |
+|------------------------+---------------------------------------|
+| Read                   | può essere letta                      |
+| Write                  | può essere scritta                    |
+| Write Without Response | può ricevere scritture senza risposta |
+| Notify                 | può inviare notifiche                 |
+| Indicate               | può inviare indicazioni               |
+| Broadcast              | può essere usata in broadcast GATT    |
+| Extended Properties    | usa proprietà estese                  |
+
+Le properties sono visibili al client durante la discovery. Dicono: questa characteristic supporta queste operazioni.
+
+*** Attribute permissions
+
+Le permissions dicono invece chi può accedere e con quale livello di sicurezza.
+
+| Permission      | Significato                         |
+|-----------------+-------------------------------------|
+| Read            | leggibile senza cifratura           |
+| Write           | scrivibile senza cifratura          |
+| Read Encrypted  | leggibile solo con link cifrato     |
+| Write Encrypted | scrivibile solo con link cifrato    |
+| Read MITM       | leggibile solo con protezione MITM  |
+| Write MITM      | scrivibile solo con protezione MITM |
+| Signed Write    | scrittura firmata                   |
+
+In Bluedroid, ESP-IDF usa flag come:
+
+- =ESP_GATT_PERM_READ=;
+- =ESP_GATT_PERM_READ_ENCRYPTED=;
+- =ESP_GATT_PERM_READ_ENC_MITM=;
+- =ESP_GATT_PERM_WRITE=;
+- =ESP_GATT_PERM_WRITE_ENCRYPTED=;
+- =ESP_GATT_PERM_WRITE_ENC_MITM=.
+
+Questa distinzione è fondamentale.
+
+Una characteristic può avere property =WRITE=, ma permission =WRITE_ENC_MITM=.
+
+Significa che:
+
+- il client vede che la characteristic è scrivibile;
+- se prova a scrivere senza link cifrato e autenticato, lo stack rifiuta o richiede pairing;
+- la scrittura viene accettata solo dopo encryption e autenticazione adeguata.
+
+** Operazioni GATT: read, write, notify, indicate
+
+Le operazioni principali sono cinque.
+
+*** Read
+
+Il client legge il valore di una characteristic.
+
+Uso tipico:
+
+- temperatura;
+- livello batteria;
+- firmware version;
+- configurazione corrente.
+
+Read è semplice, ma non è ideale per dati che cambiano spesso. In quel caso il client dovrebbe interrogare continuamente il server.
+
+*** Write
+
+Il client scrive un valore e il server risponde.
+
+Uso tipico:
+
+- accendere o spegnere un LED;
+- impostare una soglia;
+- inviare una configurazione;
+- cambiare modalità del dispositivo.
+
+Write prevede una risposta ATT, quindi il client sa se il server ha accettato la procedura. La risposta non dimostra però che un'azione fisica sia stata completata: per un comando motore o un aggiornamento persistente può servire una conferma applicativa separata.
+
+*** Write Without Response
+
+Il client scrive senza aspettare una risposta GATT.
+
+Uso tipico:
+
+- stream di dati;
+- pacchetti rapidi;
+- protocolli applicativi che gestiscono l'ACK a un livello superiore.
+
+Riduce l'overhead, ma non produce una risposta ATT. Il Link Layer continua a gestire le ritrasmissioni radio della connessione; restano però da controllare buffer, congestione e conferma applicativa quando serve una garanzia end-to-end.
+
+*** Notify
+
+Il server invia dati al client senza conferma GATT.
+
+Uso tipico:
+
+- aggiornamenti sensore;
+- log;
+- stream dati;
+- stato periodico.
+
+Le notification evitano il polling continuo e sono molto usate quando il dato cambia nel tempo.
+
+*** Indicate
+
+Il server invia dati al client e il client deve confermare.
+
+Uso tipico:
+
+- eventi importanti;
+- allarmi;
+- cambi di stato critici;
+- messaggi che non dovrebbero essere persi.
+
+Le indication sono confermate a livello ATT/GATT, ma non sono crittograficamente più sicure delle notification. Sono inoltre più lente, perché il server non può inviare una nuova indication sullo stesso bearer finché non riceve la conferma della precedente.
+
+** Service discovery e cache GATT
+
+Quando un client si connette a un GATT server, deve scoprire quali servizi, caratteristiche e descrittori esistono. Questo processo si chiama *service discovery*.
+
+Il client recupera:
+
+- handle iniziale e finale dei servizi;
+- UUID dei servizi;
+- characteristic disponibili;
+- properties;
+- descriptor;
+- handle dei valori.
+
+Molti sistemi operativi, soprattutto smartphone, mettono in cache la tabella GATT. Questo può creare confusione durante lo sviluppo.
+
+Se cambi UUID, handle o struttura del server, il telefono potrebbe continuare a vedere la vecchia struttura.
+
+Buone pratiche:
+
+- non cambiare continuamente layout GATT;
+- mantieni stabili gli UUID;
+- mantieni stabili gli handle quando possibile;
+- usa la Service Changed indication, nel Generic Attribute Service, se il database cambia;
+- durante sviluppo, elimina bonding e cache dal telefono se i servizi sembrano vecchi.
+
+ESP-IDF include API per inviare una *Service Changed indication* dal GATT server. Tenete però presente che il comportamento della cache dipende anche dal client: durante lo sviluppo conviene versionare il database e testare esplicitamente aggiornamento, rebonding e rediscovery, invece di affidarsi al fatto che ogni smartphone invalidi la cache nello stesso modo.
+
+** MTU, payload utile e frammentazione
+
+La *ATT MTU* definisce la dimensione massima di un pacchetto ATT sul bearer usato dalla connessione.
+
+Il valore minimo e iniziale sul bearer ATT legacy è *23 byte*. Con MTU 23, il payload utile di una notification è *20 byte*, perché opcode e handle occupano 3 byte. Altre procedure hanno overhead differenti: per questo =MTU - 3= è una regola utile per notify e write, non una formula universale per ogni operazione ATT.
+
+Con Bluedroid su ESP32 la MTU locale può essere configurata fino al massimo ATT di 517 byte, ma la MTU effettiva è quella negoziata tra i due peer e coincide con il valore più piccolo supportato. NimBLE espone la stessa capacità tramite configurazioni e API differenti.
+
+*** MTU non significa throughput automatico
+
+Aumentare la MTU aiuta, ma non basta.
+
+Il throughput dipende anche da:
+
+- connection interval;
+- Data Length Extension;
+- numero di pacchetti per connection event;
+- PHY;
+- qualità radio;
+- congestione;
+- stack BLE;
+- smartphone o peer usato;
+- logica applicativa.
+
+*** MTU in ESP-IDF
+
+Nel client Bluedroid, =esp_ble_gattc_send_mtu_req()= avvia lo scambio MTU e genera =ESP_GATTC_CFG_MTU_EVT=.
+
+Si imposta il limite locale con =esp_ble_gatt_set_local_mtu()=. Questa chiamata, da sola, non obbliga il peer a usare quel valore e non sostituisce lo scambio MTU avviato dal client.
+
+*** Valori pratici
+
+| MTU | Valore utile per notification | Uso                                      |
+|-----+--------------------------------+------------------------------------------|
+|  23 | 20 byte                        | compatibilità massima                    |
+| 100 | 97 byte                        | buon compromesso                         |
+| 247 | 244 byte                       | molto usata per throughput               |
+| 517 | fino a 512 byte                | limite del valore GATT, se supportato     |
+
+Non tutti gli smartphone accettano 517. In pratica valori come 185 o 247 sono spesso più realistici. Una MTU 247 è inoltre significativa perché, con DLE, entra in un singolo payload Link Layer da 251 byte insieme all'header L2CAP; una MTU 517 richiede frammentazione su più pacchetti radio.
+
+** Data Length Extension, PHY e throughput
+
+La *Data Length Extension*, o *DLE*, è diversa dalla MTU.
+
+La MTU riguarda ATT/GATT. La DLE riguarda la dimensione del payload dati a livello Link Layer e, con Bluetooth 4.2, lo porta da 27 fino a 251 byte. Aumentare la MTU senza una data length adeguata funziona, ma richiede più frammenti e più overhead radio.
+
+ESP32 supporta Bluetooth 4.2 DLE e permette di impostare la dimensione massima del pacchetto dati LE con API come =esp_ble_gap_set_pkt_data_len()=.
+
+| Concetto                | Livello         | Cosa controlla                  |
+|-------------------------+-----------------+---------------------------------|
+| MTU                     | ATT/GATT        | dimensione operazione GATT      |
+| DLE                     | Link Layer      | dimensione pacchetto radio dati |
+| PHY                     | fisico          | velocità/modulazione radio      |
+| Connection interval     | scheduling link | frequenza degli eventi          |
+| Notification/write mode | GATT            | overhead e conferme             |
+
+*** Throughput realistico
+
+Il throughput BLE su ESP32 dipende da interferenze, connection interval, MTU, DLE e prestazioni del peer.
+
+La FAQ ufficiale Espressif riporta, in condizioni favorevoli e tra due schede ESP32, un massimo nell'ordine di 700 Kbit/s; sui dispositivi con 2M PHY indica fino a circa 1,4 Mbit/s. Sono risultati di riferimento, non una garanzia per smartphone e prodotti reali. Per dimensionare un protocollo conviene misurare throughput sostenuto, latenza e perdita sul peer effettivo, con Wi-Fi e logging nello stato previsto dal prodotto.
+
+*** PHY disponibili
+
+| PHY      | Caratteristica              |
+|----------+-----------------------------|
+| LE 1M    | compatibilità massima       |
+| LE 2M    | più velocità, se supportato |
+| LE Coded | più range, meno throughput  |
+
+BLE 5 non indica una sola funzione. È un insieme di estensioni, e nel firmware bisogna sempre controllare quali sono supportate dal chip, dallo stack e dal peer.
+
+Le tre funzioni che creano più confusione sono queste:
+
+| Funzione BLE 5         | Cosa cambia davvero                                  | Quando serve                              |
+|------------------------+------------------------------------------------------+-------------------------------------------|
+| 2M PHY                 | radio a 2 Mb/s invece di 1 Mb/s                      | più throughput e meno tempo radio attivo  |
+| Coded PHY              | pacchetti codificati con più ridondanza              | più portata, meno throughput              |
+| Advertising extensions | advertising più flessibile e payload molto più ampio | beacon, scan più ricchi, advertising sets |
+
+*2M PHY* lavora a livello fisico. Non cambia GATT e non raddoppia magicamente il throughput applicativo, perché restano in gioco MTU, DLE, connection interval, numero di pacchetti per connection event e prestazioni del peer. Però riduce il tempo necessario a trasmettere gli stessi bit rispetto a LE 1M. È utile quando il collegamento radio è buono e l'obiettivo è spostare dati più rapidamente.
+
+*Coded PHY* fa il contrario: sacrifica velocità per rendere il segnale più robusto. Usa codifica ridondante, indicata come S=2 o S=8. Le velocità nominali diventano rispettivamente 500 Kbit/s e 125 Kbit/s. La portata può migliorare, ma ogni pacchetto occupa la radio più a lungo. Su un target compatibile con Wi-Fi attivo questo può pesare parecchio, perché Wi-Fi e Bluetooth condividono la stessa banda e devono contendersi il tempo radio.
+
+*Advertising extensions* riguarda invece l'advertising, non la connessione GATT. Nel legacy advertising lo spazio utile resta molto piccolo: 31 byte per advertising data e 31 byte per scan response. Con le estensioni di BLE 5 l'advertising può usare pacchetti e canali secondari, arrivando a payload più ampi e a più advertising set. È utile per beacon più ricchi, scanner specializzati e scenari in cui vuoi trasmettere più metadati senza aprire subito una connessione. Non è comunque un invito a mettere dati sensibili in chiaro: advertising e scan response restano dati visibili.
+
+La matrice Espressif corrente riassume così i target citati in questo articolo:
+
+| Target       | DLE / Secure Connections | 2M PHY | Coded PHY | Advertising extensions |
+|--------------+--------------------------+--------+-----------+------------------------|
+| ESP32        | sì                       | no     | no        | no                     |
+| ESP32-C3     | sì                       | sì     | sì        | sì                     |
+| ESP32-S3     | sì                       | sì     | sì        | sì                     |
+| ESP32-C6     | sì                       | sì     | sì        | sì                     |
+
+Questa tabella descrive il supporto riportato dalla documentazione stabile al momento della revisione. Non sostituisce la verifica della combinazione concreta tra controller, Bluedroid o NimBLE e release ESP-IDF: alcune funzioni più recenti possono essere sperimentali anche quando la radio le supporta.
+
+Attenzione alla coesistenza Wi-Fi/BLE: Coded PHY occupa la radio più a lungo e può peggiorare le prestazioni quando Wi-Fi e Bluetooth devono condividere la stessa banda.
+
+** Sicurezza BLE: cosa protegge davvero
+
+La sicurezza BLE non è automatica.
+
+Una connessione può essere:
+
+- completamente aperta;
+- cifrata ma non autenticata;
+- cifrata e autenticata;
+- protetta contro attacchi man-in-the-middle.
+
+Il protocollo che gestisce questa parte è *SMP*, Security Manager Protocol. SMP si occupa di pairing, bonding, distribuzione chiavi, encryption e identità.
+
+*** Pairing, bonding, encryption
+
+Questi tre termini vengono spesso confusi.
+
+| Termine    | Significato                                     |
+|------------+-------------------------------------------------|
+| Pairing    | generazione e autenticazione delle chiavi       |
+| Bonding    | salvataggio delle chiavi per connessioni future |
+| Encryption | cifratura del link BLE usando chiavi valide     |
+
+Il pairing può generare chiavi. Il bonding salva quelle chiavi. L'encryption usa quelle chiavi per proteggere il link.
+
+[[/blog/images/bluetooth_low_energy_esp32/ble-security-flow.svg]]
+
+/Un'operazione GATT protetta porta normalmente la connessione attraverso pairing, distribuzione delle chiavi e cifratura del link prima di concedere l'accesso./
+
+*** Pairing non significa sempre sicurezza forte
+
+Il pairing può essere debole o forte. Dipende dal metodo.
+
+| Metodo             | Protezione MITM                   | Note                               |
+|--------------------+-----------------------------------+------------------------------------|
+| Just Works         | no                                | semplice, ma non autentica il peer |
+| Passkey Entry      | sì, se implementato correttamente | richiede inserimento codice        |
+| Numeric Comparison | sì                                | solo LE SC; richiede display e conferma |
+| OOB                | sì, se il canale esterno è sicuro | NFC, QR code o altro canale        |
+
+*MITM* significa Man-In-The-Middle. Senza protezione MITM, un attaccante vicino potrebbe interporsi durante il pairing in alcuni scenari.
+
+*** Security Mode 1
+
+BLE Security Mode 1 ha quattro livelli principali.
+
+| Livello | Significato                                      |
+|---------+--------------------------------------------------|
+| Level 1 | nessuna sicurezza                                |
+| Level 2 | encryption con pairing non autenticato           |
+| Level 3 | encryption con pairing autenticato               |
+| Level 4 | LE Secure Connections autenticato, chiave 128 bit |
+
+Ogni connessione parte dal livello più basso e può essere aggiornata in base al pairing usato.
+
+*** LE Legacy Pairing e LE Secure Connections
+
+BLE inizialmente usava *LE Legacy Pairing*, basato su Temporary Key e Short Term Key.
+
+Con Bluetooth 4.2 è stato introdotto *LE Secure Connections*, basato su Elliptic-Curve Diffie-Hellman. È molto più robusto.
+
+In pratica:
+
+| Metodo                                             | Garanzia principale                                       |
+|----------------------------------------------------+-----------------------------------------------------------|
+| Legacy Just Works                                  | cifratura senza MITM, key establishment legacy            |
+| Legacy Passkey                                     | MITM, ma con TK a entropia limitata e schema legacy        |
+| LE Secure Connections Just Works                   | ECDH e cifratura, ma nessuna autenticazione MITM           |
+| LE Secure Connections + Passkey/Numeric Comparison | ECDH e MITM, se l'interazione utente è affidabile          |
+| LE Secure Connections + OOB                        | dipende dalla riservatezza e autenticità del canale esterno |
+
+Su prodotti reali conviene usare Secure Connections quando possibile, soprattutto per evitare i limiti del key establishment legacy. La modalità di associazione resta comunque determinata dalle I/O capability dei due peer: impostare il bit MITM non crea un display o un pulsante che l'hardware non possiede.
+
+** Sicurezza su ESP32: API e parametri importanti
+
+In ESP-IDF Bluedroid la sicurezza BLE si configura soprattutto tramite GAP/SMP.
+
+*** API principali
+
+| API                                | Uso                                    |
+|------------------------------------+----------------------------------------|
+| =esp_ble_gap_set_security_param()= | imposta parametri SMP                  |
+| =esp_ble_set_encryption()=         | richiede encryption sul link           |
+| =esp_ble_gap_security_rsp()=       | accetta o rifiuta una security request |
+| =esp_ble_passkey_reply()=          | risponde con passkey                   |
+| =esp_ble_confirm_reply()=          | conferma numeric comparison            |
+| =esp_ble_remove_bond_device()=     | rimuove un dispositivo bonded          |
+| =esp_ble_get_bond_device_num()=    | conta i dispositivi bonded             |
+| =esp_ble_gap_get_local_irk()=      | ottiene IRK locale                     |
+
+*** Parametri SMP importanti
+
+| Parametro                                   | Significato                        |
+|---------------------------------------------+------------------------------------|
+| =ESP_BLE_SM_AUTHEN_REQ_MODE=                | requisiti di autenticazione        |
+| =ESP_BLE_SM_IOCAP_MODE=                     | capacità input/output              |
+| =ESP_BLE_SM_SET_INIT_KEY=                   | chiavi distribuite dall'initiator  |
+| =ESP_BLE_SM_SET_RSP_KEY=                    | chiavi distribuite dal responder   |
+| =ESP_BLE_SM_MAX_KEY_SIZE=                   | dimensione massima chiave          |
+| =ESP_BLE_SM_MIN_KEY_SIZE=                   | dimensione minima chiave           |
+| =ESP_BLE_SM_SET_STATIC_PASSKEY=             | passkey statica                    |
+| =ESP_BLE_SM_ONLY_ACCEPT_SPECIFIED_SEC_AUTH= | accetta solo requisiti specificati |
+| =ESP_BLE_SM_OOB_SUPPORT=                    | supporto Out-of-Band               |
+
+Per accettare solo Secure Connections, si usa il bit =ESP_LE_AUTH_REQ_SC_ONLY= in =ESP_BLE_SM_AUTHEN_REQ_MODE= e si abilita =ESP_BLE_ONLY_ACCEPT_SPECIFIED_AUTH_ENABLE= tramite =ESP_BLE_SM_ONLY_ACCEPT_SPECIFIED_SEC_AUTH=.
+
+Se servono bonding e protezione MITM, vanno aggiunti anche =ESP_LE_AUTH_BOND= e =ESP_LE_AUTH_REQ_MITM=.
+
+La passkey statica è comoda nei prototipi, ma introduce un segreto riutilizzato e spesso condiviso tra più unità. Nei prodotti sensibili è preferibile una modalità di associazione con valore effimero, Numeric Comparison oppure un canale OOB progettato correttamente.
+
+*** Eventi sicurezza da gestire
+
+Nel callback GAP bisogna gestire eventi come:
+
+| Evento                                       | Significato                |
+|----------------------------------------------+----------------------------|
+| =ESP_GAP_BLE_SEC_REQ_EVT=                    | il peer chiede sicurezza   |
+| =ESP_GAP_BLE_PASSKEY_NOTIF_EVT=              | mostrare passkey           |
+| =ESP_GAP_BLE_NC_REQ_EVT=                     | numeric comparison         |
+| =ESP_GAP_BLE_KEY_EVT=                        | scambio chiavi             |
+| =ESP_GAP_BLE_AUTH_CMPL_EVT=                  | autenticazione completata  |
+| =ESP_GAP_BLE_REMOVE_BOND_DEV_COMPLETE_EVT=   | bond rimosso               |
+| =ESP_GAP_BLE_SET_LOCAL_PRIVACY_COMPLETE_EVT= | privacy locale configurata |
+
+L'esempio =gatt_security_server= di Espressif è un buon punto di partenza perché mostra passkey, numeric comparison, security request, key exchange, authentication complete e local privacy.
+
+** Privacy BLE: indirizzi, tracciamento e IRK
+
+La privacy BLE serve a ridurre la possibilità che un dispositivo venga tracciato nel tempo tramite il suo indirizzo radio.
+
+*** Tipi di indirizzo BLE
+
+| Tipo                                 | Descrizione                                                   |
+|--------------------------------------+---------------------------------------------------------------|
+| Public Device Address                | indirizzo pubblico assegnato al dispositivo                   |
+| Random Static Address                | indirizzo casuale ma stabile finché non viene cambiato        |
+| Resolvable Private Address, RPA      | indirizzo che cambia e può essere risolto da peer autorizzati |
+| Non-Resolvable Private Address, NRPA | indirizzo casuale non risolvibile                             |
+
+Un dispositivo bonded può risolvere un RPA usando l'*IRK*, Identity Resolving Key.
+
+*** IRK
+
+*IRK* significa *Identity Resolving Key*.
+
+È una chiave che può essere scambiata durante il pairing e conservata nel bond quando la distribuzione delle identity key è abilitata. Serve a riconoscere un dispositivo anche se cambia indirizzo RPA.
+
+In pratica:
+
+1. il dispositivo cambia indirizzo periodicamente;
+2. il peer bonded riceve il nuovo indirizzo;
+3. usa l'IRK salvata per capire che è lo stesso dispositivo;
+4. un osservatore non autorizzato non dovrebbe poter fare questa associazione.
+
+*** RPA non basta se il payload identifica il dispositivo
+
+Esempio sbagliato:
+
+#+begin_src text
+Address: cambia ogni 15 minuti
+Advertising name: "Marco_Glucometro_SN123456"
+Manufacturer data: ID fisso 0xA1B2C3D4
+#+end_src
+
+L'indirizzo cambia, ma il dispositivo resta riconoscibile.
+
+Esempio migliore:
+
+#+begin_src text
+Address: RPA
+Advertising name: generico o assente
+Manufacturer data: nessun ID permanente
+Connessione: dati sensibili solo dopo encryption
+#+end_src
+
+La privacy BLE va progettata su tutto il pacchetto, non solo sull'indirizzo.
+
+** Encryption BLE: cosa viene cifrato e cosa no
+
+L'encryption BLE protegge il link dopo che i dispositivi hanno stabilito chiavi valide.
+
+*** Advertising non è un canale segreto
+
+Nel caso normale, advertising e scan response vanno considerati pubblici.
+
+| Dato                      | Dove metterlo                         |
+|---------------------------+---------------------------------------|
+| nome generico dispositivo | advertising, se serve                 |
+| UUID servizio             | advertising                           |
+| stato non sensibile       | advertising, se accettabile           |
+| password Wi-Fi            | mai in advertising                    |
+| token cloud               | solo dopo connessione sicura          |
+| dati personali            | solo dopo encryption e access control |
+| comandi critici           | characteristic protetta               |
+
+La cifratura protegge i dati della connessione, non i normali pacchetti advertising legacy.
+
+*** Encryption non sostituisce i controlli applicativi
+
+Anche con link cifrato bisogna comunque:
+
+- controllare chi può scrivere una characteristic;
+- validare lunghezze e formati;
+- evitare overflow;
+- usare timeout;
+- non fidarsi dei valori ricevuti;
+- distinguere pairing mode e modalità operativa;
+- proteggere comandi critici con logica applicativa.
+
+*** Permessi GATT cifrati
+
+Per proteggere una characteristic bisogna configurare i permessi.
+
+| Characteristic        | Property    | Permission                       |
+|-----------------------+-------------+----------------------------------|
+| temperatura pubblica  | Read/Notify | Read                             |
+| configurazione soglia | Read/Write  | Read Encrypted / Write Encrypted |
+| comando serratura     | Write       | Write Encrypted + MITM           |
+| token cloud           | Write       | Write Encrypted + MITM           |
+| dati medicali         | Read/Notify | Read Encrypted + MITM            |
+
+Su ESP-IDF Bluedroid i flag =ESP_GATT_PERM_READ_ENCRYPTED=, =ESP_GATT_PERM_WRITE_ENCRYPTED=, =ESP_GATT_PERM_READ_ENC_MITM= e =ESP_GATT_PERM_WRITE_ENC_MITM= servono proprio a definire questi requisiti.
+
+Attenzione alle notification: il permesso di lettura protegge una read request, ma non trasforma automaticamente ogni notifica in un'operazione autorizzata. Il firmware deve inviare dati sensibili solo su una connessione con il livello di sicurezza richiesto e deve proteggere anche la scrittura del CCCD. Lo stesso principio vale per le indication.
+
+** Filter Accept List e pairing mode
+
+In un prodotto reale non conviene restare sempre in pairing mode.
+
+Una strategia più robusta è questa:
+
+1. all'avvio normale, accettare solo dispositivi già bonded;
+2. entrare in pairing mode solo con un'azione locale;
+3. mantenere pairing mode attiva per un tempo limitato;
+4. salvare il bond dopo il pairing;
+5. usare Filter Accept List o logica applicativa per limitare connessioni e scan request;
+6. permettere reset pairing solo con procedura controllata.
+
+La Filter Accept List riduce quali peer possono essere considerati dal controller in determinate procedure radio, ma non è un meccanismo di autorizzazione applicativa. Non sostituisce pairing autenticato, permessi GATT o controlli sui comandi; con gli RPA va inoltre progettata insieme alla resolving list e alla privacy del controller.
+
+*** Perché serve un gesto fisico
+
+Senza un gesto fisico, chiunque vicino al dispositivo potrebbe tentare pairing quando il dispositivo è disponibile.
+
+Un pulsante locale riduce il rischio perché richiede presenza fisica.
+
+Esempio:
+
+1. pressione pulsante per 5 secondi;
+2. LED lampeggiante;
+3. advertising connectable aperto per 60 secondi;
+4. pairing con passkey o numeric comparison;
+5. bonding salvato;
+6. uscita automatica dalla pairing mode.
+
+** Progettare un GATT server ESP32 sicuro
+
+Un buon GATT server non espone tutto senza controllo.
+
+Bisogna separare:
+
+- dati pubblici;
+- dati protetti;
+- comandi critici;
+- funzioni disponibili solo in provisioning;
+- funzioni disponibili solo con conferma fisica.
+
+Esempio di servizio custom: =Device Control Service=.
+
+| Characteristic    | Operazioni  | Sicurezza                                   |
+|-------------------+-------------+---------------------------------------------|
+| Device Status     | Read/Notify | Read encrypted                              |
+| Device Name       | Read/Write  | Write encrypted                             |
+| LED Command       | Write       | Write encrypted                             |
+| Factory Reset     | Write       | Write encrypted + MITM + conferma fisica    |
+| Firmware Version  | Read        | pubblico o encrypted                        |
+| Diagnostic Log    | Notify      | encrypted                                   |
+| Wi-Fi Credentials | Write       | encrypted + MITM, solo in provisioning mode |
+
+Per credenziali o comandi di factory reset, la sicurezza del link è soltanto il primo livello. Conviene legare il provisioning a una finestra fisica, verificare lo stato di autenticazione prima di elaborare la write e cancellare tempestivamente copie temporanee dei segreti dalla memoria.
+
+*** Gli UUID custom non sono password
+
+Un UUID a 128 bit non è un segreto.
+
+Un client può fare service discovery e trovare servizi e characteristic. Non bisogna progettare la sicurezza pensando: "nessuno conosce l'UUID".
+
+La sicurezza deve stare in:
+
+- pairing corretto;
+- encryption;
+- MITM quando serve;
+- permessi GATT;
+- controlli applicativi;
+- pairing mode limitata;
+- assenza di segreti in advertising.
+
+*** Validare sempre le scritture
+
+Ogni write deve essere controllata.
+
+Almeno:
+
+- lunghezza;
+- formato;
+- range dei valori;
+- stato corrente del dispositivo;
+- autorizzazione;
+- rate limit;
+- checksum o framing, se serve;
+- protezione da replay, se il comando è critico.
+
+Una characteristic che riceve un comando motore, per esempio, non dovrebbe accettare qualunque byte. Deve controllare comando, parametri, stato sicurezza, modalità operativa e timeout.
+
+** Privacy applicativa: oltre lo standard BLE
+
+La privacy non riguarda solo l'indirizzo radio.
+
+Riguarda tutto ciò che può identificare un utente, un dispositivo o un comportamento.
+
+*** Dati da minimizzare
+
+Evitare di esporre:
+
+- nome reale dell'utente;
+- email;
+- seriale fisso;
+- posizione;
+- MAC Wi-Fi;
+- SSID di reti note;
+- dati sanitari;
+- pattern di utilizzo;
+- identificativi cloud permanenti.
+
+*** Identificativi temporanei
+
+Se devi trasmettere un identificativo in advertising, valuta identificativi temporanei:
+
+- generati dal server;
+- ruotati periodicamente;
+- non collegabili direttamente all'utente;
+- validi solo per una finestra temporale;
+- inutili senza backend o chiave.
+
+*** Fasi di esposizione dei dati
+
+Un buon schema può essere questo:
+
+| Fase                            | Dati esposti           |
+|---------------------------------+------------------------|
+| Advertising                     | solo dati minimi       |
+| Connessione non cifrata         | quasi nulla            |
+| Dopo pairing/encryption         | configurazioni e stato |
+| Dopo autenticazione applicativa | dati molto sensibili   |
+| Modalità manutenzione           | solo con azione fisica |
+
+** Consumi: cosa incide davvero
+
+BLE consuma poco solo se configurato bene.
+
+I parametri che aumentano il consumo sono:
+
+| Parametro                        | Effetto                    |
+|----------------------------------+----------------------------|
+| advertising interval molto basso | radio attiva più spesso    |
+| scanning continuo                | consumo molto alto         |
+| connection interval basso        | eventi frequenti           |
+| peripheral latency zero          | peripheral sempre presente |
+| TX power alta                    | più consumo                |
+| notifiche troppo frequenti        | più traffico               |
+| log e callback pesanti           | CPU attiva più a lungo     |
+
+*** Configurazioni indicative
+
+| Scenario              | Advertising  | Connection interval | Latency | Note                    |
+|-----------------------+--------------+---------------------+---------+-------------------------|
+| pairing rapido        | 20-100 ms    | 30-50 ms            | 0       | solo per finestra breve |
+| sensore a batteria    | 1-5 s        | 250 ms - 1 s        | alta    | massimo risparmio       |
+| beacon                | 500 ms - 5 s | nessuna connessione | -       | non-connectable         |
+| streaming             | 100-500 ms   | 7,5-30 ms           | 0       | throughput alto         |
+| app di configurazione | 100-500 ms   | 30-100 ms           | 0-4     | buon compromesso        |
+
+Non esiste un valore migliore in assoluto. Inoltre il central può negoziare parametri diversi da quelli preferiti dal peripheral. Le configurazioni in tabella sono quindi punti di partenza: il risultato va verificato misurando corrente, latenza e stabilità sul prodotto reale.
+
+** BLE e Wi-Fi insieme su ESP32
+
+ESP32 usa la banda 2,4 GHz sia per Wi-Fi sia per Bluetooth. Le due radio devono convivere.
+
+Problemi comuni:
+
+| Problema                   | Causa possibile                     |
+|----------------------------+-------------------------------------|
+| disconnessioni BLE         | Wi-Fi molto attivo, timeout basso   |
+| throughput BLE instabile   | coesistenza radio                   |
+| scanning perde dispositivi | scan window piccola o Wi-Fi intenso |
+| latenza alta               | scheduling radio condiviso          |
+| consumo alto               | Wi-Fi e BLE sempre attivi           |
+
+Buone pratiche:
+
+- evitare scan BLE continuo se Wi-Fi è molto usato;
+- usare connection interval realistici;
+- aumentare supervision timeout in ambienti rumorosi;
+- ridurre log e traffico inutile;
+- usare BLE per provisioning e spegnerlo se non serve più;
+- evitare Coded PHY se non serve davvero long range.
+
+Coded PHY può peggiorare la coesistenza perché occupa la radio più a lungo rispetto a 1M o 2M PHY.
+
+** Flusso firmware BLE server sicuro su ESP32
+
+Un firmware BLE server robusto può seguire questo flusso:
+
+1. inizializzare NVS;
+2. inizializzare controller Bluetooth;
+3. abilitare Bluedroid o NimBLE;
+4. configurare un nome dispositivo non identificativo;
+5. configurare privacy locale, se usata;
+6. configurare parametri SMP;
+7. creare la tabella GATT;
+8. impostare permessi corretti per ogni attributo;
+9. configurare advertising data minimale;
+10. avviare advertising;
+11. alla connessione, aggiornare parametri se necessario;
+12. richiedere encryption se il servizio lo richiede;
+13. gestire pairing e bonding;
+14. gestire read, write, notify e indicate;
+15. alla disconnessione, riavviare advertising se opportuno;
+16. rimuovere pairing mode dopo timeout.
+
+Pseudocodice:
+
+#+begin_src c
+void app_main(void)
+{
+    init_nvs();
+
+    init_ble_controller();
+    init_ble_host(); // NimBLE o Bluedroid
+
+    configure_device_name("ESP32-Device");
+    configure_privacy_if_needed();
+
+    configure_smp_security();
+    create_gatt_database_with_secure_permissions();
+
+    configure_advertising_payload_minimal();
+    start_advertising();
+
+    // Da qui in poi: callback GAP/GATT
+}
+#+end_src
+
+*** Callback leggere
+
+Le callback BLE devono essere rapide.
+
+In pratica:
+
+- non scrivere su flash dentro callback se non necessario;
+- non fare parsing pesante;
+- non fare HTTP o MQTT direttamente;
+- usare queue e task separati;
+- copiare i dati e uscire rapidamente.
+
+Una callback BLE non dovrebbe diventare il posto in cui vive tutta la logica applicativa.
+
+** Flusso BLE client ESP32
+
+Un ESP32 può anche lavorare come client o gateway BLE.
+
+Flusso tipico:
+
+1. configurare scanning;
+2. avviare scanning;
+3. filtrare per UUID servizio, nome o manufacturer data;
+4. fermare scanning quando viene trovato il target;
+5. aprire la connessione;
+6. eseguire MTU exchange;
+7. fare service discovery;
+8. trovare characteristic e CCCD;
+9. leggere valori o abilitare notification;
+10. gestire riconnessione e cache.
+
+*** Filtrare bene
+
+Non filtrare solo per nome. Il nome può cambiare, mancare o essere non univoco.
+
+Meglio usare:
+
+- service UUID;
+- manufacturer data;
+- address solo se bonded e privacy gestita;
+- dati applicativi non sensibili;
+- Filter Accept List, quando applicabile.
+
+** Errori comuni
+
+- *Mettere dati segreti in advertising:* advertising e scan response sono visibili. Non usarli per password, token, credenziali o dati personali.
+- *Pensare che Just Works protegga da MITM:* può portare a un link cifrato, ma non autentica davvero il peer. Per comandi sensibili non basta.
+- *Confondere encryption e autorizzazione:* la cifratura protegge il link; stack e logica applicativa devono ancora decidere se il comando è permesso.
+- *Proteggere la read ma non le notification:* una permission cifrata blocca la lettura dell'attributo, non l'invio deciso dal server. Verificare il livello del link e proteggere il CCCD.
+- *Usare UUID custom come password:* gli UUID vengono scoperti dal client e non sono segreti.
+- *Assumere sempre MTU 517:* la MTU finale è negoziata e il peer può scegliere un valore inferiore.
+- *Dimenticare il CCCD:* notify e indicate richiedono l'abilitazione della characteristic da parte del client.
+- *Lasciare pairing sempre aperto:* pairing mode dovrebbe essere temporanea e, idealmente, attivata con un'azione fisica.
+- *Cambiare la tabella GATT senza gestire la cache:* usare Service Changed e testare aggiornamento, bond e rediscovery.
+
+** Checklist per un progetto BLE ESP32
+
+*** Architettura
+
+- Ho scelto NimBLE se mi serve solo BLE.
+- Ho scelto Bluedroid se mi serve anche Bluetooth Classic.
+- Ho verificato le funzioni supportate dal chip specifico.
+- Non sto assumendo funzioni BLE 5 su ESP32 classico.
+
+*** Advertising
+
+- Advertising data sotto 31 byte se legacy.
+- Nessun dato sensibile in advertising.
+- Nome dispositivo generico.
+- Advertising interval coerente con consumo e UX.
+- Pairing advertising limitato nel tempo.
+
+*** Connessione
+
+- Connection interval realistico.
+- Peripheral latency usata se il dispositivo è a batteria.
+- Supervision timeout non troppo aggressivo.
+- Parametri testati con smartphone reali.
+
+*** GATT
+
+- Servizi e characteristic organizzati in modo logico.
+- UUID custom a 128 bit per servizi proprietari.
+- Properties e permissions configurate correttamente.
+- CCCD presente per notify/indicate.
+- Scritture validate lato applicazione.
+- Service Changed gestito se cambia il database GATT.
+
+*** Sicurezza
+
+- SMP configurato.
+- LE Secure Connections usato dove possibile.
+- MITM richiesto per comandi sensibili.
+- Bonding usato per dispositivi personali.
+- Pairing mode attivabile solo localmente.
+- Bond rimovibile con procedura controllata.
+- Permessi GATT encrypted/MITM sui dati sensibili.
+
+*** Privacy
+
+- RPA usato se serve anti-tracciamento.
+- IRK gestita tramite bonding.
+- Advertising senza identificativi permanenti.
+- Nome dispositivo non riconducibile all'utente.
+- Dati sensibili inviati solo dopo encryption.
+
+*** Prestazioni
+
+- MTU negoziata e controllata.
+- DLE abilitata se serve throughput.
+- Notification usate per stream.
+- Indication usate solo per eventi critici.
+- Callback leggere.
+- Wi-Fi coexistence testata.
+
+** Glossario BLE essenziale
+
+- *ACL:* LE Asynchronous Connection logical transport. Trasporta signaling LL, L2CAP e dati asincroni tra central e peripheral connessi.
+- *Advertising:* trasmissione periodica di pacchetti BLE per farsi trovare o inviare piccoli dati.
+- *Advertising Data:* payload contenuto nel pacchetto advertising.
+- *Advertising Extension:* funzione BLE 5 che permette advertising più flessibile e payload più ampi rispetto al legacy advertising, se supportata dal chip.
+- *Advertising Interval:* tempo tra due eventi advertising.
+- *ATT:* Attribute Protocol. Definisce attributi, handle, lettura, scrittura, notifiche e indicazioni.
+- *Attribute:* unità base dati in ATT/GATT. Ha handle, UUID, permessi e valore.
+- *Authentication:* verifica dell'identità o della legittimità del peer durante il pairing.
+- *Authorization:* decisione applicativa o stack-level che stabilisce se un peer può accedere a una risorsa.
+- *Bonding:* salvataggio delle chiavi generate durante il pairing per riconnessioni future.
+- *Broadcaster:* dispositivo che invia advertising senza accettare connessioni.
+- *CCCD:* Client Characteristic Configuration Descriptor. Descriptor UUID 0x2902 usato dal client per abilitare notify o indicate.
+- *Central:* dispositivo GAP che avvia e gestisce la connessione. Spesso smartphone o gateway.
+- *Characteristic:* elemento GATT che rappresenta un dato o un comando.
+- *Characteristic Declaration:* attributo che descrive proprietà e handle del valore di una characteristic.
+- *Characteristic Value:* attributo che contiene il valore vero della characteristic.
+- *Coded PHY:* PHY BLE per long range. Usa codifica ridondante, aumenta la portata ma riduce il throughput.
+- *Connection Event:* finestra temporale in cui central e peripheral si scambiano pacchetti.
+- *Connection Interval:* tempo tra due connection event.
+- *CSRK:* Connection Signature Resolving Key. Chiave usata per firme dati in alcuni scenari BLE.
+- *Data Length Extension, DLE:* funzione che aumenta la dimensione del payload a livello Link Layer.
+- *Descriptor:* attributo che aggiunge metadati a una characteristic.
+- *Encryption:* cifratura del link BLE.
+- *Filter Accept List:* lista di dispositivi accettati per scanning, advertising o connessione.
+- *GAP:* Generic Access Profile. Gestisce discovery, advertising, scanning, ruoli, connessione e privacy.
+- *GATT:* Generic Attribute Profile. Organizza gli attributi in servizi, caratteristiche e descrittori.
+- *GATT Client:* dispositivo che scopre, legge, scrive e si iscrive ai dati di un GATT server.
+- *GATT Server:* dispositivo che espone una tabella di attributi.
+- *Handle:* identificatore numerico di un attributo GATT.
+- *HCI:* Host Controller Interface. Interfaccia tra host Bluetooth e controller.
+- *Indication:* messaggio server-to-client che richiede conferma.
+- *Initiator:* dispositivo GAP che avvia una connessione.
+- *IRK:* Identity Resolving Key. Chiave usata per risolvere Resolvable Private Address.
+- *Just Works:* metodo di pairing semplice, senza protezione MITM.
+- *LE Secure Connections:* metodo moderno di pairing BLE basato su ECDH, introdotto con Bluetooth 4.2.
+- *L2CAP:* livello di adattamento e multiplexing tra protocolli superiori e link BLE.
+- *LTK:* Long Term Key. Chiave usata per cifrare riconnessioni future.
+- *MITM:* Man-In-The-Middle. Attacco in cui un terzo si interpone tra due dispositivi.
+- *MTU:* Maximum Transmission Unit. In ATT indica la dimensione massima del pacchetto sul bearer negoziato.
+- *NimBLE:* stack BLE leggero disponibile in ESP-IDF.
+- *Notification:* messaggio server-to-client senza conferma GATT.
+- *NRPA:* Non-Resolvable Private Address. Indirizzo privato non risolvibile.
+- *OOB:* Out-of-Band. Pairing tramite canale esterno, come NFC o QR code.
+- *Pairing:* processo di generazione e autenticazione delle chiavi di sicurezza.
+- *Passkey Entry:* metodo di pairing con codice numerico.
+- *Peripheral:* dispositivo GAP che accetta connessione da un central.
+- *PHY:* livello fisico radio: LE 1M, LE 2M, LE Coded.
+- *Privacy:* meccanismi per ridurre tracciamento e identificazione del dispositivo.
+- *Properties:* operazioni supportate da una characteristic: read, write, notify, indicate.
+- *Permissions:* regole di accesso e sicurezza sugli attributi GATT.
+- *Resolvable Private Address, RPA:* indirizzo privato che cambia e può essere risolto da peer autorizzati tramite IRK.
+- *RSSI:* Received Signal Strength Indicator. Indicatore della potenza del segnale ricevuto.
+- *Scan Request:* richiesta inviata da uno scanner attivo a un advertiser scannable.
+- *Scan Response:* risposta contenente dati aggiuntivi all'advertising.
+- *Scanning:* ascolto dei pacchetti advertising.
+- *Security Manager Protocol, SMP:* protocollo BLE per pairing, bonding, chiavi ed encryption.
+- *Service:* raggruppamento GATT di characteristic correlate.
+- *Service Changed Indication:* indicazione usata per informare il client che la tabella GATT è cambiata.
+- *Supervision Timeout:* tempo massimo senza comunicazione valida prima di considerare persa la connessione.
+- *UUID:* identificatore di servizi, caratteristiche e descrittori. Può essere 16 bit standard o 128 bit custom.
+- *Whitelist:* vecchio termine spesso usato per indicare Filter Accept List.
+- *Write Without Response:* scrittura GATT senza risposta del server. Utile per throughput, ma meno controllata.
+
+** Conclusione
+
+La mia conclusione è che BLE su ESP32 non sia difficile per la quantità di API, ma per il numero di livelli che devono restare coerenti. GAP decide come il dispositivo viene scoperto e connesso; ATT e GATT definiscono dati e operazioni; SMP protegge il link; il firmware, infine, deve ancora decidere se un comando sia valido e autorizzato.
+
+Le scelte che reputo davvero importanti sono queste:
+
+- verificare target, stack e versione ESP-IDF prima di usare una funzione;
+- considerare advertising e scan response come dati pubblici;
+- separare properties, permissions e autorizzazione applicativa;
+- usare Secure Connections e MITM quando il rischio lo richiede;
+- aprire il pairing soltanto in una finestra controllata;
+- negoziare MTU e parametri di connessione senza presumere che il peer accetti i valori proposti;
+- misurare consumo e throughput sul prodotto reale, soprattutto con Wi-Fi attivo.
+
+La configurazione migliore non è dunque quella con MTU più alta o connection interval più breve. È quella che rende esplicito il compromesso tra consumo, latenza, compatibilità, sicurezza e privacy. Sul primo ESP32 questo significa anche accettare i limiti del controller: DLE e Secure Connections sono disponibili, mentre 2M PHY, Coded PHY e advertising extensions richiedono un target più recente.
+
+In sostanza, BLE fornisce un ottimo insieme di meccanismi, ma non definisce da solo la policy del prodotto. Un GATT ordinato e un link cifrato sono il punto di partenza; l'affidabilità nasce da ciò che il firmware decide di esporre, accettare e registrare.
+
+** Fonti principali consultate
+
+- [[https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/ble/overview.html][ESP-IDF - Bluetooth LE overview per ESP32]]
+- [[https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/bluetooth/index.html][ESP-IDF - Bluetooth API, Bluedroid e NimBLE]]
+- [[https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/ble/get-started/ble-connection.html][ESP-IDF - BLE connection, MTU e Data Length Extension]]
+- [[https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/bluetooth/esp_gap_ble.html][ESP-IDF - Bluedroid GAP e security API]]
+- [[https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/ble/ble-feature-support-status.html][ESP-IDF - Feature Support Status ESP32]]
+- [[https://docs.espressif.com/projects/esp-idf/en/stable/esp32c3/api-guides/ble/ble-feature-support-status.html][ESP-IDF - Feature Support Status ESP32-C3]]
+- [[https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-guides/ble/ble-feature-support-status.html][ESP-IDF - Feature Support Status ESP32-S3]]
+- [[https://docs.espressif.com/projects/esp-idf/en/stable/esp32c6/api-guides/ble/ble-feature-support-status.html][ESP-IDF - Feature Support Status ESP32-C6]]
+- [[https://docs.espressif.com/projects/esp-faq/en/latest/software-framework/bt/ble.html][Espressif FAQ - Bluetooth LE e throughput]]
+- [[https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/Core-61/out/en/index-en.html][Bluetooth Core Specification 6.1]]

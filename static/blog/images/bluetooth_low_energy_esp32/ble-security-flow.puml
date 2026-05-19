@@ -1,0 +1,18 @@
+@startuml
+title BLE security flow
+
+actor "Phone\ncentral" as Phone
+participant "ESP32\nperipheral" as ESP
+participant "GATT\nserver" as GATT
+
+Phone -> ESP : scan advertising
+Phone -> ESP : connect
+Phone -> GATT : read or write protected attribute
+GATT -> ESP : security required
+ESP -> Phone : security request
+Phone <-> ESP : pairing method\nJust Works, Passkey, Numeric, OOB
+Phone <-> ESP : key distribution\nLTK, IRK, CSRK
+Phone <-> ESP : encrypted link
+Phone -> GATT : protected GATT access
+
+@enduml

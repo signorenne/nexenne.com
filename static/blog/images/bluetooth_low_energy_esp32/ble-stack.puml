@@ -1,0 +1,18 @@
+@startuml
+title BLE stack on ESP32
+
+rectangle "Application\nsensor logic\ncommands\nproduct state" as APP
+rectangle "Host\nGAP, GATT, ATT\nSMP, L2CAP" as HOST
+rectangle "Controller\nLink Layer\nPHY\nradio scheduler" as CTRL
+rectangle "2.4 GHz radio\nadvertising channels\nconnection events" as RADIO
+
+APP -down-> HOST : ESP-IDF or NimBLE APIs
+HOST -down-> CTRL : HCI boundary
+CTRL -down-> RADIO : packets on air
+
+note right of HOST
+  GAP discovers and connects.
+  GATT describes the data.
+  SMP handles keys and encryption.
+end note
+@enduml
