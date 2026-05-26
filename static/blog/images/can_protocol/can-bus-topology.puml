@@ -1,0 +1,20 @@
+@startuml
+title CAN physical bus topology
+
+rectangle "120 ohm\ntermination" as T1
+database "CAN_H + CAN_L\nmain twisted pair" as BUS
+rectangle "120 ohm\ntermination" as T2
+
+rectangle "ECU A\nMCU\nCAN controller\ntransceiver" as A
+rectangle "Sensor node\ncontroller\ntransceiver" as B
+rectangle "Actuator node\ncontroller\ntransceiver" as C
+rectangle "Diagnostic tool\ninterface\ntransceiver" as D
+
+T1 -right- BUS
+BUS -right- T2
+A -down- BUS : short stub
+B -down- BUS : short stub
+C -up- BUS : short stub
+D -up- BUS : short stub
+
+@enduml

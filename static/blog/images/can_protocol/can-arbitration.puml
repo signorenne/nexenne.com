@@ -1,0 +1,21 @@
+@startuml
+title CAN non-destructive arbitration
+
+start
+:Bus idle;
+:Node A starts sending ID 0x100;
+:Node B starts sending ID 0x200;
+:Both nodes transmit and monitor the bus;
+
+if (A sends dominant 0\nB sends recessive 1) then (dominant wins)
+  :Node B reads dominant\nwhile sending recessive;
+  :Node B loses arbitration;
+  :Node B stops transmitting\nand retries later;
+else (same bus level)
+  :Both nodes continue arbitration;
+endif
+
+:Node A keeps transmitting;
+:Winning frame is not corrupted;
+stop
+@enduml

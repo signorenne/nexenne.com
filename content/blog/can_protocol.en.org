@@ -1,0 +1,1156 @@
+#+TITLE: CAN Protocol: How a CAN Network Really Works, from Physical Signals to Diagnostics
+#+LANG: en
+#+DATE: 2026-05-26
+#+LASTMOD: 2026-07-13
+#+DESC: A practical guide to CAN networks: physical signals, arbitration, frames, timing, DBC decoding, diagnostics, CAN FD, CAN XL, and security.
+#+IMAGE: /blog/covers/can_protocol.webp
+#+READ: 38 min
+#+TAGS: CAN, Automotive, Embedded, Diagnostics, DBC, CAN FD
+#+CATEGORIES: Embedded, Tutorial, Automotive
+
+** Abstract
+
+While analyzing automotive networks, I noticed that CAN is often explained by starting with frames, as if recognizing an ID and reading eight bytes were enough. In practice, the most deceptive faults often begin elsewhere: an incorrect termination, an inconsistent sample point, a hardware filter that is too restrictive, or a DBC that parses the right bytes with the wrong endianness.
+
+I therefore decided to rebuild the subject from the electrical signal up to diagnostics. We will cover the physical layer, arbitration, frames, bit timing, error handling, DBC files, ISO-TP, UDS, J1939, and CANopen, before comparing Classic CAN, CAN FD, and CAN XL. The goal is not merely to read traffic, but to understand which guarantees come from the protocol and which depend on the network design.
+
+*CAN*, or *Controller Area Network*, is a multi-master serial protocol created to let multiple electronic devices share the same bus robustly and predictably. It originated in automotive systems, but is now used in commercial vehicles, agricultural machinery, industrial automation, robotics, motorsport, marine systems, medical equipment, energy systems, and embedded devices.
+
+Its defining feature is that no central computer assigns transmission turns. Multiple nodes can begin transmitting when the bus is free; if two transmissions start together, arbitration determines which one continues without destroying the winning frame.
+
+CAN should not, however, be confused with Ethernet, TCP/IP, or a network that natively addresses a source and destination. The bus carries *frames identified by a CAN ID*. Every transceiver observes the electrical activity; controllers and software then decide which frames to retain and process. Higher-level protocols such as J1939 can encode addresses in their own scheme, but base CAN does not define them.
+
+This distinction guides the entire article: CAN transports frames, not ready-made physical values. The meaning of those bits comes from the application protocol, the DBC, or a proprietary convention.
+
+** Why CAN Exists
+
+Before CAN became widespread, connecting many sensors, actuators, and control units meant using a large number of point-to-point connections. Each signal needed its own dedicated wiring. More functions meant more wires, more weight, more complexity, higher cost, and more possible failure points.
+
+CAN was created to solve exactly this problem: instead of connecting everything point-to-point, we use a shared bus. In the high-speed case discussed throughout most of this article, the physical medium is a differential pair. Every node connects to the same line and can transmit when the bus is free.
+
+The main advantages are:
+
+| Advantage                   | What it means in practice                                                     |
+|-----------------------------+-------------------------------------------------------------------------------|
+| Reduced wiring              | multiple devices communicate using the same two wires                         |
+| Multi-master communication  | every node can start a transmission                                           |
+| Message priority            | the CAN ID determines which message is more important                         |
+| Non-destructive arbitration | if two nodes transmit at the same time, the higher-priority message continues |
+| Electrical robustness       | differential transmission on =CAN_H= and =CAN_L= reduces the effect of noise  |
+| Error detection             | CRC, ACK, bit monitoring, form check, and bit stuffing help detect problems   |
+| Analyzable latency          | priority and maximum frame time enable worst-case analysis                     |
+
+This is one reason CAN remains so widely used: its structure is relatively simple, while its timing behavior can be analyzed precisely.
+
+Calling it deterministic without qualification is nevertheless misleading. High priority reduces latency, but the result still depends on load, periods, frame lengths, and higher-priority traffic. A low-priority message can wait for a very long time on an overloaded bus. The timing guarantee therefore comes from schedulability analysis, not from the protocol in isolation.
+
+** CAN in the OSI Model
+
+To understand where CAN fits, it helps to look at it through the OSI model.
+
+Classic CAN mainly defines two layers:
+
+- *the physical layer*, meaning wiring, electrical signals, transceivers, terminations, CAN High, and CAN Low;
+- *the data link layer*, meaning frames, arbitration, CRC, ACK, error handling, and bus access.
+
+Everything related to the application meaning of the data is handled by higher-level protocols.
+
+Simplified view:
+
+| OSI Layer        | In the CAN world                                                |
+|------------------+-----------------------------------------------------------------|
+| 7 - Application  | UDS, OBD-II, J1939, CANopen, proprietary protocols              |
+| 6 - Presentation | often manufacturer-specific                                     |
+| 5 - Session      | diagnostic sessions, for example in UDS                         |
+| 4 - Transport    | ISO-TP, J1939 Transport Protocol                                |
+| 3 - Network      | limited or handled by higher-level protocols                    |
+| 2 - Data Link    | CAN frames, arbitration, CRC, ACK, error handling               |
+| 1 - Physical     | =CAN_H=, =CAN_L=, transceivers, terminations, electrical levels |
+
+This distinction is extremely important: *CAN alone does not define the meaning of the data*.
+
+CAN transports bytes. Their meaning is defined by a DBC, UDS, J1939, CANopen, OBD-II, or a proprietary protocol.
+
+The mapping onto all seven OSI layers is not exact, and real protocols may span several of them. The table is therefore a guide, not a substitute for the relevant specifications.
+
+In other words, CAN provides the link. The actual language often sits above it.
+
+** Architecture of a CAN Network
+
+A CAN network is made of multiple *nodes* connected to the same bus.
+
+A node can be:
+
+- an ECU;
+- an intelligent sensor;
+- an actuator;
+- a gateway;
+- a data logger;
+- a CAN-USB interface;
+- a diagnostic tool;
+- an HMI display;
+- an embedded module.
+
+A typical CAN node contains the following elements:
+
+| Component                                     | Function                                                                |
+|-----------------------------------------------+-------------------------------------------------------------------------|
+| Microcontroller                               | runs the application software                                           |
+| CAN controller                                | manages frames, IDs, errors, filters, and arbitration                   |
+| CAN transceiver                               | converts TX/RX logic signals into =CAN_H= and =CAN_L= electrical levels |
+| Connector and wiring                          | physically connect the node to the bus                                  |
+| Termination, if placed at the end of the line | reduces signal reflections                                              |
+
+In many modern MCUs, the CAN controller is already integrated into the microcontroller. The transceiver, however, is often an external component.
+
+This separation matters: the controller works at the logical level, while the transceiver works on the physical bus. So a CAN problem can come from the software, but also from the transceiver, cables, terminations, or network topology.
+
+[[/blog/images/can_protocol/can-bus-topology.svg]]
+
+/A high-speed CAN network is a shared bus: every node connects through a transceiver, while the two ends of the main line are terminated./
+
+A high-speed CAN network normally uses a differential pair:
+
+- *CAN High*, abbreviated as =CAN_H=;
+- *CAN Low*, abbreviated as =CAN_L=.
+
+The two conductors are normally twisted together to improve immunity against electromagnetic interference. Ground reference, shielding, and connectors depend on the transceiver, EMC environment, and system architecture: using a differential pair does not make the permitted common-mode range irrelevant.
+
+** Physical Layer: CAN High, CAN Low, and Differential Transmission
+
+CAN uses *differential* transmission.
+
+This means that the receiver does not interpret the absolute voltage of a single wire, but the voltage difference between =CAN_H= and =CAN_L=.
+
+For a high-speed network, in simplified form:
+
+| Logical state | CAN meaning | =CAN_H=     | =CAN_L=     | Difference |
+|---------------+-------------+-------------+-------------+------------|
+| Recessive     | logical 1   | about 2.5 V | about 2.5 V | about 0 V  |
+| Dominant      | logical 0   | rises       | falls       | positive   |
+
+The key point is that electromagnetic noise tends to affect both wires similarly. The receiver mainly reads the difference between the signals, making CAN much more resistant to noise than a single-ended interface.
+
+The values in the table are indicative and should not be used as the only diagnostic thresholds. Transceiver families, tolerances, ground shift, and newer physical modes such as SIC or FAST require the component data sheet and the selected physical-layer specification.
+
+That said, CAN is not magically immune to errors if the network is poorly designed.
+
+In high-speed CAN networks, the recommended topology is a main bus line with short stubs. Termination is essential: normally, two *120 ohm* resistors are required, one at each end of the bus.
+
+With two 120-ohm terminations at the ends, the resistance measured between =CAN_H= and =CAN_L= with the network powered off is approximately:
+
+120 ohm || 120 ohm = 60 ohm
+
+So, in the most common high-speed arrangement:
+
+- if we measure around 60 ohm, two equivalent terminations are probably present;
+- if we measure much more than 60 ohm, a termination may be missing;
+- if we measure much less than 60 ohm, there may be too many terminations or a short circuit.
+
+This is one of the first checks to make when a CAN network does not communicate, but it must be performed with power removed and interpreted in light of split or active terminations and bias circuits. Sixty ohms confirms an equivalent resistance; it does not prove that the resistors are located correctly at the two ends of the line.
+
+** Dominant and Recessive: The Logic of CAN
+
+In CAN there are two fundamental states:
+
+| State     | Logical bit | Behavior                   |
+|-----------+-------------+----------------------------|
+| Dominant  |           0 | wins on the bus            |
+| Recessive |           1 | is overwritten by dominant |
+
+The CAN bus behaves like a *wired-AND* logic: if at least one node transmits a dominant bit, the bus becomes dominant. The bus remains recessive only if all nodes transmit recessive.
+
+This mechanism is the foundation of two very important functions:
+
+- message arbitration;
+- error detection through bit monitoring.
+
+A node that transmits does not just send data: it continuously reads the bus. If it transmits recessive but reads dominant, it understands that another node is forcing a dominant bit.
+
+This is exactly what allows CAN to handle simultaneous transmissions without destroying the winning message.
+
+** CAN Arbitration: Priority Without Destructive Collisions
+
+CAN is a *multi-master* network.
+
+There is no single master that authorizes the other nodes to speak. Any node can start transmitting when the bus is free.
+
+If two or more nodes start transmitting at the same time, CAN uses bit-by-bit arbitration over the relevant field of the frame.
+
+During arbitration, each node transmits and reads the bus at the same time. For frames of the same format, the dominant bit wins over the recessive bit, so the numerically lower ID has higher priority.
+
+The node that loses stops transmitting and tries again later. The message that wins continues without being corrupted. This is why we call it *non-destructive arbitration*.
+
+Simplified example:
+
+| Node   | Simplified binary CAN ID | Priority |
+|--------+--------------------------+----------|
+| Node A | =001 0000 0000=          | higher   |
+| Node B | =010 0000 0000=          | lower    |
+
+[[/blog/images/can_protocol/can-arbitration.svg]]
+
+/During arbitration, a node that sends recessive but reads dominant loses and stops, while the winning frame continues./
+
+Node A wins because its ID first presents a dominant bit where Node B is transmitting a recessive one.
+
+The lower-ID rule is a useful shortcut, but it does not describe every comparison. The =RTR=, =SRR=, and =IDE= bits also participate in arbitration. With the same first 11 identifier bits, for example, a base data frame prevails over a base remote frame, and the base format prevails over the extended format.
+
+The practical consequence is important: messages with tighter latency requirements need a corresponding priority and therefore, in general, a lower ID.
+
+In an automotive network, messages related to braking, engine control, torque, or vehicle dynamics will often have higher priority than comfort and infotainment traffic. The assignment must still be validated against the timing analysis of the whole network: the function name alone does not guarantee its deadline.
+
+** CAN Message Formats
+
+CAN transmits data in the form of *frames*.
+
+In Classic CAN there are two main formats:
+
+| Current format        | Identifier | Historical/common name |
+|-----------------------+------------+------------------------|
+| Base frame format     | 11 bit     | CAN 2.0A / standard    |
+| Extended frame format | 29 bit     | CAN 2.0B / extended    |
+
+The 11-bit standard frame allows 2048 theoretical identifiers.
+
+The 29-bit extended frame allows many more identifiers and is widely used by protocols such as *SAE J1939*.
+
+A common mistake is assuming that the CAN ID is always the receiver address. In base CAN, the identifier primarily defines content and priority, although a higher-level protocol can also use some of its bits for source or destination addressing.
+
+Every transceiver observes the frame on the bus, while controllers and filters decide which messages to deliver to software.
+
+** Structure of a Classic CAN Data Frame
+
+A classic *CAN data frame* contains several fields.
+
+| Field             | Function                                         |
+|-------------------+--------------------------------------------------|
+| SOF               | Start of Frame, marks the beginning of the frame |
+| Arbitration Field | contains the identifier and arbitration bits     |
+| Control Field     | contains control information, including the DLC  |
+| Data Field        | contains 0 to 8 bytes in Classic CAN             |
+| CRC Field         | integrity check                                  |
+| ACK Field         | correct-reception acknowledgement at CAN level   |
+| EOF               | End of Frame                                     |
+| Intermission      | space between consecutive frames                 |
+
+*** SOF - Start of Frame
+
+This is a dominant bit that marks the beginning of a new frame. It also helps synchronize the nodes.
+
+*** Arbitration Field
+
+This field contains the CAN ID and the bits needed to distinguish standard frames, extended frames, and remote frames. It is the field used to decide which message wins if multiple nodes start transmitting at the same time.
+
+*** Control Field
+
+This field contains the *DLC*, meaning *Data Length Code*. In Classic CAN, the DLC indicates how many bytes are present in the payload, from 0 to 8.
+
+*** Data Field
+
+This contains the actual data. In Classic CAN, the maximum payload is 8 bytes, or 64 bits.
+
+*** CRC Field
+
+This is used to detect transmission errors. The transmitter calculates a CRC code, and the receivers verify whether the received value is consistent with the frame content.
+
+*** ACK Field
+
+The transmitter sends the ACK slot as recessive. If at least one receiving controller has verified the frame correctly up to that point, it drives the ACK slot dominant.
+
+The transmitter therefore knows that at least one other controller received the frame without detecting an error. It does not know which node responded or whether application software processed the message: a CAN ACK is not end-to-end confirmation.
+
+*** EOF
+
+This marks the end of the frame and is formed by a recessive sequence.
+
+** Types of CAN Frames
+
+In Classic CAN there are four main frame types:
+
+| Frame type     | Function                          |
+|----------------+-----------------------------------|
+| Data frame     | transports data                   |
+| Remote frame   | requests the transmission of data |
+| Error frame    | signals an error                  |
+| Overload frame | introduces a delay between frames |
+
+In modern networks, the most important one is the *data frame*.
+
+Remote frames are rarely used in current architectures, mainly because many higher-level protocols prefer normal request-response messages.
+
+Also, remote frames are not supported by *CAN FD*.
+
+** Bit Timing: How Nodes Stay Synchronized
+
+CAN does not transmit a separate clock.
+
+All nodes must therefore synchronize on signal edges. This is why *bit timing* is a fundamental part of CAN configuration.
+
+Each bit is divided into time units called *time quanta*. These time quanta are organized into logical segments.
+
+The main segments are:
+
+| Segment             | Function                                            |
+|---------------------+-----------------------------------------------------|
+| Sync Segment        | expected point for the synchronization edge         |
+| Propagation Segment | compensates for bus propagation delay               |
+| Phase Segment 1     | can be lengthened for resynchronization             |
+| Phase Segment 2     | can be shortened for resynchronization              |
+| Sample Point        | point where the bit is read                         |
+| SJW                 | maximum correction allowed during resynchronization |
+
+The *sample point* is especially important: it is the instant when the controller reads the bit value.
+
+Incorrect bit timing can cause:
+
+- intermittent errors;
+- lost frames;
+- frequent error frames;
+- bus-off;
+- unstable communication;
+- problems that appear only at certain temperatures or cable lengths.
+
+Typical parameters to configure in a CAN controller:
+
+| Parameter    | Meaning                                      |
+|--------------+----------------------------------------------|
+| Bitrate      | nominal bus speed                            |
+| Prescaler    | divides the controller clock                 |
+| TSEG1        | Propagation Segment + Phase Segment 1        |
+| TSEG2        | Phase Segment 2                              |
+| SJW          | Synchronization Jump Width                   |
+| Sample Point | percentage of the bit where sampling happens |
+
+Examples of common bitrates:
+
+| Application                    | Common bitrate                                |
+|--------------------------------+-----------------------------------------------|
+| automotive powertrain          | 500 kbit/s                                    |
+| body electronics               | 125 or 250 kbit/s                             |
+| heavy-duty vehicles with J1939 | 250 or 500 kbit/s                             |
+| industrial automation          | 125 kbit/s - 1 Mbit/s                         |
+| CAN FD                         | arbitration up to 1 Mbit/s, faster data phase |
+
+The correct bitrate alone is not enough. The sample point, SJW, oscillator tolerance, and timing segments must also be consistent with the physical bus and the other nodes. Line length, transceiver delay, and stub placement further limit the bitrate that can actually be used.
+
+With CAN FD, this check must be performed for two configurations: *nominal bit timing*, used during arbitration and the common portions of the frame, and *data bit timing*, used in the data phase when =BRS= is active. Simply multiplying the bitrate without recalculating the timing margin is not enough.
+
+** Bit Stuffing
+
+Classic CAN uses *bit stuffing* to maintain enough transitions on the bus and help synchronization.
+
+The rule is this: after five consecutive bits of the same value, the transmitter automatically inserts one complementary bit.
+
+So, after five consecutive dominant bits, one recessive bit is inserted. After five consecutive recessive bits, one dominant bit is inserted.
+
+Example:
+
+Original sequence:
+
+=00000=
+
+Transmitted sequence with stuffing:
+
+=000001=
+
+The added bit is not part of the application data. The receiver automatically removes it during reception.
+
+If a receiver sees six consecutive equal bits in a Classic CAN region where dynamic bit stuffing is expected, a *stuff error* is generated.
+
+Bit stuffing also has a practical consequence: the actual frame length varies with its content because some sequences generate more stuff bits than others. CAN FD retains the principle in its dynamic region but adds specific rules, including fixed stuff bits in the CRC field; its duration should not be estimated with the Classic CAN formula alone.
+
+** CAN Message and CAN Signal: A Fundamental Difference
+
+In everyday language, people often talk about "CAN signals," but technically the bus transports *frames*.
+
+A signal is logical information contained inside the payload of a frame.
+
+So:
+
+- a *CAN message* is the frame identified by a CAN ID;
+- a *CAN signal* is a variable contained in the frame data field.
+
+Example:
+
+| CAN ID  | Message name   | Contained signals                |
+|---------+----------------+----------------------------------|
+| =0x100= | Engine_Status  | EngineSpeed, EngineTemp, Torque  |
+| =0x200= | Vehicle_Status | VehicleSpeed, BrakePressed, Gear |
+| =0x300= | Battery_Status | Voltage, Current, StateOfCharge  |
+
+A Classic CAN payload contains a maximum of 8 bytes. Inside these 8 bytes, multiple signals can be encoded, each with:
+
+- start bit;
+- bit length;
+- byte order;
+- signedness;
+- scale;
+- offset;
+- unit of measurement;
+- valid range;
+- physical value.
+
+This distinction is one of the most important of all: the frame is the container, the signal is the interpreted information.
+
+** DBC: The Database That Gives Meaning to Bytes
+
+A raw CAN log may look like this:
+
+#+begin_src text
+timestamp: 12.345678
+ID: 0x0CF00400
+DLC: 8
+DATA: FF FF FF 68 13 FF FF FF
+#+end_src
+
+Without a description of the content, these bytes are almost useless.
+
+To decode them, we often use a *DBC* file, meaning a CAN database.
+
+A DBC describes messages and signals, including information such as start bit, length, byte order, signedness, scale, and offset.
+
+Typical DBC elements:
+
+| Element    | Meaning                                    |
+|------------+--------------------------------------------|
+| =BO_=      | message definition                         |
+| =SG_=      | signal definition                          |
+| CAN ID     | frame identifier                           |
+| DLC        | payload length                             |
+| Start bit  | first bit of the signal                    |
+| Bit length | signal length                              |
+| Endianness | Intel/little-endian or Motorola/big-endian |
+| Signedness | unsigned or signed                         |
+| Factor     | scale factor                               |
+| Offset     | additive correction                        |
+| Unit       | physical unit                              |
+| Min/Max    | allowed range                              |
+
+The conversion formula is:
+
+physical value = raw value * factor + offset
+
+Simplified DBC example:
+
+#+begin_src dbc
+BO_ 256 EngineData: 8 ECU_Engine
+ SG_ EngineSpeed : 0|16@1+ (0.125,0) [0|8000] "rpm" ECU_Dashboard
+ SG_ CoolantTemp : 16|8@1+ (1,-40) [-40|215] "degC" ECU_Dashboard
+ SG_ Torque      : 24|16@1- (0.1,0) [-3200|3200] "Nm" ECU_Gateway
+#+end_src
+
+Interpretation:
+
+- =BO_ 256= defines a message with decimal ID 256, meaning =0x100=;
+- =EngineData= is the message name;
+- =8= is the DLC;
+- =EngineSpeed= starts at bit 0, is 16 bits long, little-endian, and unsigned;
+- the physical engine speed value is =raw * 0.125=;
+- =CoolantTemp= uses an offset of =-40=, so a raw value of 90 corresponds to 50 °C.
+
+This part is essential: CAN does not say by itself that a byte represents temperature, speed, or torque. The meaning comes from the database.
+
+** Endianness: Intel and Motorola
+
+One of the most delicate aspects of CAN decoding is endianness.
+
+In DBC files, we often find two formats:
+
+| Format        | Common name | DBC notation |
+|---------------+-------------+--------------|
+| Little-endian | Intel       | =@1=         |
+| Big-endian    | Motorola    | =@0=         |
+
+Endianness determines how the bits of a multi-byte signal are ordered inside the payload.
+
+Motorola signals add another source of confusion: start-bit numbering is not intuitive and may be displayed differently by different tools. It is safer to validate the chosen convention against a known payload than to adjust bit indices until the output merely looks plausible.
+
+An endianness mistake can produce completely wrong values even if the ID, scale, and offset are correct.
+
+Example:
+
+Payload:
+
+=10 27=
+
+If interpreted as little-endian:
+
+0x2710 = 10000
+
+If interpreted as big-endian:
+
+0x1027 = 4135
+
+The physical result can therefore change drastically.
+
+This is one of the first things to check when a decoded value "looks plausible but does not add up."
+
+** Acceptance Filtering
+
+Every transceiver observes the bus activity, but not every frame needs to be delivered to software.
+
+To avoid overloading the microcontroller, the CAN controller can use hardware acceptance filters.
+
+A filter can accept only:
+
+- specific IDs;
+- ID ranges;
+- standard IDs;
+- extended IDs;
+- frames matching certain masks.
+
+Examples:
+
+| Filter               | Effect                               |
+|----------------------+--------------------------------------|
+| accept =0x100=       | receives only EngineData             |
+| accept =0x200-0x2FF= | receives a group of chassis messages |
+| mask =0x7F0=         | receives IDs with a common prefix    |
+| accept extended only | ignores 11-bit frames                |
+
+The filter does not stop the frame from circulating or, in general, from being checked and acknowledged by the controller. It determines which frames are stored and passed to application software.
+
+So, if a message "does not arrive" in the software, it does not always mean that it does not exist on the bus. It may have been filtered at the hardware level.
+
+** Error Handling in CAN
+
+CAN is very robust because it includes several error detection mechanisms.
+
+The main errors are:
+
+| Error       | Description                                     |
+|-------------+-------------------------------------------------|
+| Bit Error   | the bit read does not match the bit transmitted |
+| Stuff Error | violation of the bit stuffing rule              |
+| CRC Error   | invalid CRC check                               |
+| Form Error  | invalid frame format                            |
+| ACK Error   | no node acknowledges reception                  |
+
+When an error is detected, the node signals it according to its current error state. An error-active node can transmit a dominant error flag; an error-passive node uses a recessive flag and limits its effect on the bus.
+
+The frame is invalidated, and the transmitting controller normally attempts automatic retransmission. Some controllers provide one-shot modes or allow retransmission to be disabled, so the driver behavior still needs to be verified.
+
+This automatic error handling is one of the reasons why CAN is very suitable for noisy environments and real-time applications.
+
+** Error Active, Error Passive, and Bus-Off
+
+Each CAN node maintains internal error counters, typically:
+
+- *TEC*, Transmit Error Counter;
+- *REC*, Receive Error Counter.
+
+Based on these counters, a node can be in three states:
+
+| State         | Meaning                                                          |
+|---------------+------------------------------------------------------------------|
+| Error active  | the node participates normally and actively signals errors       |
+| Error passive | the node has accumulated errors and limits its impact on the bus |
+| Bus-off       | the node is excluded from communication                          |
+
+The thresholds are part of the fault-confinement mechanism:
+
+- the node is *error active* while =TEC= and =REC= remain below 128;
+- it becomes *error passive* when either counter reaches 128;
+- it enters *bus-off* when =TEC= reaches 256.
+
+Bus-off therefore depends on accumulated transmission errors, not merely on the number of errors observed while receiving. Returning to the bus requires the protocol recovery sequence and a coherent software policy; immediately restarting without diagnosing the cause can create a repeating failure loop.
+
+Bus-off is an important protection mechanism: if a faulty node keeps generating errors, the protocol can isolate it to prevent the whole network from becoming unusable.
+
+Typical causes of bus-off:
+
+- wrong bitrate;
+- faulty wiring;
+- faulty transceiver;
+- missing ACK;
+- wrong terminations;
+- electrical noise;
+- no common ground;
+- configuration or software that keeps transmitting under incompatible conditions.
+
+In practice, when a node goes bus-off, we should not only look at the firmware. We also need to check wiring, terminations, bitrate, and the presence of other active nodes on the bus.
+
+** Message Frequency and Bus Load
+
+In a CAN network, messages can be:
+
+- periodic;
+- event-driven;
+- request-based;
+- diagnostic;
+- cyclic with timeout.
+
+Example:
+
+| Message         | Frequency | Criticality |
+|-----------------+-----------+-------------|
+| Brake_Status    | 100 Hz    | high        |
+| Engine_Speed    | 50 Hz     | high        |
+| Vehicle_Speed   | 20 Hz     | medium      |
+| Battery_Voltage | 10 Hz     | medium      |
+| Ambient_Temp    | 1 Hz      | low         |
+| Door_Status     | event     | low         |
+
+*Bus load* indicates how much of the network's available time is occupied. The calculation must include not only payload bytes, but arbitration, control, CRC, ACK, inter-frame space, and a consistent estimate of stuff bits.
+
+A CAN network with excessive bus load can introduce delays, worsen the latency of lower-priority messages, and make diagnostics more difficult.
+
+During design, we need to consider:
+
+- average frame length;
+- bitrate;
+- message frequency;
+- priority;
+- number of nodes;
+- diagnostic traffic;
+- free margin for future extensions.
+
+A cautious rule is to avoid designing networks that constantly operate close to 100% load. There is no universal safe percentage, however: real applications need margin for retransmissions, diagnostics, jitter, and abnormal conditions, while the acceptable value ultimately comes from their timing requirements.
+
+A network that works under ideal conditions but has no margin can miss deadlines as soon as traffic increases or an error appears. Critical messages therefore require a *worst-case response-time* calculation that includes blocking by an already-started frame and interference from every higher-priority message.
+
+** Higher-Level Protocols: CAN as a Base, Not a Complete Application
+
+CAN defines frame transport, but it does not define the application meaning of the data.
+
+This is why higher-level protocols exist.
+
+The most important ones are:
+
+| Protocol  | Area                                                      |
+|-----------+-----------------------------------------------------------|
+| OBD-II    | standardized emissions and propulsion diagnostics          |
+| UDS       | advanced diagnostics, flashing, ECU testing               |
+| ISO-TP    | multi-frame transport over CAN                            |
+| SAE J1939 | trucks, buses, agriculture, industrial applications       |
+| CANopen   | industrial automation and motion control                  |
+| NMEA 2000 | marine systems                                            |
+| ISOBUS    | agricultural machinery                                    |
+| CCP/XCP   | ECU calibration and measurement                           |
+
+So CAN is the base. Above it, each sector builds its own way of representing data, diagnostics, configurations, and commands.
+
+** OBD-II over CAN
+
+*OBD-II*, often written OBD2, is the standardized diagnostic framework used in vehicles primarily to access emissions-related data and faults. CAN is one of its transports, not the whole OBD protocol.
+
+OBD-II uses the concept of *PID*, or Parameter ID.
+
+A tester sends a request, and the ECU replies with the requested data.
+
+Conceptual example:
+
+| Request             | Meaning       |
+|---------------------+---------------|
+| Mode =01=, PID =0C= | engine RPM    |
+| Mode =01=, PID =0D= | vehicle speed |
+| Mode =03=           | read DTCs     |
+| Mode =04=           | clear DTCs    |
+
+OBD-II is useful, but limited. It exposes the standardized data required by the vehicle and applicable regulations, not every signal available on the internal networks.
+
+More detailed data is often available through UDS or proprietary protocols.
+
+** UDS and ISO-TP
+
+*UDS*, meaning *Unified Diagnostic Services*, is a diagnostic protocol used for advanced diagnostics, testing, data reading, parameter writing, ECU reset, and firmware updates.
+
+UDS often runs over CAN using *ISO-TP*, meaning ISO 15765-2.
+
+The reason is simple: Classic CAN can carry only 8 bytes per frame, while many diagnostic responses are longer.
+
+ISO-TP solves this problem by segmenting larger messages into multiple CAN frames.
+
+ISO-TP uses several frame types:
+
+| ISO-TP frame      | Function                             |
+|-------------------+--------------------------------------|
+| Single Frame      | message that fits into one CAN frame |
+| First Frame       | beginning of a long message          |
+| Consecutive Frame | following frames of the long message |
+| Flow Control      | flow control from the receiver       |
+
+UDS example:
+
+VIN read request:
+
+=22 F1 90=
+
+Where:
+
+- =0x22= is the UDS ReadDataByIdentifier service;
+- =0xF190= is a DID commonly used for the VIN.
+
+On Classic CAN, a response containing the VIN exceeds eight bytes and is therefore segmented through ISO-TP. With CAN FD, depending on addressing and the selected profile, the same content can fit into a Single Frame.
+
+This is a perfect example of the relationship between layers: CAN transports the frames, ISO-TP manages multi-frame transport, and UDS defines the diagnostic meaning of the request.
+
+** SAE J1939
+
+*SAE J1939* is a higher-level protocol based on CAN, widely used in heavy-duty vehicles, trucks, buses, agricultural machines, industrial engines, and off-highway vehicles.
+
+J1939 uses extended 29-bit CAN identifiers.
+
+In the J1939 world, a central concept is the *PGN*, meaning *Parameter Group Number*. The PGN is a subset of the extended 29-bit CAN ID and represents the logical identifier of the message.
+
+Simplified structure of the J1939 ID:
+
+| Field          | Bits | Meaning                                |
+|----------------+------+----------------------------------------|
+| Priority       |    3 | message priority                       |
+| Extended Data Page | 1 | extends the PGN space                  |
+| Data Page      |    1 | data page                              |
+| PDU Format     |    8 | PDU type                               |
+| PDU Specific   |    8 | destination address or group extension |
+| Source Address |    8 | source address                         |
+
+Key concepts:
+
+| Term          | Meaning                                                    |
+|---------------+------------------------------------------------------------|
+| PGN           | Parameter Group Number, identifies the data group          |
+| SPN           | Suspect Parameter Number, identifies the individual signal |
+| SA            | Source Address                                             |
+| DA            | Destination Address                                        |
+| PDU1          | addressable message                                        |
+| PDU2          | broadcast message                                          |
+| BAM           | Broadcast Announce Message for multi-packet transport      |
+| TP.CM / TP.DT | transport protocol connection management/data transfer     |
+
+PGN examples:
+
+|   PGN | Name                           |
+|-------+--------------------------------|
+| 61444 | Electronic Engine Controller 1 |
+| 65262 | Engine Temperature             |
+| 65265 | Cruise Control / Vehicle Speed |
+
+In the J1939 world, a DBC is often organized around PGNs and SPNs rather than one fixed physical ID.
+
+PGN calculation needs care. In PDU1 messages, where =PF < 240=, =PS= contains the destination address and is not part of the PGN, whose low byte is therefore =00=. In PDU2 messages, where =PF >= 240=, =PS= is the group extension and contributes to the PGN. The source address remains in the least-significant eight bits of the CAN identifier.
+
+This makes J1939 very structured and suitable for complex vehicles where the engine, transmission, brakes, implements, and external modules must communicate in a standardized way.
+
+** CANopen
+
+*CANopen* is a higher-level protocol mainly used in industrial automation, motion control, robotics, inverters, intelligent sensors, and machines.
+
+Main concepts:
+
+| Object            | Function                                  |
+|-------------------+-------------------------------------------|
+| Object Dictionary | table of device parameters                |
+| PDO               | Process Data Object, real-time data       |
+| SDO               | Service Data Object, configuration access |
+| NMT               | Network Management                        |
+| Heartbeat         | node presence monitoring                  |
+| Emergency Object  | error signaling                           |
+
+CANopen adds a complete application structure on top of CAN.
+
+While CAN defines how to transmit frames, CANopen defines how to represent objects, parameters, states, and cyclic data.
+
+It is widely used when a network must be organized, with configurable devices and standardized behavior.
+
+** CAN FD: The Evolution of Classic CAN
+
+Classic CAN has two important limits:
+
+- maximum payload of 8 bytes;
+- maximum nominal speed typically up to 1 Mbit/s.
+
+*CAN FD*, meaning *CAN Flexible Data-rate*, was introduced to overcome these limits.
+
+CAN FD can use two different bitrates:
+
+- one during the arbitration phase;
+- a higher one during the data phase.
+
+It also increases the maximum payload to *64 bytes*.
+
+Main differences:
+
+| Feature             | Classic CAN          | CAN FD               |
+|---------------------+----------------------+----------------------|
+| Maximum payload     | 8 bytes              | 64 bytes             |
+| Arbitration bitrate | up to about 1 Mbit/s | up to about 1 Mbit/s |
+| Data phase bitrate  | same bitrate         | can increase with BRS |
+| Remote frame        | supported            | not supported        |
+| CRC                 | classic              | more robust          |
+| Efficiency          | lower                | higher               |
+
+Important CAN FD fields:
+
+| Field           | Meaning                          |
+|-----------------+----------------------------------|
+| FDF             | indicates a CAN FD frame         |
+| BRS             | Bit Rate Switch                  |
+| ESI             | Error State Indicator            |
+| DLC             | encodes lengths up to 64 bytes   |
+| CRC-17 / CRC-21 | extended CRC depending on length |
+
+*BRS*, Bit Rate Switch, allows the data phase to be transmitted at a higher speed than the arbitration phase.
+
+The CAN FD DLC does not represent every length from 0 to 64 bytes. The permitted payload lengths are 0-8, 12, 16, 20, 24, 32, 48, and 64 bytes, so drivers and applications must distinguish the DLC code from the actual payload length.
+
+The CRC uses 17 bits for payloads up to 16 bytes and 21 bits for longer payloads, together with additional stuffing safeguards. The =ESI= field, meanwhile, reports whether the transmitter is error active or error passive; it does not certify that the application content is correct.
+
+Coexistence also requires care. A CAN FD controller can transmit Classic CAN frames, but a Classic-only node that is not FD-tolerant interprets an FD frame as an error. Migration is therefore not a matter of replacing one ECU while leaving every other node unchanged.
+
+CAN FD is useful for:
+
+- ECU flashing;
+- faster diagnostics;
+- high-volume data logging;
+- sensors with larger payloads;
+- modern automotive networks;
+- reducing overhead per useful byte.
+
+In practice, CAN FD keeps many ideas from Classic CAN, but increases capacity and efficiency.
+
+** CAN XL: The Next Evolution
+
+*CAN XL*, meaning *CAN eXtended data-field Length*, is the next evolution after Classic CAN and CAN FD.
+
+CAN XL supports data fields from 1 byte up to *2048 bytes* and is included in ISO 11898-1:2024.
+
+Comparison:
+
+| Technology  | Maximum payload |
+|-------------+-----------------|
+| Classic CAN | 8 bytes         |
+| CAN FD      | 64 bytes        |
+| CAN XL      | 2048 bytes      |
+
+CAN XL also introduces a clearer distinction between priority and acceptance.
+
+In Classic CAN and CAN FD, the ID is used both for arbitration and identification. In CAN XL, these functions are separated using an 11-bit priority ID and a 32-bit acceptance field.
+
+CAN XL is designed for cases where we need:
+
+- very large payloads;
+- higher efficiency;
+- integration with modern architectures;
+- transport of complex data;
+- possible connection with IP networks;
+- more efficient software updates.
+
+With the appropriate physical layer, its data phase can reach rates on the order of 20 Mbit/s, although the actual value depends on the transceiver, coding mode, and network design.
+
+CAN XL does not immediately replace Classic CAN or CAN FD, nor can it be introduced into any existing network through a software change alone. It requires compatible controllers, transceivers, and topology; it extends the CAN family toward more demanding applications while retaining non-destructive arbitration in the nominal phase.
+
+** CAN Logging: From Raw Frame to Physical Data
+
+To analyze a CAN network, we record traffic using tools such as:
+
+- CAN-USB interfaces;
+- standalone data loggers;
+- Vector tools;
+- Kvaser;
+- Peak;
+- CSS Electronics;
+- oscilloscopes;
+- CAN-Ethernet gateways;
+- SocketCAN software;
+- sniffing and reverse engineering tools.
+
+A raw log typically contains:
+
+| Field     | Description              |
+|-----------+--------------------------|
+| Timestamp | reception time           |
+| Channel   | CAN channel              |
+| ID        | identifier               |
+| IDE       | standard or extended     |
+| DLC       | length                   |
+| Data      | payload                  |
+| Flags     | errors, RTR, CAN FD, BRS |
+| Direction | RX/TX, if available      |
+
+Example in candump format:
+
+#+begin_src text
+can0  100   [8]  10 27 5A 00 80 01 00 FF
+can0  200   [8]  34 12 00 00 01 00 AA 55
+#+end_src
+
+Decoding through a DBC:
+
+#+begin_src text
+EngineSpeed = 1250 rpm
+CoolantTemp = 50 °C
+BrakePressed = false
+VehicleSpeed = 86.5 km/h
+#+end_src
+
+The correct analysis flow is:
+
+- identify bitrate and frame format;
+- record the traffic;
+- distinguish standard and extended frames;
+- apply the correct DBC;
+- validate scale, offset, and endianness;
+- check frequencies and timeouts;
+- correlate signals with real events;
+- check error frames and bus load.
+
+This is the difference between looking at bytes and actually performing CAN analysis.
+
+** Reverse Engineering CAN Signals
+
+When an official DBC is not available, reverse engineering may be necessary.
+
+The typical method is:
+
+| Step | Activity                              |
+|------+---------------------------------------|
+|    1 | record traffic in stable conditions   |
+|    2 | activate one function at a time       |
+|    3 | compare frames before and after       |
+|    4 | look for IDs that change consistently |
+|    5 | identify correlated bytes or bits     |
+|    6 | determine scale and offset            |
+|    7 | verify endianness                     |
+|    8 | validate across multiple conditions   |
+
+Example for finding the brake signal:
+
+- record traffic with the brake released;
+- press the brake;
+- compare the payloads;
+- look for bits changing from 0 to 1;
+- verify repeatability;
+- create the signal in the DBC.
+
+Example for finding vehicle speed:
+
+- record with the vehicle stopped;
+- record at 20, 40, and 60 km/h;
+- look for values that increase linearly;
+- estimate factor and offset;
+- validate with GPS or OBD-II.
+
+This requires a great deal of caution. In modern vehicles, reverse engineering can have legal, safety, and warranty implications.
+
+The work should begin passively and only on systems for which authorization has been obtained. Frame injection belongs on a bench or an isolated network with a defined safety procedure; operator experience alone does not remove the risk of activating a critical function.
+
+** Practical Diagnostics of a CAN Network
+
+When a CAN network does not work correctly, we need to analyze both the physical layer and the logical layer.
+
+*** Physical Checks
+
+| Check                                                  | Expected value                  |
+|--------------------------------------------------------+---------------------------------|
+| =CAN_H= to =CAN_L= resistance with network powered off | about 60 ohm in the standard topology |
+| Terminations                                           | two equivalent 120-ohm terminations at the ends |
+| Wiring                                                 | twisted pair                    |
+| Stubs                                                  | as short as possible            |
+| Ground                                                 | adequate common reference       |
+| Polarity                                               | =CAN_H= and =CAN_L= not swapped |
+
+*** Logical Checks
+
+| Symptom                    | Possible cause                                      |
+|----------------------------+-----------------------------------------------------|
+| no frames                  | wrong bitrate, disconnected bus, faulty transceiver |
+| only error frames          | wrong timing, incorrect termination, noise          |
+| ACK error                  | no other active node or incompatible bitrate        |
+| bus-off                    | too many transmission errors                        |
+| incorrectly decoded values | wrong DBC, wrong endianness, wrong scale            |
+| missing messages           | hardware filter, gateway, traffic not present       |
+
+*** Oscilloscope
+
+With an oscilloscope we can observe:
+
+- differential amplitude;
+- edges that are too slow;
+- reflections;
+- noise;
+- overshoot;
+- distortion;
+- symmetry between =CAN_H= and =CAN_L=.
+
+A logic analyzer or a CAN interface can tell us that there are errors. An oscilloscope helps us understand whether the cause is physical.
+
+This difference is fundamental: the software may look like the problem, but the physical bus may tell a different story.
+
+** CAN Cybersecurity
+
+Classic CAN was designed when the bus was treated as a physically controlled network. CAN FD retains the same underlying trust model.
+
+It does not natively include:
+
+- sender authentication;
+- encryption;
+- permission control;
+- protection against replay attacks;
+- strong protection against spoofing;
+- automatic isolation between functional domains.
+
+This means that a node with access to the bus can potentially listen to or inject frames.
+
+In modern vehicles, the issue is mitigated through:
+
+- gateways;
+- segmentation;
+- automotive firewalls;
+- authenticated diagnostics and restricted access;
+- intrusion detection systems;
+- secure boot and key management;
+- application protection using freshness counters and message-authentication codes when required.
+
+Typical risks:
+
+| Risk             | Description                                           |
+|------------------+-------------------------------------------------------|
+| Sniffing         | passive reading of traffic                            |
+| Spoofing         | sending fake frames                                   |
+| Replay           | repeating valid frames                                |
+| DoS              | saturating or disturbing the bus                      |
+| Diagnostic abuse | improper use of UDS services                          |
+| Gateway bypass   | access to critical networks through compromised nodes |
+
+Security cannot be solved only at the CAN level. It must be designed at the vehicle or machine architecture level.
+
+CAN fault confinement isolates electrically faulty nodes, not compromised nodes that transmit formally valid frames. That distinction matters: communication robustness and cybersecurity solve different problems.
+
+CAN XL adds fields that help separate traffic and higher-level protocols, but authentication, confidentiality, key management, and policy remain responsibilities of the architecture and upper layers.
+
+** Common Mistakes to Avoid
+
+The most common mistakes in CAN design or analysis are:
+
+- confusing the CAN ID with a receiver address;
+- treating the ACK as confirmation from the intended application;
+- thinking that CAN directly transports physical values;
+- using the wrong DBC;
+- ignoring endianness and signedness;
+- configuring the wrong bitrate;
+- forgetting terminations;
+- using too many terminations;
+- creating stubs that are too long;
+- transmitting frames on a real network without knowing their effect;
+- not considering bus load and priority;
+- calling the network deterministic without worst-case latency analysis;
+- not distinguishing Classic CAN, CAN FD, and CAN XL;
+- using an interface that does not support CAN FD on a CAN FD network;
+- ignoring error counters and bus-off state;
+- analyzing only the software without checking the physical layer.
+
+Many CAN problems start exactly here: we inspect the log but not the bus, or the wiring but not the DBC. The analysis must remain complete, from the transceiver to the application semantics.
+
+** Complete Example: From Frame to Physical Value
+
+Let's look at a complete example.
+
+Received frame:
+
+#+begin_src text
+ID: 0x100
+DLC: 8
+DATA: 10 27 82 00 2C 01 00 FF
+#+end_src
+
+Simplified DBC:
+
+#+begin_src dbc
+BO_ 256 EngineData: 8 ECU_Engine
+ SG_ EngineSpeed : 0|16@1+ (0.125,0) [0|8000] "rpm" ECU_Dashboard
+ SG_ CoolantTemp : 16|8@1+ (1,-40) [-40|215] "degC" ECU_Dashboard
+ SG_ PedalPos    : 32|8@1+ (0.4,0) [0|100] "%" ECU_Dashboard
+#+end_src
+
+*** EngineSpeed
+
+Bytes 0-1:
+
+=10 27=
+
+Little-endian:
+
+0x2710 = 10000
+
+Scale:
+
+10000 * 0.125 = 1250 rpm
+
+*** CoolantTemp
+
+Byte 2:
+
+0x82 = 130
+
+Scale and offset:
+
+130 * 1 - 40 = 90 °C
+
+*** PedalPos
+
+Byte 4:
+
+0x2C = 44
+
+Scale:
+
+44 * 0.4 = 17.6 %
+
+Final result:
+
+| Signal      | Value    |
+|-------------+----------|
+| EngineSpeed | 1250 rpm |
+| CoolantTemp | 90 °C     |
+| PedalPos    | 17.6 %   |
+
+This example shows the key point: the frame contains only bytes. The DBC is what allows us to transform them into engineering data.
+
+Without the DBC, =10 27 82 00 2C 01 00 FF= remains only a sequence of bytes. With the correct DBC, it becomes useful information.
+
+** Final Comparison: CAN, CAN FD, and CAN XL
+
+| Feature         | Classic CAN                  | CAN FD                              | CAN XL                         |
+|-----------------+------------------------------+-------------------------------------+--------------------------------|
+| Maximum payload | 8 bytes                      | 64 bytes                            | 2048 bytes                     |
+| Identifier      | 11 or 29 bits                | 11 or 29 bits                       | priority ID + acceptance field |
+| Data phase      | nominal bitrate              | faster when =BRS= is used           | XL rate defined by physical layer |
+| Remote frame    | available                    | not available                       | not available in the Classic sense |
+| Typical use     | control and short signals    | diagnostics, flashing, larger payloads | backbones and larger data transport |
+| Requirements    | Classic controller/transceiver | FD or FD-tolerant nodes on the network | XL controller and physical layer |
+
+Classic CAN remains appropriate when messages are short, compatibility is broad, and latency needs to be analyzable. CAN FD is often the most practical compromise when payload and throughput grow, but the nominal and data phases must be designed separately. CAN XL extends capacity and upper-layer integration further, at the cost of requiring compatible infrastructure.
+
+These are not three technologies competing for the same role. They are three generations of one family, selected according to timing requirements, data volume, topology, compatibility, and product life cycle.
+
+** Conclusion
+
+My conclusion is that CAN looks simple only while it is viewed from one layer at a time. A valid frame does not prove that the wiring has sufficient margin; an ACK does not confirm that the application executed a command; a plausible value does not prove that the DBC is correct; and high priority does not replace timing analysis.
+
+For reliable work, I consider it essential to keep three planes separate:
+
+- *physical layer:* cables, =CAN_H=, =CAN_L=, terminations, transceivers, common mode, topology, and signal quality;
+- *data link layer:* frames, arbitration, bit timing, stuffing, CRC, ACK, error counters, and bus-off;
+- *application layer:* signals, DBC files, timeouts, diagnostics, OBD-II, UDS, ISO-TP, J1939, CANopen, and proprietary protocols.
+
+The method I prefer therefore starts at the bottom. First I verify equivalent resistance, waveform, and timing; then I inspect frames, filters, and errors; only at the end do I apply the database and evaluate the meaning of the signals. Starting directly from the decoded value risks building a coherent explanation on top of incorrect data.
+
+Classic CAN, CAN FD, and CAN XL belong to the same family and retain non-destructive arbitration, but they are not interchangeable without verification. Frame format, payload, timing, controllers, transceivers, and some error-handling modes change. Electrical robustness and error detection likewise do not amount to cybersecurity: authentication and authorization must be designed above and around the bus.
+
+In short, CAN's value is not that it directly transports speed, temperature, or torque. It provides a shared, prioritized, and controllable link on which distributed systems can be built. The result is reliable only when the physical design, timing, and semantics remain consistent.
+
+** Main sources consulted
+
+- [[https://www.iso.org/standard/86384.html][ISO 11898-1:2024 - CAN data link layer and physical coding sublayer]]
+- [[https://www.iso.org/standard/90697.html][ISO 11898-2:2026 - CAN high-speed physical medium attachment]]
+- [[https://www.can-cia.org/can-knowledge/can-cc][CAN in Automation - CAN CC]]
+- [[https://www.can-cia.org/can-knowledge/can-hs-transmission][CAN in Automation - CAN high-speed transmission]]
+- [[https://www.can-cia.org/can-knowledge/can-fd-the-basic-idea][CAN in Automation - CAN FD]]
+- [[https://www.can-cia.org/can-knowledge/can-xl][CAN in Automation - CAN XL]]
+- [[https://www.bosch-semiconductors.com/products/ip-modules/can-protocols/][Bosch Semiconductors - CAN protocols, CAN FD and CAN XL]]
+- [[https://www.iso.org/standard/84211.html][ISO 15765-2:2024 - DoCAN transport protocol and network layer services]]
+- [[https://www.iso.org/standard/87962.html][ISO 14229-1:2026 - Unified Diagnostic Services]]
+- [[https://saemobilus.sae.org/standards/j1939_202603-serial-control-communications-heavy-duty-vehicle-network-top-level-document][SAE J1939_202603 - Heavy-duty vehicle network top-level document]]
+- [[https://www.can-cia.org/can-knowledge/canopen][CAN in Automation - CANopen]]
+- [[https://cdn.vector.com/cms/content/products/candb/Docs/CANdb_Manual_EN.pdf][Vector - CANdb++ Manual]]
