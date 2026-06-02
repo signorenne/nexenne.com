@@ -1,0 +1,27 @@
+@startuml
+title MAX77972 charger and fuel gauge architecture
+
+top to bottom direction
+
+rectangle "USB-C / 5 V input" as USB
+rectangle "Input detection\nCC / DP / DN\nBC1.2" as DET
+rectangle "Buck charger\ninput current limit\ncharge control" as CHG
+rectangle "Power path\nSYS / BYP / BATT" as PPATH
+rectangle "System load\nkeyboard, display,\nradio, sensors" as SYS
+rectangle "Li-ion cell\nNTC / THM" as BAT
+rectangle "Fuel gauge\nModelGauge m5\nSOC / current / voltage" as FG
+rectangle "MCU firmware\nI2C driver\ninit + recovery" as MCU
+rectangle "Reverse boost\nOTG" as OTG
+
+USB --> DET
+DET --> CHG
+CHG --> PPATH
+PPATH --> SYS : SYS power
+PPATH --> BAT : charge / supplement
+BAT --> FG : cell telemetry
+FG --> MCU : gauge data
+MCU --> FG : config
+PPATH --> OTG
+OTG --> USB : 5 V out
+
+@enduml

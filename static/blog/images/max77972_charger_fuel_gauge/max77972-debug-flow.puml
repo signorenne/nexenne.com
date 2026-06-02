@@ -1,0 +1,34 @@
+@startuml
+title MAX77972 initialization, debug, and recovery flow
+
+start
+:Power-up and I2C probe;
+:Read device ID and status;
+:Load fuel gauge model\nand charger defaults;
+
+if (USB input valid?) then (yes)
+  :Read BC1.2 / Type-C result;
+  :Set input current limit;
+else (no)
+  :Stay on battery path;
+endif
+
+:Sample VCell, Current, SOC,\nChargerStatus, THM;
+
+if (charge not progressing?) then (yes)
+  :Check CHGIN, AICL,\nthermal state, CHGEN;
+  if (charger stuck?) then (yes)
+    :Apply firmware recovery\nor re-initialize charger;
+  else (no)
+    :Report charger state;
+  endif
+else (no)
+  :Continue normal sampling;
+endif
+
+if (SOC invalid?) then (yes)
+  :Use firmware fallback\nuntil gauge is stable;
+endif
+
+stop
+@enduml

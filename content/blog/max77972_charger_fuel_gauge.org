@@ -1,0 +1,925 @@
+#+TITLE: MAX77972: charger, fuel gauge e debugging sul campo
+#+LANG: it
+#+DATE: 2026-06-02
+#+LASTMOD: 2026-07-15
+#+DESC: Guida pratica al MAX77972: buck charger, ModelGauge m5, USB-C, AICL, THM, inizializzazione, SOC errato, debug e workaround firmware.
+#+IMAGE: /blog/covers/max77972_charger_fuel_gauge.webp
+#+READ: 30 min
+#+TAGS: MAX77972, Battery, Fuel Gauge, Charger, Embedded, Power
+#+CATEGORIES: Embedded, Tutorial, Power
+
+** Abstract
+
+Durante l'integrazione del *MAX77972* mi sono trovato davanti a un problema meno banale del previsto: lo stesso sintomo poteva dipendere dal charger, dal limite della sorgente USB, dal modello della cella oppure dal modo in cui il firmware accedeva ai registri. Una corrente troppo bassa, per esempio, non indicava necessariamente una configurazione errata; una percentuale apparentemente precisa, allo stesso modo, poteva essere lontana dallo stato reale della batteria.
+
+Ho quindi deciso di raccogliere in un'unica guida ciò che serve davvero durante il bring-up: architettura, sequenza di inizializzazione, accessi I2C, AICL, temperatura, ModelGauge m5, decodifica degli stati e strategie di recovery. L'obiettivo non è elencare registri, ma costruire un metodo di debug che permetta di capire /perché/ il sistema si trova in un certo stato prima di provare a correggerlo.
+
+Il MAX77972 di Analog Devices, nato dalla linea Maxim Integrated, è un PMIC per prodotti con batteria Li-ion o Li-poly a singola cella. Integra un buck charger con FET, un fuel gauge ModelGauge m5, il rilevamento USB Type-C e BC1.2, il power path, il reverse boost/OTG e diverse protezioni hardware.
+
+Sulla carta sembra il classico chip che "fa tutto". Proprio per questo richiede una certa disciplina: hardware, firmware e modello della batteria devono essere coerenti. In caso contrario, i sintomi più comuni sono questi:
+
+- la carica non parte
+- la carica parte e poi si ferma
+- la corrente misurata è molto più bassa di quella configurata
+- la batteria continua a scaricarsi anche con USB collegata
+- la percentuale batteria resta bloccata
+- il SOC salta, collassa o resta fermo al 99%
+- la temperatura THM è impossibile
+- lo stato del charger viene decodificato senza abbastanza contesto
+
+Il modello mentale che reputo più utile è semplice: il MAX77972 non è un charger passivo, ma un piccolo sistema di alimentazione con stato interno, RAM volatile, registri a 16 bit, limiti automatici di ingresso e un algoritmo fuel gauge. Trattarlo come "qualche registro da scrivere una volta" porta prima o poi a uno stato difficile da spiegare.
+
+Il datasheet descrive il MAX77972 come un charger autonomo con fuel gauge integrato, USB Type-C e BC1.2 detection, ingresso da 4.5 V a 13.7 V e corrente di carica fino a 3.15 A. Il fuel gauge usa ModelGauge m5, che combina coulomb counting e modello voltage-based, mentre la carica è coordinata con JEITA a 9 regioni e step-charging.
+
+Vediamo dunque come integrare il chip e, soprattutto, come interpretarlo quando il comportamento reale non coincide con quello atteso.
+
+** Cosa integra il MAX77972
+
+Il MAX77972 contiene quattro blocchi principali.
+
+| Blocco                   | Cosa fa                                                                     |
+|--------------------------+-----------------------------------------------------------------------------|
+| Buck charger             | gestisce precharge, trickle, CC, CV, top-off, terminazione e restart        |
+| ModelGauge m5 fuel gauge | stima SOC, capacità, corrente, tempo residuo, cicli e aging                 |
+| USB detection            | rileva Type-C current advertisement e sorgenti BC1.2                        |
+| Power path               | alimenta SYS, carica BATT e permette alla batteria di supportare il sistema |
+
+Il charger supporta ingresso operativo fino a 13.7 V e fino a 3.15 A di corrente di carica, sempre entro i limiti termici e di layout del prodotto. Corrente e tensione di carica possono essere configurate via I2C o tramite resistori.
+
+Il fuel gauge ModelGauge m5 combina misura di tensione, coulomb counting e modello della cella. È potente, ma ha una conseguenza: se il modello cella non rappresenta bene la batteria reale usata nel prodotto, la percentuale può sembrare precisa ma essere sbagliata.
+
+La USB detection consente al chip di identificare SDP, CDP, DCP e una sorgente USB-C che pubblicizza 500 mA, 1.5 A o 3 A. Il chip può quindi impostare automaticamente il limite di corrente d'ingresso. Il datasheet dice che il MAX77972 esegue il rilevamento D+/D- e CC in parallelo e prende il limite più alto fra i due risultati.
+
+Il power path viene spesso sottovalutato. Con USB collegata, il sistema può essere alimentato da SYS/BYP mentre la batteria viene caricata. Se il carico di sistema consuma più di quello che la sorgente USB può fornire, la batteria può integrare la corrente. Quindi "USB collegata" non significa automaticamente "percentuale che sale".
+
+** USB Type-C non significa USB Power Delivery
+
+USB-C è una delle fonti principali di confusione.
+
+Il MAX77972 supporta il rilevamento della corrente pubblicizzata su CC1/CC2 e il rilevamento BC1.2 su D+/D-. Per molti prodotti alimentati a 5 V è sufficiente.
+
+È tuttavia doveroso distinguere questa funzione da una vera negoziazione *USB Power Delivery*. La documentazione del chip descrive il rilevamento Type-C e BC1.2, ma non un policy engine né lo scambio dei Power Data Object. In pratica, il MAX77972:
+
+- non negozia PDO
+- non implementa un policy engine USB-PD
+- non richiede autonomamente profili a tensione superiore
+- non sostituisce un PD controller quando serve una vera negoziazione
+
+Se il prodotto deve solo caricare da 5 V, il chip può dunque bastare. Se l'architettura richiede profili PD a tensione maggiore, serve un controller esterno o una topologia differente. È una distinzione piccola sulla carta, ma fondamentale quando si dimensionano sorgente, connettore e firmware.
+
+** Architettura pratica
+
+[[/blog/images/max77972_charger_fuel_gauge/max77972-architecture.svg]]
+
+/Il MAX77972 sta tra sorgente USB, sistema, batteria e firmware. I problemi reali quasi sempre nascono dall'interazione tra questi blocchi./
+
+Un'integrazione tipica ha queste connessioni:
+
+- ingresso USB su =CHGIN=
+- =SYS= o =BYP= verso il carico di sistema
+- cella su =BATT=
+- sense corrente coerente con l'hardware
+- =CC1= e =CC2= verso il connettore USB-C
+- =DP= e =DN= per BC1.2, se usato
+- =THM= verso il termistore della batteria, oppure configurazione temperatura alternativa
+- I2C verso microcontrollore o application processor
+- =CHGEN= controllato da firmware o logica esterna
+- =ALRT= e =STAT= come interrupt/status
+
+Questa architettura spiega perché il debug deve essere sistemico. Leggere =ChargingCurrent= e concludere "il chip non carica" non basta. Bisogna controllare input, USB limit, AICL, temperatura, stato charger, corrente misurata, tensione cella e carico di sistema.
+
+** Pin e nodi critici
+
+I nodi principali sono:
+
+| Nodo      | Ruolo                                                          |
+|-----------+----------------------------------------------------------------|
+| =CHGIN=   | ingresso USB o adattatore                                      |
+| =BYP=     | nodo power path e reverse boost                                |
+| =SYS=     | alimentazione sistema                                          |
+| =BATT=    | connessione cella                                              |
+| =LX=      | nodo switching del buck                                        |
+| =CSP/CSN= | sense corrente batteria                                        |
+| =THM=     | ingresso termistore batteria                                   |
+| =CC1/CC2= | rilevamento USB Type-C                                         |
+| =DP/DN=   | rilevamento BC1.2                                              |
+| =CHGEN=   | abilita/disabilita charger                                     |
+| =STAT=    | uscita open-drain di stato                                     |
+| =ALRT=    | uscita open-drain di alert                                     |
+| =INOKB=   | indicazione ingresso valido                                    |
+| =DATAMUX= | pin configurabile tra reset/pushbutton e funzione mux dati USB |
+
+=CHGIN=, =BYP=, =SYS=, =BATT=, =LX= e power ground non sono segnali normali. Sono nodi di potenza o switching. Il layout deve ridurre loop di corrente, cadute di tensione e rumore accoppiato verso =THM=, =CSP/CSN= e I2C.
+
+Attenzione a =DATAMUX=: con la configurazione predefinita partecipa alla funzione di pushbutton reset su SYS; impostando =nChgConfig4.DATAMUX= a 1 abilita invece il data mux USB e disabilita quella funzione. Non va dunque trattato come un pin generico senza verificare sia lo schema sia la configurazione.
+
+L'EV kit ufficiale è utile non solo per provare il chip, ma anche come riferimento per schematico, layout e sequenza di configurazione. La guida descrive una scheda assemblata e collaudata, con interfaccia I2C integrata e relativo applicativo per Windows. Non è uno schema da copiare alla cieca, ma rappresenta un buon punto di confronto durante il bring-up.
+
+** Ciclo di carica
+
+Il ciclo di carica è classico, ma protetto da diverse logiche automatiche.
+
+| Fase      | Cosa succede                                             |
+|-----------+----------------------------------------------------------|
+| Precharge | batteria molto bassa, corrente limitata                  |
+| Trickle   | carica iniziale controllata                              |
+| Fast CC   | corrente costante, se input e temperatura lo permettono  |
+| Fast CV   | tensione costante, corrente che scende nel tempo         |
+| Top-off   | completamento vicino alla soglia di terminazione         |
+| Done      | carica terminata, restart in base alla tensione batteria |
+
+Questo spiega un errore di debug molto comune: se configuri 2 A e misuri 300 mA, il registro non è necessariamente sbagliato.
+
+Cause possibili:
+
+- la batteria è già in CV mode
+- la sorgente USB non può fornire la corrente richiesta
+- AICL ha ridotto il limite di ingresso
+- il chip è in thermal foldback
+- JEITA ha ridotto o sospeso la carica
+- il sistema consuma gran parte della corrente disponibile
+- il current sense è configurato male
+
+Il driver deve distinguere sempre tra corrente programmata e corrente reale misurata. Sono due informazioni diverse. Il datasheet elenca fast-charge CV, input current limit, AICL e thermal foldback come motivi per cui la corrente reale può essere più bassa di =ChargingCurrent=.
+
+** AICL: il caso più comune di "carica bloccata"
+
+*AICL*, Adaptive Input Current Limit, è una delle funzioni più importanti del chip e una delle prime che controllo quando la carica sembra fermarsi senza motivo.
+
+Serve a evitare che una sorgente USB debole collassi quando il dispositivo prova ad assorbire troppa corrente. Se =CHGIN= scende sotto la soglia configurata, il MAX77972 riduce il limite di corrente d'ingresso. Se la sorgente è troppo debole, la carica può essere disabilitata.
+
+In debug questo viene spesso letto come "il charger si è fermato". In realtà il chip sta proteggendo il sistema.
+
+| Sintomo                                   | Possibile causa                                 | Check utile                                 |
+|-------------------------------------------+-------------------------------------------------+---------------------------------------------|
+| la carica parte e poi si ferma            | =CHGIN= collassa                                | leggere =CHGIN_OK=, =CHGIN_DTLS=, =AICL_OK= |
+| corrente reale sotto target               | AICL o USB limit                                | leggere input limit e corrente media        |
+| da PC carica male, da alimentatore meglio | SDP o limite basso                              | verificare BC1.2 e Type-C detection         |
+| batteria scende con USB collegata         | SYS consuma più della sorgente                  | confrontare carico sistema e input limit    |
+| alimentatore da banco resta a 500 mA      | detection non identifica una sorgente più forte | manual input limit solo in test controllato |
+
+Il datasheet dice che AICL riduce automaticamente la corrente per mantenere =CHGIN= alla regolazione =VCHGIN_REG=, default 4.5 V. Se il limite d'ingresso scende fino a 60 mA e il charger resta nel loop AICL, il charger viene spento.
+
+La regola pratica è questa: non forzare 3 A soltanto perché il prodotto può caricare a 3 A. Se la sorgente non li fornisce, il risultato sarà AICL, collasso dell'ingresso oppure una carica intermittente.
+
+** USB detection e input current limit
+
+Il MAX77972 può lavorare in automatico o manuale.
+
+In automatico:
+
+- legge CC1/CC2 per capire la corrente pubblicizzata da una sorgente USB-C
+- esegue BC1.2 su D+/D- quando applicabile
+- sceglie un input limit coerente con la sorgente rilevata
+- se la sorgente non viene riconosciuta, usa un valore conservativo
+
+In manuale:
+
+- firmware disabilita l'impostazione automatica della corrente
+- firmware scrive direttamente il limite d'ingresso
+- i test da banco diventano più ripetibili
+- firmware si prende la responsabilità di non chiedere troppo alla sorgente
+
+Il datasheet dice che l'input current limit automatico è abilitato di default; per impostarlo manualmente bisogna scrivere =nChgConfig4.NO_AUTOISET = 1= e poi configurare =nChgConfig3.CHGIN_ILIM=.
+
+Il manual input limit è comodo in laboratorio, ma rischioso in produzione. Se una porta PC viene trattata come un adattatore da 3 A, il chip farà quello che deve: limiterà, sospenderà o renderà la carica intermittente.
+
+** JEITA, THM e temperatura
+
+Il chip supporta JEITA multi-regione. La temperatura può arrivare dal termistore esterno su =THM=, dalla temperatura interna del die o da un valore esterno scritto via I2C, in base alla configurazione.
+
+Se =THM= legge una temperatura impossibile, il charger può ridurre o sospendere la carica.
+
+Check minimi:
+
+- =Temp= e =AvgTA= sono plausibili?
+- il pull-up THM configurato corrisponde all'hardware?
+- la sorgente temperatura selezionata corrisponde al design?
+- le soglie JEITA sono coerenti?
+- le transazioni I2C sono complete e pulite?
+- =THM= è lontano dai nodi rumorosi?
+
+C'è un caso pubblico su EngineerZone in cui la temperatura THM saltava a 127.9 °C e la carica veniva sospesa. L'autore della discussione ha poi ricondotto il problema a SCL mantenuto basso dal master quando il thread I2C veniva interrotto da un task a priorità più alta. Non si tratta di un'anomalia ufficialmente documentata, ma il caso è coerente con un dato importante: il MAX77972 non usa clock stretching e, secondo il datasheet, non trattiene SCL.
+
+Questo non significa che ogni problema THM abbia quella causa. Però la lezione è concreta: le transazioni verso il MAX77972 devono essere atomiche, complete, a 16 bit dove richiesto, e non interrotte a metà.
+
+** I2C e registri a 16 bit
+
+Una delle regole più importanti è questa: non trattare i registri fuel gauge come registri a 8 bit.
+
+Il chip espone due aree I2C principali:
+
+| Indirizzo 7-bit | Area tipica                  |
+|-----------------+------------------------------|
+| =0x36=          | memoria bassa, =0x000-0x0FF= |
+| =0x37=          | memoria alta, =0x180-0x1FF=  |
+
+Il puntatore registro è a 8 bit, ma il registro logico può vivere in due spazi diversi. Inoltre l'intervallo =0x100-0x17F= non appartiene a nessuna delle due finestre: mapparlo automaticamente su =0x37= trasformerebbe un errore del chiamante in un accesso a un registro differente.
+
+Per questo motivo preferisco validare numero di registro, indirizzo I2C e puntatore in un solo punto:
+
+#+begin_src c
+#define MAX77972_I2C_FUNC   0x36
+#define MAX77972_I2C_DEBUG  0x37
+
+static int max77972_map_reg(uint16_t reg, uint8_t *addr, uint8_t *ptr)
+{
+    if (reg <= 0x0ff)
+        *addr = MAX77972_I2C_FUNC;
+    else if (reg >= 0x180 && reg <= 0x1ff)
+        *addr = MAX77972_I2C_DEBUG;
+    else
+        return -EINVAL;
+
+    *ptr = (uint8_t)(reg & 0xff);
+    return 0;
+}
+#+end_src
+
+Per i registri word, scrivere un solo byte è un bug. La Software Implementation Guide specifica che le aree =FG_FUNC= e =FG_DEBUG= hanno word size a 16 bit: un tentativo di modificarne soltanto 8 viene scartato dalla logica I2C.
+
+In debug reale conviene usare write-and-verify:
+
+- scrivi la word a 16 bit
+- rileggi la word
+- verifica mask e valore
+- ritenta solo un numero limitato di volte
+- se fallisce ancora, segnala errore invece di continuare in uno stato incerto
+
+Esempio:
+
+#+begin_src c
+int max77972_write16(struct max77972 *m, uint16_t reg, uint16_t val)
+{
+    uint8_t addr;
+    uint8_t ptr;
+    int ret;
+
+    ret = max77972_map_reg(reg, &addr, &ptr);
+    if (ret)
+        return ret;
+
+    uint8_t buf[3] = {
+        ptr,
+        (uint8_t)(val & 0xff),        // LSB
+        (uint8_t)((val >> 8) & 0xff)  // MSB
+    };
+
+    return i2c_write(addr, buf, sizeof(buf));
+}
+
+int max77972_update_bits16(struct max77972 *m,
+                           uint16_t reg,
+                           uint16_t mask,
+                           uint16_t value)
+{
+    uint16_t oldv;
+    uint16_t newv;
+    int ret;
+
+    ret = max77972_read16(m, reg, &oldv);
+    if (ret)
+        return ret;
+
+    newv = (oldv & ~mask) | (value & mask);
+
+    if (newv == oldv)
+        return 0;
+
+    ret = max77972_write16(m, reg, newv);
+    if (ret)
+        return ret;
+
+    return max77972_verify_bits16(m, reg, mask, value);
+}
+#+end_src
+
+Va considerata anche la frequenza del bus. Il datasheet specifica un intervallo da 20 kHz a 400 kHz e chiarisce che il chip non usa clock stretching. Il master deve quindi rispettare tale intervallo, usare pull-up adeguati alla capacità del bus e completare le transazioni senza lasciare SCL bassa a causa di bit-banging preemptabile o task concorrenti.
+
+** Conversioni corrette
+
+Molti bug nascono da conversioni sbagliate, signedness sbagliata o scala corrente non coerente con il sense resistor.
+
+Conversioni comuni:
+
+| Quantità      | Conversione                                   |
+|---------------+-----------------------------------------------|
+| =RepSOC=      | raw / 256 percent                             |
+| =RepCap=      | raw * 0.5 mAh                                 |
+| =FullCapRep=  | raw * 0.5 mAh                                 |
+| =VCell=       | raw * 78.125 µV                               |
+| =Current=     | int16(raw) * 0.15625 mA, con sense da 10 mΩ   |
+| =Temperature= | int16(raw) / 256 °C                           |
+| =Cycles=      | raw * 25% = raw / 4 cicli                     |
+
+La conversione di =Cycles= è facile da sbagliare. Nel datasheet il registro =Cycles= ha scalar 25.0 e unità percentuale: un ciclo completo equivale a 100%, quindi 4 LSB corrispondono a un ciclo. Per ottenere il numero di cicli, usare =raw / 4=, non =raw / 100=.
+
+Esempio:
+
+#+begin_src c
+static float repsoc_percent(uint16_t raw)
+{
+    return raw / 256.0f;
+}
+
+static float repcap_mah(uint16_t raw)
+{
+    return raw * 0.5f;
+}
+
+static float vcell_mv(uint16_t raw)
+{
+    return raw * 0.078125f;
+}
+
+static float current_ma(uint16_t raw)
+{
+    return (int16_t)raw * 0.15625f;
+}
+
+static float temperature_c(uint16_t raw)
+{
+    return (int16_t)raw / 256.0f;
+}
+
+static float cycles_count(uint16_t raw)
+{
+    return raw / 4.0f;
+}
+#+end_src
+
+Se il prodotto usa un sense resistor che non corrisponde alla scala configurata, tutta la parte corrente diventa sospetta. Questo influenza carica, terminazione, coulomb counting, learning e step charging.
+
+La scelta più semplice, quando possibile, è usare un sense resistor esterno da 10 mΩ e configurarlo esattamente come previsto.
+
+** Current sense interno o esterno
+
+Il MAX77972 può usare un sense interno equivalente a 10 mΩ oppure un sense esterno. Il datasheet dice che =nADCCfg.RsnsEn = 0= seleziona il sense interno, mentre =RsnsEn = 1= seleziona il sense esterno; per quest'ultimo raccomanda 10 mΩ. Il registro =Current= ha scala 0.15625 mA/LSB riferita a 10 mΩ.
+
+La Software Implementation Guide distingue chiaramente i due casi:
+
+| Configurazione | Impostazione                               |
+|----------------+--------------------------------------------|
+| Sense interno  | =CGTempCo = 0x0022=                        |
+| Sense esterno  | =nADCCfg.RsnsEn = 1= e =CGTempCo = 0x0000= |
+
+Questa parte è critica. Se l'hardware usa sense esterno ma il firmware lascia =RsnsEn = 0=, la corrente è sbagliata. Se l'hardware usa sense interno ma il firmware usa parametri da sense esterno, la corrente è sbagliata. E se la corrente è sbagliata, anche SOC, capacità, learning e terminazione possono diventare sbagliati.
+
+** ModelGauge m5: potente, ma non magico
+
+Il fuel gauge integrato è uno dei motivi principali per scegliere il MAX77972. Può riportare percentuale, capacità residua, capacità full, corrente, tensione, temperatura, tempo residuo, cicli e aging.
+
+Registri importanti:
+
+| Registro     | Uso principale                              |
+|--------------+---------------------------------------------|
+| =RepSOC=     | percentuale batteria da mostrare all'utente |
+| =RepCap=     | capacità residua riportata                  |
+| =FullCapRep= | capacità full usata per =RepSOC=            |
+| =FullCapNom= | capacità nominale appresa                   |
+| =DesignCap=  | capacità nominale configurata               |
+| =VEmpty=     | soglia empty                                |
+| =IChgTerm=   | corrente di terminazione                    |
+| =ModelCfg=   | configurazione modello                      |
+| =QH=         | raw coulomb count                           |
+| =SOCHold=    | 99% hold e near-empty hold                  |
+
+Per una UI normale, mostra =RepSOC=. Valori interni come =VFSOC=, =MixSOC= o =AvSOC= sono utili per debug, ma raccontano solo una parte della storia. Il datasheet descrive =RepCap / RepSOC= come output dell'algoritmo ModelGauge m5 insieme agli altri registri di capacità e SOC.
+
+La parte delicata è il modello cella. Il chip non conosce automaticamente la batteria reale. Se usi EZ Config, il modello OCV-vs-SOC è generico. Se la curva reale della cella è lontana dal modello generico, ModelGauge m5 può convergere verso conclusioni sbagliate.
+
+** Sequenza di inizializzazione
+
+La Software Implementation Guide è chiara: quando il power viene applicato o ripristinato, firmware deve inizializzare il chip. Molti registri raccomandati vivono in RAM e devono essere riscritti dopo POR.
+
+Una sequenza robusta è:
+
+- validare configurazione hardware e profilo prodotto
+- portare =CHGEN= basso
+- aspettare =FSTAT.DNR = 0=
+- sbloccare registri estesi quando necessario
+- leggere =Status.POR= e =BAT_dis_OC=
+- se serve full init, gestire dead battery prima del model load
+- caricare cell INI o EZ Config
+- configurare current sense, JEITA, AICL, tensione, corrente, timer e Type-C detection
+- cancellare latch solo dopo aver capito perché erano attivi
+- portare =CHGEN= alto
+- bloccare i registri se la policy del prodotto lo richiede
+- fare subito uno snapshot diagnostico
+
+[[/blog/images/max77972_charger_fuel_gauge/max77972-debug-flow.svg]]
+
+/Un driver affidabile separa inizializzazione, sampling, classificazione e recovery. Saltare subito al reset spesso rende il problema più difficile da capire./
+
+La guida ufficiale dice di iniziare con =CHGEN= basso, aspettare =FSTAT.DNR = 0=, controllare POR e battery over-discharge, caricare uno dei tre tipi di configurazione batteria e poi abilitare la carica portando =CHGEN= alto.
+
+Per dead battery, la guida descrive la necessità di portare la cella a una tensione minima prima di completare l'inizializzazione fuel gauge. La soglia ufficiale citata nella procedura è circa 2.5 V. Un firmware di prodotto può scegliere una soglia più conservativa, ma va documentata come scelta di prodotto, non come requisito del datasheet.
+
+** EZ Config, Short INI e Full INI
+
+Il MAX77972 può essere configurato in tre modi:
+
+| Metodo           | Quando usarlo                                       |
+|------------------+-----------------------------------------------------|
+| EZ Config        | prototipo o batteria comune, senza file INI         |
+| Custom Short INI | configurazione custom senza tabella OCV             |
+| Custom Full INI  | massima accuratezza, con tabella OCV caratterizzata |
+
+Con EZ Config, la guida scrive =DesignCap=, =IChgTerm=, =VEmpty=, =RepCap = 0= e poi =ModelCfg=. Dopo =ModelCfg= bisogna attendere che il bit =Refresh= torni a zero.
+
+Con Custom Short INI, il flusso aggiunge parametri come =LearnCfg=, =nRCOMP0=, =nTempCo= e =QRTable=.
+
+Con Custom Full INI, il modello viene scritto nelle locazioni da =0x80= a =0x9F=, poi riletto e verificato. Se una word non corrisponde, bisogna riscrivere. La guida specifica anche il caricamento di =FullCapRep=, =FullCapNom=, =RCOMP0=, =TempCo=, =Cycles= e altri parametri, usando history salvata quando disponibile.
+
+Questa è la parte che spesso decide se il SOC sarà credibile o no. Se la batteria reale è diversa dal modello generico, EZ Config può funzionare abbastanza per una demo, ma non sempre per un prodotto.
+
+** Quando la percentuale batteria è sbagliata
+
+Il problema più insidioso, tuttavia, spesso non è la carica. È il SOC.
+
+In debug reale il comportamento può sembrare così:
+
+- la cella è fisicamente quasi piena
+- =VCell= è intorno a 4.10 V a riposo
+- la curva reale della cella direbbe, per esempio, circa 90%+
+- il modello EZ Config interpreta la stessa tensione molto più in basso
+- =VFSOC= resta vicino a quel valore sbagliato
+- =RepSOC= segue un compromesso che non convince
+
+Non è necessariamente un bug di conversione. Può essere un problema di modello.
+
+La soluzione corretta consiste nel caricare un INI caratterizzato per la cella reale, ottenuto dal produttore o tramite una caratterizzazione dedicata. Quel file contiene tabelle e parametri coerenti con la chimica e con la curva effettiva della batteria.
+
+Senza quell'INI, ogni workaround è contenimento:
+
+- non salvare learned capacity palesemente corrotta
+- rifiutare dati persistiti fuori da un intervallo fisicamente credibile
+- forzare full init se =FullCapNom= o =FullCapRep= sono fuori limite
+- usare più cautela quando =VFSOC= e coulomb counter divergono molto
+- non nascondere il problema cancellando solo il sintomo visibile
+- usare un SOC firmware basato su =QH= solo come fallback documentato
+
+Questa distinzione è importante. Se la tabella OCV è sbagliata, non esiste un registro magico che sistema tutto. Puoi contenere il danno, ma la cura vera è il modello cella corretto.
+
+** 99% Hold ed Empty Hold
+
+Due comportamenti sono facili da scambiare per bug.
+
+Il primo è *99% Hold*. Se abilitato, =RepSOC= non supera 99% finché non viene rilevato un evento di terminazione carica. Questo evita di mostrare 100% quando la batteria non è davvero arrivata a fine carica.
+
+Il secondo è *Empty Hold*. Serve a evitare che il sistema mostri 0% o una percentuale troppo bassa prima che la batteria abbia realmente attraversato la soglia empty configurata.
+
+Il datasheet dice che il MAX77972 supporta entrambe le funzioni: 99% Hold limita =RepSOC= fino a charge termination, mentre Empty Hold impedisce a =RepSOC= di scendere sotto una soglia finché la tensione non attraversa =VEmpty + EmptyVoltHold=.
+
+Quindi:
+
+- SOC fermo a 99% non significa subito bug
+- SOC trattenuto vicino al minimo può essere voluto
+- prima di disabilitare =SOCHold=, capire se il prodotto vuole davvero quel comportamento
+- se il 100% non arriva mai, controllare terminazione, =IChgTerm=, corrente reale e =ProtStatus.Full=
+
+** Workaround provati: cosa aiuta e cosa no
+
+Durante il debug di prodotto, alcune idee sembrano giuste finché non guardi log lunghi.
+
+*** Forzare =MIX_EN= a zero
+
+Una tentazione è disabilitare parti del mixing ModelGauge perché sembra che la stima voltage-based rovini =FullCapNom= o =RepCap= quando la curva OCV è sbagliata.
+
+Il problema è che =MIX_EN= non controlla solo un dettaglio isolato. Influenza il modo in cui l'algoritmo combina informazioni diverse. Disabilitarlo fuori dal flusso previsto dall'INI può fermare un tipo di collasso e introdurne un altro, per esempio dopo unplug.
+
+Nota importante: la Software Implementation Guide usa =LearnCfg.MixEn= nel flusso Custom Full INI per controllare l'aggiornamento di =FullCapNom=. Questo non significa che sia sicuro usarlo come hack permanente in qualunque prodotto. Segui l'INI quando ce l'hai; se devii, documenta e valida con log completi.
+
+Lezione pratica:
+
+- non congelare pezzi dell'algoritmo senza log completi di carica e scarica
+- non validare solo il caso "charge done"
+- guarda sempre i primi 30-60 secondi dopo unplug
+- separa workaround temporaneo da configurazione definitiva
+
+*** Forzare =HIB_CFG= a zero
+
+Un'altra ipotesi è disabilitare hibernate pensando che la convergenza in hibernate tiri =RepCap= verso un valore sbagliato.
+
+Può essere vero in alcuni casi, ma può anche ingannare. Se prima il firmware scriveva l'indirizzo sbagliato, la scrittura a =HIB_CFG= magari non aveva mai avuto effetto. Correggere l'indirizzo può rendere reale un comportamento che prima era solo apparente.
+
+Lezione pratica:
+
+- un bug corretto può rivelarne un altro
+- se il comportamento cambia dopo un fix sugli indirizzi, non assumere subito che il fix sia sbagliato
+- controlla se due errori precedenti si stavano cancellando a vicenda
+
+*** Validare i valori appresi
+
+Questo è un contenimento sensato, purché i limiti vengano trattati come una policy del prodotto e non come valori prescritti da Analog Devices.
+
+Prima di fidarsi dello stato appreso, firmware può verificare che =FullCapNom= e =FullCapRep= siano in un range fisicamente credibile rispetto a =DesignCap=.
+
+Un esempio iniziale, da validare considerando tolleranze, temperatura e invecchiamento della cella, potrebbe essere il seguente:
+
+- =FullCapNom= sotto 0.5x design o sopra 1.5x design: sospetto
+- =FullCapRep= sotto 0.5x design o sopra 1.10x design: sospetto
+- dati NVS fuori intervallo: rifiutare
+- chip già corrotto al boot: forzare full init
+- dati coerenti ma vecchi: ripristinare con log diagnostico
+
+Questi coefficienti sono volutamente illustrativi. Non rendono corretta la curva OCV, ma impediscono che uno stato palesemente corrotto sopravviva a molti boot; su un prodotto reale vanno derivati dalla batteria e dai margini ammessi.
+
+*** Aggiornare =nFilterCfg.MIX= al momento corretto
+
+La Software Implementation Guide raccomanda di aggiornare =nFilterCfg.MIX= soltanto dopo che =LearnStage= ha raggiunto =0x7=. Lo scopo dichiarato è aumentare il rate di mixing del voltage gauge una volta completato l'apprendimento previsto.
+
+È importante non capovolgere il significato di questa indicazione: non si tratta di un generico bias verso il coulomb counting e non è una cura per un modello OCV errato. Va applicata nel punto stabilito dal flusso ufficiale o dall'INI, non anticipata come tentativo di correggere un SOC poco credibile.
+
+** SOC firmware basato su =QH=
+
+Quando il SOC del chip non è affidabile, una strategia alternativa è usare il MAX77972 come sensore di coulomb e calcolare la percentuale in firmware.
+
+Il registro chiave è =QH=. Il datasheet lo descrive come raw coulomb count generato dal dispositivo, usato internamente come ingresso dell'algoritmo di mixing. Monitorarne le variazioni nel tempo è utile per il debug; la scala è 0.5 mAh/LSB con sense da 10 mΩ.
+
+Si può dunque costruire un fallback basato su =QH=. È però doveroso specificare che non si tratta dell'uscita ufficiale destinata all'utente, come =RepSOC=, ma di un workaround firmware che richiede una propria strategia di persistenza e ricalibrazione.
+
+Idea base:
+
+- leggere =QH= periodicamente
+- calcolare =QH_now - QH_prev= con aritmetica modulare a 16 bit
+- convertire il delta con 0.5 mAh/LSB
+- integrare in un accumulatore firmware
+- clampare tra 0 e capacità full credibile
+- ricalibrare solo su eventi fisici affidabili
+
+Pseudo codice:
+
+#+begin_src text
+delta_raw = int16(uint16(QH_now - QH_prev))
+delta_mah = qh_direction * delta_raw * 0.5
+
+if abs(delta_mah) > sanity_limit:
+    QH_prev = QH_now
+    skip this sample
+
+soc_mah = clamp(soc_mah + delta_mah, 0, learned_full_mah)
+QH_prev = QH_now
+#+end_src
+
+In questo esempio =qh_direction= vale =+1= oppure =-1= e va determinato durante il bring-up, confrontando =QH= con una carica e una scarica note. Il cast intermedio a 16 bit rende esplicita l'aritmetica modulare; resta comunque necessario campionare abbastanza spesso da non rendere ambiguo il wrap.
+
+Condizioni importanti:
+
+- campionare abbastanza spesso da evitare wrap ambigui
+- rifiutare delta fisicamente impossibili
+- verificare sul proprio hardware il verso del delta durante una carica e una scarica note
+- non usare tensione sotto carico come OCV
+- salvare stato firmware in NVS con CRC/versione
+- invalidare o riancorare il fallback se il chip ha fatto POR
+- correggere il drift solo con riferimenti fisici affidabili
+
+Anchor utili:
+
+- =ProtStatus.Full= o evento full credibile: portare SOC a 100%
+- battery guard di bassa tensione sotto carico noto: portare il SOC a una soglia minima definita dal prodotto, per esempio 5%
+- riposo senza USB e con corrente bassa: correggere lentamente verso una stima OCV firmware
+- scarica quasi completa: aggiornare full capacity con media esponenziale
+
+Full capacity può essere stimata da una scarica quasi completa:
+
+- salva =QH= quando la batteria è full affidabile
+- quando scatta il guard low-voltage, calcola i mAh scaricati
+- se c'è stata ricarica intermedia, scarta il ciclo
+- dividi per la finestra usata, per esempio 0.95 se vai da 100% a 5%
+- aggiorna con EMA, non con sostituzione brusca
+- rifiuta misure fuori range; un intervallo iniziale potrebbe essere 60%-140% di design, ma va caratterizzato
+
+Limiti:
+
+- serve almeno un evento di carica completa credibile
+- serve una scarica profonda per apprendere capacità reale
+- un offset di corrente causa drift in assenza di riferimenti
+- un reset del chip può invalidare =QH=
+- durante carica la tensione non è OCV
+
+Questo approccio non è magia. È coulomb counting classico con riferimenti fisici. Il vantaggio è che evita la parte dell'algoritmo più dipendente da una curva OCV sbagliata, pur usando il chip come sensore integrato.
+
+** Charger decode e recovery
+
+=CHG_DTLS= va interpretato con contesto. Alcuni valori sono chiari, altri sono ambigui.
+
+|  Raw | Interpretazione pratica                                |
+|------+--------------------------------------------------------|
+| 0x00 | prequal o trickle                                      |
+| 0x01 | fast charge CC                                         |
+| 0x02 | fast charge CV o top-off                               |
+| 0x06 | timer fault                                            |
+| 0x07 | CHGEN basso o charger off                              |
+| 0x08 | stato buck/charger ambiguo: disambiguare con il contesto |
+| 0x09 | reverse boost verso BYP                                |
+| 0x0A | thermal shutdown                                       |
+| 0x0B | watchdog fault                                         |
+| 0x0F | OTG verso CHGIN                                        |
+
+Il datasheet mostra che =CHG_DTLS = 0x08= può apparire in charge done, ma soltanto il contesto consente di chiamarlo così: va verificato almeno =ProtStatus.Full=. Lo stesso diagramma mostra =0x07= quando =CHGEN= è basso o il charger è disabilitato, =0x0A= in thermal shutdown e =0x0B= in watchdog.
+
+Una policy robusta non prova a recuperare tutto.
+
+Priorità di classificazione:
+
+- se =CHGIN_OK= è falso, l'ingresso manca o non è valido
+- se =CHGEN= è basso, il charger è disabilitato
+- se ci sono bit termici, firmware non deve combattere l'hardware
+- se il timer è scaduto, un restart controllato può avere senso
+- se il watchdog è scaduto, va fatto clear/kick in modo coerente
+- se =0x08= appare senza =ProtStatus.Full=, non chiamarlo automaticamente charge done
+- se lo stato è riservato vicino al full con corrente quasi zero, evitare recovery aggressiva
+
+Recovery graduale:
+
+- salva prima uno snapshot registri
+- non fare nulla se manca input
+- non fare nulla su una vera condizione termica
+- se =Status.POR= è attivo, riesegui l'inizializzazione completa
+- se =BAT_dis_OC= è attivo, verifica l'over-discharge prima di cancellare il latch
+- se AICL resta attivo, riduci il limite d'ingresso o torna al rilevamento automatico
+- per watchdog, clear del watchdog e restart solo se necessario
+- per timer fault o stato non valido persistente, prova un toggle controllato di =ChgEnable=
+- se una transazione I2C fallisce, ripristina il bus e ricomincia dalla word completa
+- se il chip resta incoerente, usa soft reset
+- dopo soft reset, tratta il chip come non inizializzato e rifai full init
+
+Il datasheet dice che il watchdog è disabilitato di default. Se abilitato, il controller deve fare clear entro il periodo minimo di 80 s scrivendo =nChgConfig2.WDTCLR = 0x01=. Se scade, il charger viene sospeso e =CHG_DTLS= indica watchdog expired; il restart può avvenire programmando di nuovo =WDTCLR=.
+
+Per il soft reset la guida usa il comando =0x000F= e richiede di attendere almeno 30 ms. A quel punto non si riprende dal punto in cui il driver si era fermato: si riesegue la sequenza di inizializzazione, perché stato e registri volatili devono tornare coerenti.
+
+Un power cycle forzato è l'ultima opzione, non la prima.
+
+** Problemi reali riportati online
+
+Ci sono almeno due discussioni pubbliche utili, entrambe da leggere come indizi di debug e non come anomalie ufficialmente documentate.
+
+La prima riguarda carica instabile. Un utente EngineerZone ha riportato che il MAX77972 a volte parte subito, a volte dopo minuti o ore, e a volte non parte affatto mentre la batteria continua a scaricarsi. Nello stesso post dice che =CHGEN= era tenuto alto sempre. Questo non prova che =CHGEN= alto sia la causa, ma rinforza una buona pratica: durante bring-up seguire la sequenza ufficiale con =CHGEN= basso durante init e alto solo dopo configurazione completata.
+
+La seconda riguarda THM. Un utente ha osservato la temperatura saltare a 127.9 °C insieme alla perdita degli impulsi di bias THM. Ha poi scritto che una transazione veniva interrotta da un task a priorità più alta, lasciando SCL bassa lato master. Anche in questo caso parliamo di un riscontro aneddotico, non di un'anomalia del silicio documentata dal produttore; resta però coerente con il fatto che il MAX77972 non usa clock stretching.
+
+C'è anche una discussione su un design che aveva seguito l'EVKIT ma senza usare lo switch SPDT sulle data line. È utile come promemoria: se modifichi lo schema EVKIT, verifica bene DP/DN, DATAMUX e BC1.2 detection. Però quella discussione da sola non dimostra un bug specifico del MAX77972.
+
+** Snapshot diagnostico minimo
+
+Quando qualcosa va storto, non leggere un registro a caso. Fai uno snapshot coerente.
+
+#+begin_src c
+struct max77972_debug_snapshot {
+    uint16_t status;
+    uint16_t fstat;
+    uint16_t chg_mask_sts;
+    uint16_t chg_details00;
+    uint16_t chg_details01;
+    uint16_t usb_details;
+
+    uint16_t rep_soc;
+    uint16_t rep_cap;
+    uint16_t full_cap_rep;
+    uint16_t full_cap_nom;
+    uint16_t design_cap;
+
+    uint16_t vcell;
+    uint16_t avg_vcell;
+    int16_t  current;
+    int16_t  avg_current;
+    int16_t  temp;
+    int16_t  avg_ta;
+
+    uint16_t charging_current;
+    uint16_t charging_voltage;
+    uint16_t ichg_term;
+
+    uint16_t n_chg_config0;
+    uint16_t n_chg_config2;
+    uint16_t n_chg_config3;
+    uint16_t n_chg_config4;
+    uint16_t n_chg_config5;
+
+    uint16_t n_adc_cfg;
+    uint16_t n_therm_cfg;
+    uint16_t config;
+    uint16_t soc_hold;
+    uint16_t prot_status;
+    uint16_t fprot_stat;
+    uint16_t qh;
+};
+#+end_src
+
+Loggare questi dati in questi eventi:
+
+- USB inserita
+- USB rimossa
+- =CHG_DTLS= cambia
+- =AICL_OK= cambia
+- temperatura cambia in modo non fisico
+- =RepSOC= scende mentre =CHGIN_OK= è vero
+- watchdog scade
+- POR viene rilevato
+- =BAT_dis_OC= viene rilevato
+- driver fa recovery
+
+Uno snapshot prima della recovery vale più di mille print sparsi.
+
+** Checklist per carica bloccata
+
+Quando la carica non parte o si ferma, controllare in ordine:
+
+- =CHGIN= è fisicamente presente e stabile?
+- =CHGIN_OK= è vero?
+- =CHGIN_DTLS= riporta input valido?
+- =UsbDetails= rileva Type-C o BC1.2 correttamente?
+- l'input limit è coerente con la sorgente?
+- =AICL_OK= è stabile?
+- =CHG_DTLS= indica CC, CV, off, timer fault, watchdog o thermal?
+- =Temp= è plausibile?
+- =THM= è configurato correttamente?
+- =nADCCfg.RsnsEn= corrisponde all'hardware?
+- =CGTempCo= corrisponde a sense interno o esterno?
+- =Status.POR= è stato gestito con full init?
+- =BAT_dis_OC= è presente?
+- =Current= e =AvgCurrent= indicano carica reale?
+- =SYS= sta consumando più della corrente disponibile?
+- =CHGEN= resta basso durante init e alto dopo init?
+- le scritture I2C sono word a 16 bit con verifica?
+- ci sono pause anomale su SCL o transazioni I2C interrotte?
+
+** Checklist per SOC errato
+
+Quando la percentuale batteria è sbagliata:
+
+- stai mostrando =RepSOC= o un valore interno?
+- =RepSOC= è convertito con =raw / 256=?
+- =DesignCap= è corretto?
+- =IChgTerm= è corretto?
+- =VEmpty= corrisponde al cutoff del prodotto?
+- =ModelCfg= corrisponde alla tensione cella?
+- stai usando un cell INI o solo EZ Config?
+- il modello viene ricaricato dopo POR?
+- le word della tabella OCV/XTable vengono verificate?
+- =FullCapRep= e =FullCapNom= vengono salvati e ripristinati solo se credibili?
+- =QH= si muove coerentemente con la corrente misurata?
+- la scala corrente corrisponde al sense resistor?
+- =SOCHold= sta trattenendo 99% o near-empty?
+- la batteria era rilassata al boot?
+- il sistema ha riavviato l'MCU senza reinizializzare il chip?
+- serve un fallback firmware basato su =QH= finché non arriva l'INI corretto?
+
+** Layout: cose che salvano settimane
+
+Il layout può fare la differenza tra un prodotto stabile e uno impossibile da debuggare.
+
+Per =CHGIN=:
+
+- piste o piani larghi
+- condensatori vicini
+- ritorno di massa a bassa impedenza
+- attenzione a cavi USB lunghi e cadute resistive
+
+Per =LX=:
+
+- area piccola
+- niente routing vicino a =THM=, =CSP/CSN=, SDA/SCL, CC o DP/DN
+- via multiple se si cambia layer
+- non allargare inutilmente il nodo switching
+
+Per =CSP/CSN=:
+
+- connessioni Kelvin se si usa sense esterno
+- niente via inutili
+- niente routing parallelo a =LX=
+- keepout da nodi switching
+
+Per =THM=:
+
+- traccia lontana dal buck
+- termistore vicino alla batteria, non all'induttore
+- pull-up e sorgente temperatura coerenti con firmware
+- log della temperatura grezza e media
+
+Per I2C:
+
+- pull-up adeguate per 100 kHz o 400 kHz
+- frequenza compresa nell'intervallo supportato di 20-400 kHz
+- nessuna pausa del master che lasci SCL bassa a metà transazione
+- mutex o critical section se c'è RTOS
+- logic analyzer durante bring-up
+
+Per USB-C:
+
+- controllare CC1/CC2
+- controllare DP/DN se BC1.2 è usato
+- verificare =DATAMUX= se si copia o modifica EVKIT
+- testare PC, wall charger, docking station, alimentatore da banco e cavi diversi
+
+** Driver software consigliato
+
+Un driver robusto dovrebbe essere diviso in livelli.
+
+*** Bus/regmap
+
+Gestisce:
+
+- read/write 16 bit
+- endianess
+- indirizzi =0x36= e =0x37=
+- retry limitati
+- readback
+- lock/mutex del bus
+- errori I2C propagati, non ignorati
+
+*** Init/model loader
+
+Implementa:
+
+- EZ Config
+- Short INI
+- Full INI
+- verifica OCV/XTable
+- gestione POR
+- gestione dead battery
+- configurazione sense interno/esterno
+- restore history solo se credibile
+
+*** Charger state machine
+
+Legge e classifica:
+
+- =ChgDetails00=
+- =ChgDetails01=
+- =UsbDetails=
+- =CHGIN_OK=
+- =AICL_OK=
+- =CHG_DTLS=
+- watchdog
+- thermal state
+- JEITA state
+- =ProtStatus.Full=
+
+*** Fuel gauge API
+
+Espone:
+
+- =RepSOC=
+- =RepCap=
+- =VCell=
+- =Current=
+- =AvgCurrent=
+- =Temp=
+- =FullCapRep=
+- =FullCapNom=
+- =Cycles=
+- =QH=
+
+*** Debug logger
+
+Salva snapshot quando cambiano:
+
+- USB state
+- charger state
+- AICL
+- temperatura
+- POR
+- watchdog
+- SOC anomalo
+- recovery
+
+*** Recovery manager
+
+Decide quando:
+
+- ridurre input current limit
+- rifare init
+- ripristinare il bus I2C
+- fare soft reset del chip
+- disabilitare temporaneamente carica
+- segnalare fault non recuperabile
+
+** Conclusione
+
+Il MAX77972 resta, a mio avviso, una soluzione molto completa per i dispositivi portatili. Riunisce charger, fuel gauge, USB detection, power path, reverse boost e protezioni in un unico package. La difficoltà non consiste però nel far partire la carica una volta: consiste nel mantenere un comportamento prevedibile con una sorgente debole, una batteria molto scarica, un reset dell'MCU o un modello cella imperfetto.
+
+Alla fine del lavoro, le regole che hanno fatto davvero la differenza sono poche:
+
+- rispettare la sequenza di inizializzazione
+- usare accessi I2C word a 16 bit
+- leggere e salvare snapshot diagnostici completi
+- trattare AICL, THM e current sense come cause primarie, non come dettagli
+- interpretare =CHG_DTLS= insieme al contesto, senza scambiare =0x08= per charge done in modo automatico
+- caricare un cell INI quando serve accuratezza reale
+- validare i dati appresi con limiti di plausibilità e adottare una recovery conservativa
+- usare =QH= come base per un fallback firmware soltanto quando EZ Config non basta e il compromesso è documentato
+
+In sostanza, il chip fornisce quasi tutti i segnali necessari, ma non sostituisce un driver progettato con criterio. Quando inizializzazione, modello della cella e diagnostica sono coerenti, il MAX77972 diventa prevedibile. Ed è proprio la prevedibilità, più della singola misura perfetta, a rendere affidabile un prodotto alimentato a batteria.
+
+** Fonti principali consultate
+
+- [[https://www.analog.com/media/en/technical-documentation/data-sheets/max77972.pdf][Analog Devices - MAX77972 datasheet]]
+- [[https://www.analog.com/media/en/technical-documentation/user-guides/max77972-software-implementation-guide.pdf][Analog Devices - MAX77972 Software Implementation Guidelines]]
+- [[https://www.analog.com/en/resources/evaluation-hardware-and-software/evaluation-boards-kits/max77972evkit.html][Analog Devices - MAX77972EVKIT evaluation board]]
+- [[https://www.analog.com/media/en/technical-documentation/user-guides/max77972evkit.pdf][Analog Devices - MAX77972EVKIT user guide]]
+- [[https://ez.analog.com/power/battery-management-system/f/qa/604287/max77972-stops-charging-due-to-incorrect-thm-temperature-measurement][EngineerZone - MAX77972 THM temperature measurement issue]]
+- [[https://ez.analog.com/power/f/q-a/594375/unstable-battery-charging-issue][EngineerZone - unstable battery charging issue]]
+- [[https://ez.analog.com/power/battery-management-system/f/qa/585215/max77972evkit-charge-control-issues][EngineerZone - MAX77972EVKIT charge control issues]]
+- [[https://ez.analog.com/power/battery-management-system/f/qa/586858/battery-charging-suspended][EngineerZone - battery charging suspended]]
