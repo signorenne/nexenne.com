@@ -1,0 +1,19 @@
+@startuml
+title Firmware receive pipeline
+
+start
+:RX interrupt, DMA,\nor USB callback;
+:push bytes into\nring buffer;
+:frame parser\nrecovers packet;
+if (CRC valid?) then (yes)
+  :decode RPC payload;
+  :dispatch method_id;
+  :run application handler;
+  :encode response;
+  :queue TX frame;
+else (no)
+  :drop frame;\nresync parser;
+endif
+stop
+
+@enduml

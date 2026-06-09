@@ -1,0 +1,23 @@
+@startuml
+title USB CDC path between PC and MCU
+
+participant "PC application" as APP
+participant "Virtual serial driver\nCOM / ttyACM" as DRV
+participant "USB host stack" as HOST
+participant "USB cable" as CABLE
+participant "USB device stack\non MCU" as DEV
+participant "RPC firmware" as RPC
+
+APP -> DRV : write()
+DRV -> HOST : URB / pipe
+HOST -> CABLE : USB transfers
+CABLE -> DEV : endpoint data
+DEV -> RPC : byte stream
+
+RPC --> DEV : response bytes
+DEV --> CABLE : endpoint data
+CABLE --> HOST : USB transfers
+HOST --> DRV : URB / pipe
+DRV --> APP : read()
+
+@enduml

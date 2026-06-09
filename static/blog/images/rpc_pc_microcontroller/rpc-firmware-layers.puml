@@ -1,0 +1,19 @@
+@startuml
+title Firmware RPC layers on the MCU
+
+rectangle "driver UART / USB" as Driver
+rectangle "transport layer" as Transport
+rectangle "framing layer" as Framing
+rectangle "serialization layer" as Serialization
+rectangle "RPC dispatcher" as Dispatcher
+rectangle "application handlers" as Handlers
+rectangle "hardware abstraction layer" as Hal
+
+Driver -down-> Transport
+Transport -down-> Framing
+Framing -down-> Serialization
+Serialization -down-> Dispatcher
+Dispatcher -down-> Handlers
+Handlers -down-> Hal
+
+@enduml

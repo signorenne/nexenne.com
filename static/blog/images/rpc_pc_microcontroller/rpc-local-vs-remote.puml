@@ -1,0 +1,29 @@
+@startuml
+title Local call vs RPC call
+
+rectangle "Local call" as L {
+  rectangle "program" as LP
+  rectangle "function" as LF
+  rectangle "result" as LR
+  LP -right-> LF : call
+  LF -right-> LR : return
+}
+
+rectangle "RPC call" as R {
+  rectangle "client program" as CP
+  rectangle "RPC message" as MSG
+  database "transport\nUSB / UART / TCP" as TR
+  rectangle "server or MCU" as MCU
+  rectangle "real function" as RF
+  rectangle "response" as RESP
+
+  CP -right-> MSG : request
+  MSG -right-> TR : bytes
+  TR -right-> MCU : frame
+  MCU -down-> RF : execute
+  RF -left-> RESP : result
+  RESP -left-> TR : bytes
+  TR -left-> CP : response
+}
+
+@enduml

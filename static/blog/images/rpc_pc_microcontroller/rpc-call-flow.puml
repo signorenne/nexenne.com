@@ -1,0 +1,27 @@
+@startuml
+title RPC call flow, from PC function to MCU hardware
+
+participant "PC app" as App
+participant "RPC client" as Client
+participant "Transport\nUSB / UART / TCP" as Transport
+participant "MCU parser" as Parser
+participant "Dispatcher" as Dispatcher
+participant "Handler" as Handler
+participant "Hardware" as Hardware
+
+App -> Client : mcu.set_led(true)
+Client -> Client : serialize params\nadd request_id\nbuild frame + CRC
+Client -> Transport : bytes
+Transport -> Parser : byte stream
+Parser -> Parser : recover full frame\ncheck CRC
+Parser -> Dispatcher : RPC request
+Dispatcher -> Handler : method_id = SET_LED
+Handler -> Hardware : gpio_write(LED, 1)
+Hardware --> Handler : done
+Handler --> Dispatcher : result = OK
+Dispatcher --> Parser : RPC response
+Parser --> Transport : framed bytes
+Transport --> Client : response bytes
+Client --> App : return OK
+
+@enduml

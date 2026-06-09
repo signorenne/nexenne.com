@@ -1,0 +1,15 @@
+@startuml
+title Asynchronous operation with progress events
+
+participant "PC" as PC
+participant "MCU" as MCU
+participant "Worker task" as Task
+
+PC -> MCU : start_calibration()
+MCU -> Task : enqueue operation_id=7
+MCU --> PC : accepted, operation_id=7
+Task --> PC : progress 20%
+Task --> PC : progress 80%
+Task --> PC : calibration_done
+
+@enduml

@@ -1,0 +1,28 @@
+@startuml
+title RPC PC to MCU stack
+
+rectangle "PC side" {
+  rectangle "Application\nset_led(true)" as APP
+  rectangle "RPC layer\nmethod_id, request_id, params" as RPC
+  rectangle "Serialization\nJSON, Protobuf, CBOR, binary" as SER
+  rectangle "Framing\nstart, length, type, CRC" as FRM
+  rectangle "Transport\nUSB CDC, UART, TCP, CAN" as TR
+}
+
+rectangle "MCU side" {
+  rectangle "Firmware parser\nframe recovery + CRC" as PAR
+  rectangle "Dispatcher\nmethod_id lookup" as DIS
+  rectangle "Handler\napplication logic" as HAN
+  rectangle "Hardware\nGPIO, sensor, motor" as HW
+}
+
+APP -down-> RPC
+RPC -down-> SER
+SER -down-> FRM
+FRM -down-> TR
+TR -right-> PAR : bytes
+PAR -down-> DIS
+DIS -down-> HAN
+HAN -down-> HW
+
+@enduml

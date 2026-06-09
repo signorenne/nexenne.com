@@ -1,0 +1,30 @@
+@startuml
+title Operating system driver path
+
+rectangle "Linux path" {
+  rectangle "program" as LP
+  rectangle "open /dev/ttyACM0" as LO
+  rectangle "read / write / ioctl" as LR
+  rectangle "driver" as LD
+  rectangle "USB / UART" as LU
+  rectangle "MCU" as LM
+  LP -down-> LO
+  LO -down-> LR
+  LR -down-> LD
+  LD -down-> LU
+  LU -down-> LM
+}
+
+rectangle "Windows path" {
+  rectangle "program" as WP
+  rectangle "COM port / WinUSB\nDeviceIoControl" as WC
+  rectangle "driver" as WD
+  rectangle "USB stack" as WU
+  rectangle "MCU" as WM
+  WP -down-> WC
+  WC -down-> WD
+  WD -down-> WU
+  WU -down-> WM
+}
+
+@enduml

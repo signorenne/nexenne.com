@@ -1,0 +1,24 @@
+@startuml
+title Request, response, event, and stream patterns
+
+participant "PC" as PC
+participant "MCU" as MCU
+
+group Classic RPC
+PC -> MCU : REQUEST id=42\nget_temperature()
+MCU --> PC : RESPONSE id=42\nvalue=24.7
+end
+
+group Event
+MCU -> PC : EVENT\nbutton_pressed
+end
+
+group Stream
+PC -> MCU : REQUEST\nstart_stream(sensor=2)
+MCU --> PC : EVENT_STREAM_SAMPLE\nseq=1001
+MCU --> PC : EVENT_STREAM_SAMPLE\nseq=1002
+MCU --> PC : EVENT_STREAM_SAMPLE\nseq=1003
+PC -> MCU : REQUEST\nstop_stream(sensor=2)
+end
+
+@enduml

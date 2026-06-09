@@ -1,0 +1,1189 @@
+#+TITLE: How RPC Calls Work: From Distributed Software to PC-MCU Communication
+#+LANG: en
+#+DATE: 2026-06-09
+#+LASTMOD: 2026-07-17
+#+DESC: A practical guide to RPC calls between PCs and microcontrollers: contracts, serialization, framing, CRC, USB, UART, timeouts, versioning, and debugging.
+#+IMAGE: /blog/covers/rpc_pc_microcontroller.webp
+#+READ: 30 min
+#+TAGS: RPC, Embedded, Microcontroller, USB, UART, Protocols
+#+CATEGORIES: Embedded, Tutorial, Protocols
+
+** Abstract
+
+While developing tools that control embedded devices from a PC, I have often asked myself the same question: how closely can communication with a microcontroller resemble a normal function call?
+
+From the application's point of view, it would be convenient to write:
+
+#+begin_src python
+temperature = mcu.get_temperature(sensor_id=3)
+mcu.set_led(True)
+#+end_src
+
+The function, however, does not run inside the PC process. The request must cross a library, the operating system, a transport such as USB or UART, a firmware parser, and finally the hardware controlled by the MCU. A framing, serialization, or synchronization error can interrupt that path at any point.
+
+*Remote Procedure Calls*, or RPCs, hide part of this complexity behind an interface that resembles a local function. The abstraction is useful as long as it does not make us forget that a distributed protocol remains underneath, complete with timeouts, partial failures, and limited resources.
+
+Let us examine how an RPC works and what must be considered when designing robust communication between a PC and a microcontroller.
+
+[[/blog/images/rpc_pc_microcontroller/rpc-call-flow.svg]]
+
+/A call begins as a function on the PC, becomes a sequence of bytes, crosses the firmware parser, and returns as a response./
+
+** What Is an RPC?
+
+An RPC is a procedure call that crosses a communication boundary.
+
+That boundary may separate:
+
+- two processes;
+- two computers;
+- a client and a remote service;
+- two containers or virtual machines;
+- a PC and an embedded device.
+
+When we call a local function, its code and data exist in the same execution environment. A remote function lives elsewhere: we cannot jump directly to its memory address, so the call must be represented as a message.
+
+[[/blog/images/rpc_pc_microcontroller/rpc-local-vs-remote.svg]]
+
+/A local call remains within one process. An RPC crosses a transport, is interpreted by the remote system, and produces a response./
+
+The purpose of RPC is to make this interaction easier. Code on the PC can resemble a normal call:
+
+#+begin_src python
+temperature = mcu.get_temperature(3)
+#+end_src
+
+At least four operations occur underneath that line:
+
+1. the parameters are serialized;
+2. the request is placed inside a frame;
+3. the frame is transmitted and interpreted by the firmware;
+4. the result follows the reverse path.
+
+The local syntax is therefore an abstraction. The semantics remain those of remote communication, where the other side can reply late, return an error, restart, or become unreachable.
+
+** The Main Components
+
+An RPC system normally includes a client, a server, a contract, a transport layer, and code that converts calls into messages.
+
+*** Client and Server
+
+The *client* sends the request. In the scenario covered by this article, it is usually the application running on the PC:
+
+#+begin_src text
+read temperature sensor 3
+set the motor PWM to 1200
+turn on the status LED
+#+end_src
+
+The *server* receives the request and performs the operation. Here, it is the firmware running on the MCU, which may expose functions such as:
+
+#+begin_src c
+float read_temperature(uint8_t sensor_id);
+void set_motor_pwm(uint16_t value);
+void set_led_state(bool on);
+#+end_src
+
+Client and server describe roles within an interaction rather than fixed categories of machine. The MCU can also send spontaneous events to the PC, as we will see later.
+
+*** Contract
+
+The *contract* defines which methods exist, which parameters they accept, and which results or errors they can return:
+
+#+begin_src text
+getTemperature(sensor_id: uint8) -> temperature: float
+setLed(state: bool) -> ok | error
+getFirmwareVersion() -> major, minor, patch
+#+end_src
+
+The PC and MCU must interpret this contract in exactly the same way. If the PC transmits one 32-bit integer while the MCU reads two 16-bit values, the communication may be structurally valid but semantically wrong.
+
+The contract can be documented manually or described with an *Interface Definition Language*, commonly abbreviated as IDL. gRPC, for example, usually uses Protocol Buffers to define services and messages and to generate code for different languages.
+
+*** Stub, Proxy, and Dispatcher
+
+The client-side *stub* or *proxy* exposes the interface used by the application:
+
+#+begin_src python
+mcu.set_led(True)
+temperature = mcu.get_temperature(3)
+#+end_src
+
+Behind these calls, the library assigns an identifier, serializes the parameters, builds the frame, sends it, and waits for the response.
+
+The MCU implements the corresponding component. Its *dispatcher* interprets the requested method and invokes the correct handler:
+
+#+begin_src c
+switch (request.method_id) {
+    case RPC_GET_TEMPERATURE:
+        handle_get_temperature(&request, &response);
+        break;
+
+    case RPC_SET_LED:
+        handle_set_led(&request, &response);
+        break;
+
+    default:
+        rpc_set_error(&response, RPC_ERR_UNKNOWN_METHOD);
+        break;
+}
+#+end_src
+
+*** Transport
+
+The *transport* carries bytes from one side to the other. Distributed systems may use TCP, HTTP/2, or TLS. Communication between a PC and MCU may instead use:
+
+- UART;
+- USB CDC ACM;
+- a vendor-specific USB class;
+- USB HID;
+- Ethernet or Wi-Fi;
+- BLE;
+- CAN or RS-485;
+- SPI or I2C in suitable architectures.
+
+RPC does not identify the cable or peripheral. It describes how requests, responses, and errors are organized; USB, UART, and TCP are merely the means by which those messages travel.
+
+** The Path of a Call
+
+Suppose that we want to expose this firmware function:
+
+#+begin_src c
+float get_temperature(uint8_t sensor_id);
+#+end_src
+
+On the PC, we write:
+
+#+begin_src python
+temperature = mcu.get_temperature(sensor_id=3)
+#+end_src
+
+The RPC library converts the call into a logical request:
+
+#+begin_src text
+method: get_temperature
+sensor_id: 3
+request_id: 42
+#+end_src
+
+In a readable format, it could look like this:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": 42,
+  "method": "get_temperature",
+  "params": {
+    "sensor_id": 3
+  }
+}
+#+end_src
+
+JSON-RPC 2.0 uses fields such as =method=, =params=, and =id=. The identifier correlates the response with the correct request, while a notification without an =id= does not receive a response.
+
+The logical document must then become a sequence of bytes. This transformation is called *serialization* and may use JSON, Protocol Buffers, CBOR, MessagePack, or a custom binary format.
+
+Serialization alone does not necessarily establish where a message begins and ends on the transport. *Framing* adds the information needed to delimit and validate each packet.
+
+The firmware receives the bytes, reconstructs the frame, verifies its integrity, decodes the payload, and invokes the handler. The result is serialized and sent back along the same path:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": 42,
+  "result": {
+    "temperature": 24.7
+  }
+}
+#+end_src
+
+When an error occurs, the response should include at least a category and a useful detail:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": 42,
+  "error": {
+    "code": -32001,
+    "message": "Sensor not available",
+    "data": {
+      "reason": "SENSOR_NOT_FOUND"
+    }
+  }
+}
+#+end_src
+
+** Why the PC-MCU Case Is Different
+
+Two servers usually have powerful processors, abundant memory, sockets, filesystems, and advanced diagnostic tools. An MCU may instead have:
+
+- only a few kilobytes of RAM;
+- limited flash and processing power;
+- small receive buffers;
+- real-time constraints;
+- interrupts and DMA to coordinate;
+- limited energy;
+- watchdogs and unexpected resets;
+- slow or noisy links.
+
+Choosing a data format and sending it is therefore not enough. The design must establish what happens when half a frame arrives, a buffer fills, the MCU restarts, or a response is lost.
+
+In embedded systems, the protocol is not an implementation detail. It is part of the architecture.
+
+** The Complete Stack
+
+An RPC between a PC and an MCU can be divided into layers:
+
+- *application*: “read the temperature” or “set the PWM”;
+- *RPC contract*: methods, parameters, results, and errors;
+- *serialization*: conversion of structured data into bytes;
+- *framing*: delimiters, length, escaping, and integrity checks;
+- *transport*: UART, USB, TCP, CAN, or another channel;
+- *driver and operating system*: serial API, =libusb=, WinUSB, =tty=, or a COM port;
+- *physical layer*: cable, transceiver, and electrical signals.
+
+[[/blog/images/rpc_pc_microcontroller/rpc-stack.svg]]
+
+/The stack separates application intent from the contract, framing, transport, and firmware logic./
+
+Each layer solves a different problem. The application expresses:
+
+#+begin_src text
+set_led(true)
+#+end_src
+
+The RPC layer represents it as:
+
+#+begin_src text
+method_id = 0x0003
+request_id = 42
+payload = 01
+#+end_src
+
+Framing adds the message length, type, and integrity check. The transport carries the frame to the MCU, where the firmware interprets it and finally calls:
+
+#+begin_src c
+gpio_write(LED_PIN, 1);
+#+end_src
+
+This separation makes it possible to replace USB CDC with UART, for example, without rewriting the application handlers.
+
+** Designing a Minimal Protocol
+
+Suppose that we define a small binary protocol. A frame could contain:
+
+#+begin_src text
++---------+---------+---------+------------+-----------+--------+
+| MAGIC   | LENGTH  | TYPE    | REQUEST_ID | PAYLOAD   | CRC16  |
++---------+---------+---------+------------+-----------+--------+
+| 1 byte  | 2 bytes | 1 byte  | 2 bytes    | N bytes   | 2 bytes|
++---------+---------+---------+------------+-----------+--------+
+#+end_src
+
+In this example:
+
+- *MAGIC* helps identify the start of a frame;
+- *LENGTH* is the number of bytes from =TYPE= through the end of =PAYLOAD=;
+- *TYPE* distinguishes requests, responses, errors, and events;
+- *REQUEST_ID* connects a response to its request;
+- *PAYLOAD* contains the method, parameters, or result;
+- *CRC16* detects accidental alterations to the frame.
+
+Message types can be defined as follows:
+
+#+begin_src c
+#define RPC_TYPE_REQUEST   0x01
+#define RPC_TYPE_RESPONSE  0x02
+#define RPC_TYPE_ERROR     0x03
+#define RPC_TYPE_EVENT     0x04
+#+end_src
+
+The request payload contains at least a method and its parameters:
+
+#+begin_src text
++-----------+------------+
+| METHOD_ID | PARAMS     |
++-----------+------------+
+| 2 bytes   | N bytes    |
++-----------+------------+
+#+end_src
+
+For example:
+
+#+begin_src c
+#define RPC_GET_VERSION       0x0001
+#define RPC_GET_TEMPERATURE   0x0002
+#define RPC_SET_LED           0x0003
+#define RPC_SET_PWM           0x0004
+#define RPC_REBOOT            0x0005
+#+end_src
+
+A request and its response could be represented as:
+
+#+begin_src text
+REQUEST
+  request_id = 42
+  method_id  = RPC_SET_LED
+  params     = 01
+
+RESPONSE
+  request_id = 42
+  status     = OK
+#+end_src
+
+The real specification must also define field endianness, the CRC algorithm, the bytes covered by the calculation, the maximum payload size, and behavior in the presence of invalid data.
+
+** Request IDs and Correlation
+
+The =request_id= associates each response with the call that generated it.
+
+Suppose that the PC sends three requests:
+
+#+begin_src text
+id=10 -> read temperature
+id=11 -> read voltage
+id=12 -> read firmware version
+#+end_src
+
+The MCU might complete them in a different order:
+
+#+begin_src text
+id=12 -> firmware version
+id=10 -> temperature
+id=11 -> voltage
+#+end_src
+
+Without an identifier, the PC could not correlate concurrent responses.
+
+In a strictly synchronous protocol that allows only one outstanding request, this field may not be essential. It remains useful for logs, timeouts, late-response detection, deduplication, and the future introduction of pipelining.
+
+The scope of identifiers must also be defined. A new session after an MCU restart should not confuse an old response with a current request.
+
+** Framing: Reconstructing Messages
+
+UART, TCP, and the serial interface exposed by USB CDC present a byte stream to the application. A single =read()= does not necessarily correspond to one complete frame:
+
+#+begin_src text
+PC sends:
+[frame A][frame B][frame C]
+
+MCU receives:
+first read:  half of frame A
+second read: end of frame A + start of frame B
+third read:  end of frame B + frame C
+#+end_src
+
+The parser must accumulate bytes and reconstruct messages. Several strategies are available.
+
+*** Length Prefix
+
+The frame declares its size at the beginning:
+
+#+begin_src text
+[LENGTH][PAYLOAD][CRC]
+#+end_src
+
+This approach is compact and efficient. A corrupted or unvalidated length can, however, cause loss of synchronization or excessive memory requests. The parser must always reject values larger than the protocol maximum.
+
+*** Delimiter and Escaping
+
+A reserved value marks the end of the frame:
+
+#+begin_src text
+[PAYLOAD_ESCAPED][END]
+#+end_src
+
+If the delimiter appears in the data, it must be escaped. SLIP, for example, uses the special values =END= and =ESC=. It provides framing but does not define addressing, message types, or an integrity check by itself.
+
+*** COBS
+
+*Consistent Overhead Byte Stuffing*, or COBS, transforms a sequence so that it no longer contains a selected value, usually =0x00=. That value can then be used as an unambiguous delimiter.
+
+[[/blog/images/rpc_pc_microcontroller/rpc-cobs-framing.svg]]
+
+/COBS removes the reserved value from the encoded payload, allowing =0x00= to separate frames reliably./
+
+COBS is useful in embedded protocols because it has tightly bounded overhead and allows the receiver to find the next frame boundary after an error.
+
+*** HDLC-Like Framing
+
+Another option combines a boundary flag, escaping, and an integrity check:
+
+#+begin_src text
+0x7E payload_escaped crc 0x7E
+#+end_src
+
+If =0x7E= or the escape byte appears in the content, it is replaced with an encoded sequence. The specification must define exactly which bytes are escaped and which are covered by the CRC.
+
+** CRC and Frame Validation
+
+Electrical noise, dropped bytes, buffer overflows, and parser desynchronization can alter a frame. An integrity check can detect many of these conditions.
+
+#+begin_src text
+[HEADER][PAYLOAD][CRC16]
+#+end_src
+
+The receiver recalculates the CRC over the bytes defined by the protocol and compares it with the transmitted value:
+
+#+begin_src c
+if (crc_received != crc_calculated) {
+    discard_packet();
+    rpc_record_transport_error(RPC_ERR_BAD_CRC);
+}
+#+end_src
+
+It is generally safer to discard a corrupted frame without interpreting its fields. Sending an error response makes sense only when addressing and correlation remain trustworthy and the protocol defines that behavior explicitly.
+
+A simple checksum may be sufficient for a prototype, while a protocol intended for real links often benefits from a correctly selected and documented CRC.
+
+A CRC does not provide cryptographic security. It detects accidental errors, but anyone who deliberately modifies a message can also recalculate the CRC.
+
+** Choosing a Serialization Format
+
+The choice between JSON, Protocol Buffers, CBOR, and a custom format affects memory usage, bandwidth, development tools, and future compatibility.
+
+*** JSON
+
+JSON is readable and easy to inspect:
+
+#+begin_src json
+{
+  "id": 12,
+  "method": "set_pwm",
+  "params": {
+    "channel": 1,
+    "value": 1200
+  }
+}
+#+end_src
+
+It works well for prototypes and MCUs with sufficient resources. It is verbose, however, and text conversion can require non-trivial parser code, temporary memory, and processing time.
+
+*** Protocol Buffers
+
+Protocol Buffers uses a schema and produces compact binary messages. It can generate code for different languages and, when designed carefully, allows the format to evolve while retaining a degree of compatibility.
+
+#+begin_src protobuf
+message RpcRequest {
+  uint32 id = 1;
+  uint32 method = 2;
+  bytes payload = 3;
+}
+
+message RpcResponse {
+  uint32 id = 1;
+  uint32 status = 2;
+  bytes payload = 3;
+}
+#+end_src
+
+Microcontrollers can use an implementation such as nanopb, which is designed for systems with tight RAM and ROM constraints. The tradeoff is greater dependence on code-generation tools and a runtime library.
+
+*** CBOR
+
+CBOR provides a rich binary data model with goals that include compact messages, small implementations, and extensibility. It can be useful when more flexibility than a rigid schema is needed without paying the full verbosity cost of JSON.
+
+A reliable library and a clearly defined CBOR profile are still necessary. Accepting every valid representation can add complexity that an embedded parser does not need.
+
+*** Custom Binary Format
+
+A purpose-built binary format allows small parsers and complete control:
+
+#+begin_src text
+method_id: 0x0004
+channel:   0x01
+value:     0x04B0
+#+end_src
+
+It is often suitable for highly constrained MCUs, but it requires a rigorous specification, dedicated debugging tools, and a versioning plan. Initial efficiency does not compensate for an ambiguous protocol that cannot evolve.
+
+There is no universally correct choice. JSON favors readability and rapid development; Protocol Buffers and CBOR provide more compact representations; a custom binary format maximizes control at the cost of additional design work.
+
+** Endianness, Alignment, and Types
+
+A binary protocol must define explicitly:
+
+- the endianness of multibyte integers;
+- the representation of signed values;
+- the format of floating-point values;
+- units of measurement;
+- valid limits for every field;
+- the handling of strings and lengths.
+
+Sending a C structure directly is fragile:
+
+#+begin_src c
+typedef struct {
+    uint8_t id;
+    uint32_t value;
+} packet_t;
+
+uart_write((uint8_t *)&packet, sizeof(packet));
+#+end_src
+
+The compiler may insert padding, alignment can change between architectures, and byte order may differ. Uninitialized bytes can also be transmitted accidentally.
+
+It is better to serialize each field according to explicit rules:
+
+#+begin_src c
+buffer[0] = id;
+buffer[1] = (uint8_t)(value & 0xFFu);
+buffer[2] = (uint8_t)((value >> 8) & 0xFFu);
+buffer[3] = (uint8_t)((value >> 16) & 0xFFu);
+buffer[4] = (uint8_t)((value >> 24) & 0xFFu);
+#+end_src
+
+Alternatively, a serialization format that already defines these conventions can be used.
+
+** Firmware Architecture
+
+The microcontroller firmware should keep reception, framing, serialization, and application logic separate.
+
+[[/blog/images/rpc_pc_microcontroller/rpc-firmware-layers.svg]]
+
+/Drivers, transport, parser, dispatcher, and handlers remain separate so that each layer can be tested and replaced independently./
+
+*** Reception and Buffers
+
+Bytes may arrive through an interrupt, DMA, or a USB-stack callback. These contexts should do as little work as possible: capture the data, update indices, and signal that bytes are available.
+
+Parsing and handler execution can take place in the main loop or an RTOS task. A ring buffer decouples the peripheral's pace from the parser, provided that its maximum size and overflow policy are defined.
+
+*** State-Machine Parser
+
+A state machine is well suited to a stream that may arrive in fragments:
+
+#+begin_src c
+typedef enum {
+    WAIT_MAGIC,
+    READ_LENGTH,
+    READ_BODY,
+    READ_CRC
+} parser_state_t;
+#+end_src
+
+The parser advances only when the required bytes are available:
+
+#+begin_src text
+WAIT_MAGIC   -> search for the beginning of a frame
+READ_LENGTH  -> read and validate the length
+READ_BODY    -> collect the expected number of bytes
+READ_CRC     -> verify integrity
+#+end_src
+
+[[/blog/images/rpc_pc_microcontroller/rpc-firmware-pipeline.svg]]
+
+/Reception remains lightweight; the parser reconstructs and validates a complete frame before delivering it to the dispatcher./
+
+Every length must be validated before memory is reserved or copied, and the parser must be able to resynchronize after corrupted input. Only complete, valid frames should reach the dispatcher.
+
+*** Dispatcher and Handlers
+
+The dispatcher maps a =method_id= to an application function:
+
+#+begin_src c
+void rpc_dispatch(const rpc_request_t *req, rpc_response_t *res)
+{
+    switch (req->method_id) {
+        case RPC_GET_VERSION:
+            handle_get_version(req, res);
+            break;
+
+        case RPC_GET_TEMPERATURE:
+            handle_get_temperature(req, res);
+            break;
+
+        case RPC_SET_LED:
+            handle_set_led(req, res);
+            break;
+
+        default:
+            rpc_set_error(res, RPC_ERR_UNKNOWN_METHOD);
+            break;
+    }
+}
+#+end_src
+
+Handlers should not know which transport delivered the request. =handle_set_led()= should receive validated parameters and produce a logical result without reading from UART or constructing USB packets directly.
+
+This separation makes the firmware easier to test and allows the same contract to be reused over different transports.
+
+** The PC-Side Library
+
+The protocol should also be isolated behind a library on the PC:
+
+#+begin_src python
+mcu = McuRpcClient(port="/dev/ttyACM0")
+
+version = mcu.get_version()
+temperature = mcu.get_temperature(3)
+mcu.set_led(True)
+#+end_src
+
+The library handles:
+
+- assigning the =request_id=;
+- validating and serializing parameters;
+- building and sending frames;
+- accumulating received bytes;
+- correlating responses with requests;
+- applying timeouts and retry policies;
+- translating protocol errors;
+- handling disconnection and reconnection.
+
+The application can then use a clean interface instead of duplicating =read()= calls, CRC calculations, and buffer management.
+
+This is the main practical benefit of RPC: communication complexity remains inside dedicated components while the application code expresses the desired operation.
+
+** Responses, Events, and Streams
+
+Communication is not always a simple request-response sequence.
+
+A *response* is correlated with a request:
+
+#+begin_src text
+REQUEST  id=42 method=GET_TEMPERATURE
+RESPONSE id=42 result=24.7
+#+end_src
+
+An *event* instead originates on the MCU without an immediate request from the PC:
+
+#+begin_src text
+EVENT event_id=BUTTON_PRESSED payload={button_id:1}
+#+end_src
+
+On the PC, it may be exposed as a callback:
+
+#+begin_src python
+def on_button_pressed(event):
+    print("Button pressed:", event.button_id)
+
+mcu.on("button_pressed", on_button_pressed)
+#+end_src
+
+[[/blog/images/rpc_pc_microcontroller/rpc-message-patterns.svg]]
+
+/The same channel can carry responses, spontaneous events, and stream samples as long as the message type is identified explicitly./
+
+A protocol may therefore define:
+
+- =REQUEST= and =RESPONSE=;
+- =ERROR=;
+- =EVENT=;
+- commands without a response;
+- =ACK= and =NACK=;
+- =HEARTBEAT=;
+- =LOG= and =STREAM_DATA=.
+
+Not every project needs all of these categories. Adding them without a concrete use case increases the state space that must be implemented and tested.
+
+Streams often benefit from a sequence number:
+
+#+begin_src text
+sample_seq = 1001
+sample_seq = 1002
+sample_seq = 1005
+#+end_src
+
+The gap tells the PC that samples =1003= and =1004= were lost. Timestamps, maximum frequency, priority, and overflow policy should be defined according to the application.
+
+** USB in a PC-MCU Connection
+
+In a traditional USB connection, the PC normally acts as the *host* and the MCU as the *device*. The host schedules transactions on the bus, while the device exposes data and endpoints according to the USB protocol.
+
+*Endpoints* are logical points on the device through which data is transferred. On the host side, they are represented by *pipes* managed by the USB stack.
+
+[[/blog/images/rpc_pc_microcontroller/rpc-usb-path.svg]]
+
+/With USB CDC, the application often sees a virtual serial port, while drivers, host and device stacks, endpoints, and firmware operate underneath./
+
+*** Enumeration and the Control Endpoint
+
+Every USB device exposes control endpoint 0. During enumeration:
+
+1. the host detects and resets the device;
+2. it communicates through endpoint 0 and assigns an address;
+3. it reads the USB descriptors;
+4. it identifies the class, configurations, interfaces, and endpoints;
+5. it selects the appropriate driver;
+6. it makes the device available to applications.
+
+An MCU configured as USB CDC ACM often appears as a virtual serial port:
+
+- =COM7= on Windows;
+- =/dev/ttyACM0= on GNU/Linux;
+- =/dev/cu.usbmodem...= on macOS.
+
+This approach simplifies integration because it normally uses drivers already included with the operating system. It does not remove the need for framing, timeouts, and disconnection handling.
+
+** UART and USB CDC as Byte Streams
+
+Both UART and the serial interface exposed by USB CDC require the application to reconstruct messages. A =write()= on one side must not be assumed to correspond to one =read()= on the other.
+
+UART also requires the design to specify:
+
+- baud rate;
+- parity and stop bits;
+- logic levels and transceivers;
+- flow control;
+- oscillator tolerance;
+- buffer sizes;
+- overflow behavior.
+
+RTS/CTS or software flow control can prevent a sender from overrunning a slower receiver. USB CDC changes the electrical and transport details, but finite buffers, latency, timeouts, port resets, and device disconnections still remain.
+
+** Timeouts, Retries, and Idempotency
+
+A call can fail because the MCU is busy, the cable has been disconnected, the firmware has restarted, or the response was lost. The client therefore needs a timeout:
+
+#+begin_src text
+send request id=42
+wait at most 200 ms
+no response -> timeout
+#+end_src
+
+The correct value depends on the transport and the maximum expected duration of the operation. One timeout for every method is simple, but it may be too aggressive for slow commands and too permissive for immediate ones.
+
+A timeout may trigger a retry, but not every operation is safe to repeat.
+
+A command is *idempotent* when executing it multiple times produces the same final state:
+
+#+begin_src text
+set_led(true)          -> idempotent
+toggle_led()           -> not idempotent
+set_motor_speed(1200)  -> idempotent
+dispense_liquid(10ml)  -> not idempotent
+#+end_src
+
+Non-idempotent operations may require stable operation identifiers, MCU-side deduplication, transactional state, or explicit outcome verification. Blindly retrying after a timeout can execute a command twice when the original operation succeeded but its response was lost.
+
+Whenever possible, methods should describe the desired state, such as =set_motor_speed(1200)=, rather than a relative change such as =increase_motor_speed(100)=.
+
+** Transport and Application Errors
+
+“Operation failed” does not provide enough information to diagnose a protocol. It is useful to distinguish at least:
+
+#+begin_src c
+#define RPC_OK                     0x00
+#define RPC_ERR_BAD_FRAME          0x01
+#define RPC_ERR_BAD_CRC            0x02
+#define RPC_ERR_UNKNOWN_METHOD     0x03
+#define RPC_ERR_INVALID_ARGUMENT   0x04
+#define RPC_ERR_BUSY               0x05
+#define RPC_ERR_TIMEOUT            0x06
+#define RPC_ERR_NOT_ALLOWED        0x07
+#define RPC_ERR_UNSUPPORTED_VER    0x08
+#define RPC_ERR_INTERNAL           0x09
+#+end_src
+
+These errors do not all belong to the same layer:
+
+| Error            | Layer          | Meaning                                  |
+|------------------+----------------+------------------------------------------|
+| BAD_CRC          | transport      | altered frame, normally discarded       |
+| UNKNOWN_METHOD   | contract       | method not exposed by this firmware     |
+| INVALID_ARGUMENT | application    | invalid parameters                       |
+| BUSY             | application    | valid request, resource not available   |
+| NOT_ALLOWED      | state/security | command forbidden in the current state  |
+
+The PC library can translate these codes into exceptions or typed results while retaining the original detail for diagnostic logs.
+
+** Versioning and Capability Discovery
+
+The application and firmware may evolve at different times. The PC must therefore discover the protocol version and the features actually available.
+
+An initial call can return:
+
+#+begin_src json
+{
+  "protocol_version": 2,
+  "firmware_version": "1.3.0",
+  "device": "motor-controller-x1",
+  "capabilities": [
+    "get_temperature",
+    "set_pwm",
+    "stream_logs"
+  ],
+  "max_payload_size": 256
+}
+#+end_src
+
+The firmware version should be kept separate from the protocol version. An internal firmware update does not necessarily change the contract.
+
+Some practical rules are:
+
+- never change the meaning of an existing =method_id=;
+- do not immediately reuse removed identifiers or fields;
+- add optional fields when the format allows it;
+- define how unknown fields are handled;
+- negotiate incompatible changes explicitly;
+- report limits such as =max_payload_size= and the maximum number of outstanding requests.
+
+** Flow Control and Backpressure
+
+The PC can produce data much faster than the MCU can process it. Without a control strategy, buffers fill and frames are lost.
+
+Possible approaches include:
+
+- allowing only one outstanding request;
+- defining a maximum window of =N= requests;
+- returning =BUSY= or explicit credits;
+- using ACK and NACK messages;
+- enabling RTS/CTS on UART;
+- rate limiting on the PC;
+- maintaining TX/RX queues with detectable overflow;
+- applying separate limits to commands and events.
+
+For an initial embedded protocol, the simplest sequence is often enough:
+
+#+begin_src text
+the PC sends one request
+it waits for the response
+it sends the next request
+#+end_src
+
+Throughput is lower, but the number of states and edge cases remains manageable. Pipelining can be introduced when measurements show that it is actually required.
+
+Streams need backpressure as well. If the PC cannot read quickly enough, the protocol must define whether to drop the oldest samples, stop the stream, or report an overflow.
+
+** Long-Running and Real-Time Operations
+
+The RPC parser must not interfere with motor control, ADC acquisition, CAN communication, or watchdog handling.
+
+A handler that blocks for several seconds is problematic:
+
+#+begin_src c
+void handle_rpc_request(void)
+{
+    perform_slow_measurement();
+    wait_until_complete();
+}
+#+end_src
+
+Long-running operations are often better represented asynchronously:
+
+#+begin_src text
+REQUEST  start_calibration()
+RESPONSE accepted operation_id=7
+EVENT    progress operation_id=7 value=25%
+EVENT    progress operation_id=7 value=80%
+EVENT    completed operation_id=7 result=OK
+#+end_src
+
+[[/blog/images/rpc_pc_microcontroller/rpc-async-operation.svg]]
+
+/The MCU accepts the command, returns an identifier, and reports progress without blocking the entire system./
+
+The =operation_id= does not replace the =request_id=. The first identifies an activity that continues over time; the second correlates the immediate response with the call.
+
+** Security
+
+A local connection is not automatically trustworthy. The protection required depends on the product and on the consequences of the exposed commands.
+
+The design should consider:
+
+- which processes can open the device;
+- whether commands can move actuators or modify calibration;
+- whether the protocol supports memory access or firmware updates;
+- which machine state is required before a command is accepted;
+- whether an attacker can observe or alter the channel.
+
+Possible safeguards include:
+
+- operating-system permissions on the device;
+- a whitelist of methods available in production;
+- strict validation of parameters and machine state;
+- rate limiting;
+- cryptographic authentication for critical commands;
+- signed and verified firmware updates;
+- disabling debug interfaces;
+- separating operating and maintenance modes.
+
+A generic challenge-response mechanism is not sufficient unless it is built with cryptographic primitives and secure key management. Similarly, a CRC does not authenticate the sender or protect against deliberate modification.
+
+Limited controls may be acceptable for an internal laboratory tool. A distributed product that controls power, motors, or sensitive data instead requires an explicit threat analysis.
+
+** Operating System and Drivers
+
+The PC application normally communicates through operating-system APIs, drivers, and communication stacks.
+
+[[/blog/images/rpc_pc_microcontroller/rpc-driver-path.svg]]
+
+/The application passes through operating-system APIs and drivers before reaching the MCU peripheral and firmware./
+
+On GNU/Linux, a serial port is generally exposed as a special file. Calls such as =read()= and =write()= transfer data, while =ioctl()= or dedicated APIs configure device properties.
+
+On Windows, a USB CDC device often appears as a COM port. A vendor-specific USB class may instead use WinUSB, =libusb=, or a dedicated driver. =DeviceIoControl()= also allows applications to send control codes to a driver when the architecture requires it.
+
+These platform-specific details should remain inside the library's transport backend so that the RPC interface does not depend on the operating system.
+
+** RPC Does Not Necessarily Mean gRPC
+
+gRPC is a modern RPC framework widely used in distributed systems. It uses HTTP/2 and commonly uses Protocol Buffers, providing code generation, streaming, and typed service contracts.
+
+It is not the only form of RPC and is not always suitable for a small MCU. A complete HTTP/2 stack, optional TLS, and their dependencies may require more RAM, flash, and complexity than the project justifies.
+
+Over UART or USB CDC, RPC may simply mean:
+
+- a documented set of methods;
+- requests with parameters;
+- responses correlated by an identifier;
+- errors, timeouts, and versioning;
+- asynchronous events when needed.
+
+Custom RPC over UART, JSON-RPC over serial, Protocol Buffers over USB, and CBOR over RS-485 are all possible. The concept remains RPC even when gRPC is not involved.
+
+** RPC, REST, and Events
+
+RPC normally describes actions:
+
+#+begin_src text
+get_temperature()
+set_led(true)
+start_motor()
+calibrate_sensor()
+#+end_src
+
+REST primarily models resources and HTTP operations:
+
+#+begin_src text
+GET  /sensors/3/temperature
+PUT  /leds/1/state
+POST /calibrations
+#+end_src
+
+An event-driven system instead describes things that have already happened:
+
+#+begin_src text
+button_pressed
+temperature_threshold_exceeded
+motor_fault_detected
+#+end_src
+
+RPC is a natural fit for sending commands from a PC to firmware, while events are better suited to spontaneous notifications from the board. A real protocol can combine requests and responses, events, and streams without forcing every interaction into the same model.
+
+** A Complete Example
+
+Suppose that an MCU controls an LED, a temperature sensor, a PWM motor, and a button. Its contract exposes:
+
+#+begin_src text
+get_protocol_info() -> version and capabilities
+get_temperature(sensor_id) -> value
+set_led(state) -> ok
+set_pwm(channel, value) -> ok
+start_log_stream(level) -> ok
+stop_log_stream() -> ok
+reboot(mode) -> ok
+#+end_src
+
+The MCU can also produce these events:
+
+#+begin_src text
+button_pressed(button_id)
+temperature_alarm(sensor_id, value)
+motor_fault(code)
+log_line(sequence, level, message)
+heartbeat(uptime_ms)
+#+end_src
+
+The PC opens the connection and queries the device:
+
+#+begin_src python
+mcu = McuRpcClient("/dev/ttyACM0")
+info = mcu.get_protocol_info()
+#+end_src
+
+The response describes the available contract:
+
+#+begin_src json
+{
+  "protocol_version": 1,
+  "firmware_version": "1.4.2",
+  "device_id": "CTRL-BOARD-A",
+  "max_payload": 256,
+  "capabilities": [
+    "temperature",
+    "pwm",
+    "events",
+    "log_stream"
+  ]
+}
+#+end_src
+
+A synchronous call is correlated through its identifier:
+
+#+begin_src text
+REQUEST  id=1 method=SET_LED params={state:true}
+RESPONSE id=1 status=OK
+
+REQUEST  id=2 method=GET_TEMPERATURE params={sensor_id:0}
+RESPONSE id=2 status=OK result={value:24.7, unit:"C"}
+#+end_src
+
+When the user presses the button, the MCU sends:
+
+#+begin_src text
+EVENT event=BUTTON_PRESSED payload={button_id:1}
+#+end_src
+
+If the PC enables logging, the same channel can carry a numbered stream:
+
+#+begin_src text
+EVENT LOG_LINE seq=1 message="init ok"
+EVENT LOG_LINE seq=2 message="adc ready"
+EVENT LOG_LINE seq=3 message="motor enabled"
+#+end_src
+
+This example keeps the three main interaction models distinct: correlated calls, spontaneous events, and continuous data.
+
+** Large Payloads and Fragmentation
+
+A frame may have a small maximum size, such as 256 bytes, while a configuration or calibration table may be much larger.
+
+This requires a block-transfer protocol:
+
+#+begin_src text
+TRANSFER_START total_size=2048 transfer_id=5
+TRANSFER_CHUNK id=5 offset=0   data=...
+TRANSFER_CHUNK id=5 offset=256 data=...
+TRANSFER_CHUNK id=5 offset=512 data=...
+TRANSFER_END   id=5 crc32=...
+#+end_src
+
+The protocol must define:
+
+- block size and ordering;
+- handling of duplicate and missing blocks;
+- timeouts and cancellation;
+- integrity checks for each frame and the complete object;
+- optional transfer resumption;
+- memory and write limits.
+
+Firmware updates introduce additional security requirements: image authenticity, signature verification, rollback protection when necessary, and safe recovery after interruption.
+
+** Debugging and Observability
+
+A binary protocol is difficult to diagnose without dedicated tools. The PC should provide logs such as:
+
+#+begin_src text
+TX id=42 method=SET_LED len=4
+RX id=42 status=OK time=3.2ms
+#+end_src
+
+The firmware can expose corresponding diagnostics when appropriate:
+
+#+begin_src text
+rpc: received method=0x0003 id=42
+rpc: set_led state=1
+rpc: response ok id=42
+#+end_src
+
+A hexadecimal dump shows the bytes actually transmitted:
+
+#+begin_src text
+TX: 7E 01 00 08 2A 00 03 01 91 C4
+RX: 7E 02 00 07 2A 00 00 44 12
+#+end_src
+
+A decoder that interprets the dump according to the specification is even more useful:
+
+#+begin_src text
+Frame:
+  type: REQUEST
+  id: 42
+  method: SET_LED
+  state: true
+  crc: ok
+#+end_src
+
+Logging should not significantly affect real-time behavior or expose secrets and sensitive data in production.
+
+** Testing
+
+The protocol must be tested beyond its nominal path. Useful cases include:
+
+- a valid frame;
+- an invalid CRC;
+- truncated or concatenated frames;
+- a length larger than the maximum;
+- an unknown =method_id=;
+- an out-of-range parameter;
+- a timeout and a late response;
+- duplicate delivery of the same request;
+- an MCU reset during a call;
+- an event received while the PC waits for a response;
+- a stream faster than its consumer;
+- USB disconnection and reconnection;
+- an unsupported protocol version.
+
+The parser deserves dedicated testing because it consumes external input. Targeted fuzzing can send random sequences, extreme lengths, and malformed frames while verifying that the firmware does not crash, read outside its buffers, or lose the ability to resynchronize.
+
+If the parser can be shared or compiled for both targets, testing it on the PC also makes sanitizers and analysis tools easier to use.
+
+** Common Mistakes
+
+*** Treating One Read as One Message
+
+This code assumes that =read()= returns exactly one frame:
+
+#+begin_src python
+data = serial.read(64)
+parse_rpc(data)
+#+end_src
+
+The client must instead accumulate bytes, extract every complete frame available, and preserve the final partial fragment for the next read.
+
+*** Sending Raw C Structures
+
+Padding, endianness, alignment, and uninitialized fields make direct transmission of a structure's memory fragile. Fields should be serialized into a stable representation.
+
+*** Trusting the Received Length
+
+A frame length must never exceed the buffer or protocol limits. Validation must happen before any allocation or copy.
+
+*** Omitting Timeouts
+
+Without a timeout, a call can block the application indefinitely. The timeout path must also release request state without confusing a late response with a newer call.
+
+*** Retrying Non-Idempotent Operations Automatically
+
+A lost response does not imply that the MCU failed to execute the command. An automatic retry can duplicate an operation that already succeeded.
+
+*** Doing Too Much Work in an Interrupt
+
+Parsing, serialization, and application handlers should run outside interrupt context unless exceptional, carefully analyzed requirements dictate otherwise.
+
+*** Ignoring Events and Versioning
+
+A protocol designed only for immediate responses becomes difficult to extend with notifications and long-running operations. Similarly, a protocol without a version is fragile as soon as the firmware changes.
+
+** Conclusion
+
+We have seen how an RPC turns an apparently local call into structured communication. In a PC-MCU system, the path crosses a library, the operating system, drivers, a transport, a parser, a dispatcher, and finally the hardware controlled by the firmware.
+
+The quality of the application interface depends on the precision of the underlying protocol. Framing, serialization, buffer limits, timeouts, identifiers, versioning, and error handling are not secondary details. They define how the system behaves when something does not proceed as expected.
+
+An initial implementation should remain simple. One outstanding request, bounded frames, a state-machine parser, clear error codes, and mostly idempotent methods provide a foundation that is easier to verify. Concurrency, streaming, and fragmentation can be added when the use case truly requires them.
+
+The most important consideration is therefore this: *an RPC may look like a local function, but it must be designed as remote communication*.
+
+When that boundary is treated carefully, the PC can control an embedded board through a clean interface while the MCU continues to manage the physical world under clearly defined constraints and responsibilities. On the surface, it remains a function; underneath, there is a precise protocol.
+
+** Sources Consulted
+
+- [[https://www.jsonrpc.org/specification][JSON-RPC 2.0 Specification]]
+- [[https://grpc.io/docs/what-is-grpc/introduction/][gRPC introduction]]
+- [[https://grpc.io/docs/what-is-grpc/core-concepts/][gRPC core concepts]]
+- [[https://protobuf.dev/overview/][Protocol Buffers overview]]
+- [[https://www.rfc-editor.org/rfc/rfc8949.html][RFC 8949: Concise Binary Object Representation]]
+- [[https://www.rfc-editor.org/rfc/rfc9113.html][RFC 9113: HTTP/2]]
+- [[https://datatracker.ietf.org/doc/html/rfc1055][RFC 1055: Serial Line IP]]
+- [[https://www.stuartcheshire.org/papers/COBSforToN.pdf][Consistent Overhead Byte Stuffing]]
+- [[https://jpa.kapsi.fi/nanopb/][nanopb documentation]]
+- [[https://docs.silabs.com/protocol-usb/1.7.0/protocol-usb-cdc/][Silicon Labs USB CDC ACM documentation]]
+- [[https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/usb-endpoints-and-their-pipes][Microsoft: USB endpoints and pipes]]
+- [[https://learn.microsoft.com/en-us/windows/win32/api/ioapiset/nf-ioapiset-deviceiocontrol][Microsoft: DeviceIoControl]]
+- [[https://man7.org/linux/man-pages/man2/ioctl.2.html][Linux ioctl manual page]]
+- [[https://www.silabs.com/documents/public/application-notes/an0059.0-uart-flow-control.pdf][Silicon Labs AN0059.0: UART flow control]]
+- [[https://ww1.microchip.com/downloads/en/Appnotes/01148a.pdf][Microchip AN1148: Cyclic Redundancy Check]]
+- [[https://commons.wikimedia.org/wiki/File:Raspberry_Pi_3_connected_to_Lenovo_ThinkPad_T430_via_DSD_TECH_UART_to_USB_adapter.jpg][Wikimedia Commons: Raspberry Pi 3 connected to Lenovo ThinkPad T430 via DSD TECH UART to USB adapter.jpg]]: cover image by Cirosantilli2, licensed under CC BY-SA 4.0.

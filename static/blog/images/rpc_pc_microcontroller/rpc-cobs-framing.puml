@@ -1,0 +1,11 @@
+@startuml
+title COBS framing concept
+
+start
+:original payload\nmay contain 0x00;
+:COBS encode;
+:encoded payload\ncontains no 0x00;
+:append 0x00\nas frame delimiter;
+stop
+
+@enduml
