@@ -1,0 +1,30 @@
+@startuml
+title Nexenne independent-module architecture
+
+rectangle "Consumer project" as Consumer
+
+package "Selectable CMake targets" {
+  rectangle "nexenne::utility" as Utility
+  rectangle "nexenne::containers" as Containers
+  rectangle "nexenne::time" as Time
+  rectangle "nexenne::random" as Random
+}
+
+package "Contract for each module" {
+  rectangle "Focused public API" as API
+  rectangle "Doctest coverage" as Tests
+  rectangle "Examples and documentation" as Docs
+}
+
+Consumer --> Utility : link only when needed
+Consumer --> Containers : link only when needed
+Consumer --> Time : link only when needed
+Consumer --> Random : link only when needed
+Utility --> API
+Containers --> API
+Time --> API
+Random --> API
+API --> Tests
+API --> Docs
+
+@enduml
