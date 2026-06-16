@@ -1,0 +1,464 @@
+#+TITLE: CRC: How It Works, Where It Is Used, and Its Limitations
+#+LANG: en
+#+DATE: 2026-06-16
+#+LASTMOD: 2026-07-19
+#+DESC: A practical guide to CRC: what it is, how it works, why it detects accidental errors, where it is used, and what to consider when designing a protocol.
+#+IMAGE: /blog/covers/crc_error_detection.webp
+#+READ: 20 min
+#+TAGS: CRC, Checksum, Embedded, Networks, Protocols
+#+CATEGORIES: Embedded, Tutorial, Protocols
+
+** Abstract
+
+While developing communication protocols, I have often needed to verify that received data matched what was originally transmitted. Electrical noise, a faulty cable, or a memory error can alter one or more bits, sometimes without causing any immediately visible failure.
+
+The problem therefore comes down to one question: /how can we tell whether a message arrived intact?/
+
+One of the most widely used solutions is the *CRC*, which stands for *Cyclic Redundancy Check*. It is a fast and effective mechanism for detecting many accidental errors, which is why it appears in networks, industrial buses, file formats, and embedded systems.
+
+Let us look at what a CRC is, how it is calculated, and which limitations should be considered before using one.
+
+[[/blog/images/crc_error_detection/crc-check-flow.svg]]
+
+/The basic CRC flow: the sender and receiver use the same parameters and verify that the calculated value is consistent with the received one./
+
+** What Is a CRC?
+
+A CRC is a control value calculated from the bits of a message.
+
+Inside a computer, any piece of information is ultimately represented as a sequence of bits:
+
+#+begin_src text
+0 1 1 0 1 0 0 1 ...
+#+end_src
+
+The sender processes this sequence according to an agreed set of rules and obtains a remainder: the CRC value. The transmitted data therefore has a structure similar to this:
+
+#+begin_src text
+[MESSAGE] + [CRC]
+#+end_src
+
+The receiver performs the corresponding calculation on the received data. If the check succeeds, the message is considered intact. Otherwise, the system knows that something has changed and can discard the message, report an error, or request a retransmission.
+
+For the sake of a simple example, suppose that the message =HELLO= produces the control value =1234=:
+
+#+begin_src text
+Sender:
+message = "HELLO"
+CRC = 1234
+
+Receiver:
+receives "HELLO" and 1234
+recalculates the CRC of "HELLO"
+compares the result with 1234
+#+end_src
+
+If the message changed to =HELLU= along the way, the recalculated value would almost certainly be different. The receiver could therefore detect the alteration.
+
+It is important to clarify that a successful check does not prove, in an absolute sense, that the message is correct. Two different bit sequences can produce the same CRC. This is known as an undetected error. The purpose of a well-chosen CRC model is to make that possibility sufficiently unlikely for the intended use case.
+
+** What Is It Used For?
+
+A CRC is primarily used to *detect accidental errors*. It does not encrypt data, hide the contents of a message, or prove who sent it.
+
+Instead, it answers a narrower question:
+
+/Does the received data match, with a reasonable level of confidence, what was transmitted or stored?/
+
+This matters because changing a single bit can completely alter the meaning of a value:
+
+#+begin_src text
+00001010 = 10
+00001011 = 11
+#+end_src
+
+CRC-based checks are therefore used in many different contexts. For example:
+
+- Ethernet uses an FCS field based on CRC-32;
+- the CAN bus includes a CRC check in its frames;
+- Modbus RTU uses a 16-bit CRC;
+- PNG associates a CRC with each chunk;
+- gzip includes a CRC32 of the uncompressed data;
+- SCTP uses CRC32C;
+- iSCSI can use CRC32C-based digests for non-cryptographic end-to-end integrity checks.
+
+** Does a CRC Correct Errors?
+
+Usually, no.
+
+Detecting and correcting an error are two different operations:
+
+#+begin_src text
+Detecting an error = noticing that something has changed.
+Correcting an error = determining how to reconstruct the original data.
+#+end_src
+
+A CRC normally performs the first task. When the check fails, the system knows that the message cannot be trusted, but it does not necessarily know which bit changed or what its original value was.
+
+What happens next depends on the protocol. The message may be discarded, a retransmission may be requested, or other redundancy and error-correction mechanisms may take over.
+
+** Why Is It Called a Cyclic Redundancy Check?
+
+The name describes the three main elements behind the mechanism:
+
+- *Check* refers to the verification performed on the data;
+- *Redundancy* refers to the additional information attached to the message;
+- *Cyclic* comes from the family of codes and the mathematical properties used in the calculation.
+
+From a mathematical perspective, the message is interpreted as a polynomial whose coefficients belong to the binary field. The calculation consists of polynomial division performed with XOR operations, without carries or borrowing. The remainder of this division becomes the CRC.
+
+You do not need to understand the entire theory to use an existing library. However, knowing the basic principle helps prevent configuration and interoperability mistakes.
+
+** How Does It Work?
+
+The general process can be summarized in a few steps:
+
+1. the sender prepares the message;
+2. it calculates the CRC using an agreed model;
+3. it transmits the message together with the resulting value;
+4. the receiver performs the check using the same model;
+5. it accepts or discards the message according to the result.
+
+The key point is the *agreed model*. Simply saying “we use CRC-16” or “we use CRC-32” is not always enough, because the width does not uniquely identify the algorithm.
+
+A CRC model is defined by several parameters, including:
+
+- *width*: the number of bits in the result;
+- *polynomial* (=poly=): the generator polynomial;
+- *initial value* (=init=): the state from which the calculation starts;
+- *input reflection* (=refin=): the order in which input bits are processed;
+- *output reflection* (=refout=): whether the result is reflected;
+- *final XOR* (=xorout=): the value applied at the end of the calculation;
+- *byte order*: how the result is serialized and transmitted.
+
+Catalogues such as CRC RevEng also provide parameters including =check= and =residue=, which help identify and verify a model precisely.
+
+Two implementations both described simply as “CRC-32” can therefore produce different results. To guarantee interoperability, all relevant parameters must be specified, along with the exact bytes covered by the calculation.
+
+** XOR: The Basic Building Block
+
+The *XOR* operation is fundamental to CRC calculations. Its truth table is straightforward:
+
+#+begin_src text
+0 XOR 0 = 0
+0 XOR 1 = 1
+1 XOR 0 = 1
+1 XOR 1 = 0
+#+end_src
+
+In other words, equal bits produce =0=, while different bits produce =1=.
+
+For example:
+
+#+begin_src text
+  1011
+XOR 1100
+=   0111
+#+end_src
+
+XOR can be implemented efficiently in both software and hardware. CRCs can be calculated with shift registers and relatively simple circuits, which has contributed to their adoption on resource-constrained devices.
+
+** A Calculation Example
+
+Let us consider a reduced example that demonstrates the mechanism but is not intended for use in a real system.
+
+Suppose that we have the following message:
+
+#+begin_src text
+1001
+#+end_src
+
+and use this generator polynomial:
+
+#+begin_src text
+1011
+#+end_src
+
+The generator contains four bits and has degree three. The remainder, and therefore the CRC, will be at most three bits long. We begin by appending three zeros to the message:
+
+#+begin_src text
+1001 000
+#+end_src
+
+Polynomial division is then performed using XOR. The first step is:
+
+#+begin_src text
+  1001
+XOR 1011
+=   0010
+#+end_src
+
+Continuing the division produces the following remainder:
+
+#+begin_src text
+110
+#+end_src
+
+The transmitted codeword therefore becomes:
+
+#+begin_src text
+1001 110
+#+end_src
+
+The receiver divides =1001110= by the same polynomial, =1011=. If the received codeword has not been altered and the check follows the convention described above, the remainder will be:
+
+#+begin_src text
+000
+#+end_src
+
+If one bit changed, turning =1001110= into =1001010=, the division would produce a non-zero remainder and the error would be detected.
+
+** Single-Bit and Burst Errors
+
+A single-bit error changes only one bit:
+
+#+begin_src text
+1001001
+1000001
+#+end_src
+
+A burst error instead affects a span of nearby bits:
+
+#+begin_src text
+1001110001
+1000001001
+#+end_src
+
+This kind of alteration may be caused by electrical noise or a temporary disturbance during transmission. One reason CRCs are so widely used is their ability to detect many classes of burst errors effectively.
+
+The actual guarantees, however, depend on the polynomial, CRC width, maximum message length, and assumed error model. There is therefore no single CRC that is universally best for every protocol.
+
+** Common CRC Types
+
+Many CRC families and variants exist because different systems have different requirements. Some of the most common names are:
+
+- *CRC-8*: an 8-bit result;
+- *CRC-16*: a 16-bit result;
+- *CRC-32*: a 32-bit result;
+- *CRC-32C*: a 32-bit variant based on the Castagnoli polynomial.
+
+Increasing the width can reduce the probability of undetected errors, but it also increases the amount of data that must be transmitted or stored:
+
+#+begin_src text
+CRC-8  = 1 byte
+CRC-16 = 2 bytes
+CRC-32 = 4 bytes
+#+end_src
+
+Width alone does not determine the quality of the check. The polynomial and the length of the protected messages must also be considered.
+
+** Where Is It Used?
+
+CRCs appear in many systems, often without being visible to the application developer because hardware, drivers, or libraries handle them automatically.
+
+[[/blog/images/crc_error_detection/crc-where-used.svg]]
+
+/The same principle is used in Ethernet and CAN frames, Modbus RTU messages, PNG chunks, gzip files, and several network or storage protocols./
+
+*** Ethernet
+
+Ethernet frames use an *FCS*, or *Frame Check Sequence*, based on CRC-32.
+
+A simplified representation of the frame is:
+
+#+begin_src text
+[Destination] [Source] [Type/Length] [Data] [FCS]
+#+end_src
+
+The calculation covers the frame fields beginning with the MAC addresses and includes the data and any padding, but not the preamble or Start Frame Delimiter. When the check fails, the frame is normally discarded.
+
+*** CAN and CAN FD
+
+The *Controller Area Network*, commonly abbreviated as CAN, is widely used in automotive, industrial, robotic, and embedded systems.
+
+Classical CAN uses a 15-bit CRC field. CAN FD, which supports larger payloads, uses a 17-bit CRC for frames carrying up to 16 bytes and a 21-bit CRC for larger payloads. It also introduces additional elements, including a stuff-bit counter, to strengthen the check.
+
+The application developer does not normally calculate this CRC manually. The CAN controller builds the frame, calculates the value, and verifies it on reception. The application prepares the data, while the hardware layer handles the protocol details.
+
+*** Modbus RTU
+
+*Modbus RTU* is commonly used in industrial automation to connect PLCs, inverters, sensors, and meters over serial links such as RS-485.
+
+Each message ends with a 16-bit CRC. The specification also requires the least significant byte to be transmitted first:
+
+#+begin_src text
+[Address] [Function code] [Data] [CRC low] [CRC high]
+#+end_src
+
+Consider the following frame:
+
+#+begin_src text
+01 03 00 00 00 02 C4 0B
+#+end_src
+
+It can be read as follows:
+
+#+begin_src text
+01       = device address
+03       = function code
+00 00    = starting address
+00 02    = number of registers
+C4 0B    = CRC transmitted low byte first
+#+end_src
+
+The receiver recalculates the CRC over all bytes preceding the control field. Reversing the two final bytes or calculating the CRC over a different sequence is enough to make two implementations incompatible.
+
+*** PNG and gzip
+
+The *PNG* format organizes information into blocks called /chunks/. Each chunk contains a length, a type, data, and a four-byte CRC:
+
+#+begin_src text
+[Length] [Type] [Data] [CRC]
+#+end_src
+
+The CRC is calculated over the chunk type and data, but not over the length field. This allows a decoder to detect corruption in individual parts of the file.
+
+*gzip* also includes a CRC32 value in its trailer. The value covers the uncompressed data and allows the decompression program to verify its integrity together with the other fields defined by the format.
+
+*** iSCSI and SCTP
+
+*iSCSI* transports SCSI commands over IP networks and can use header and data digests. The specification describes them as non-cryptographic end-to-end integrity checks, in addition to mechanisms already provided by lower layers.
+
+This can be useful because storage data may pass through several components, including network cards, switches, operating systems, and storage devices.
+
+*SCTP*, or *Stream Control Transmission Protocol*, uses a CRC32C checksum. A packet with an invalid value is discarded by the receiver.
+
+** Application-Level CRC: The RPC Case
+
+*RPC* stands for *Remote Procedure Call*: a client invokes a procedure running in another process or service as if it were a local function.
+
+One modern example is *gRPC*. The gRPC protocol over HTTP/2 represents data as a sequence of length-prefixed messages containing a compression flag, a length, and the message itself. The base format does not define a mandatory application-level CRC field for every message.
+
+In other words, an RPC call does not automatically have a CRC simply because it is an RPC.
+
+It is still possible to add an integrity check to the payload when there is a specific need. With Protocol Buffers, for example, we could define:
+
+#+begin_src protobuf
+message UpdateRobotConfigRequest {
+  bytes payload = 1;
+  uint32 crc32c = 2;
+}
+#+end_src
+
+The client calculates =CRC32C(payload)= and stores the result in the =crc32c= field. The server performs the same calculation and compares the two values before processing the request.
+
+Such a check can be useful when the payload:
+
+- is stored and read back later;
+- passes through several application components;
+- is compressed or transformed;
+- requires an integrity check independent of the transport.
+
+However, a CRC should not be added out of habit. HTTP/2, TLS, and lower layers already provide their own checks. An application-level field makes sense when it protects a boundary or lifecycle that is not already covered adequately, or when it is an explicit protocol requirement.
+
+** CRC and Security: What It Does Not Do
+
+A CRC is not a cryptographic security mechanism.
+
+[[/blog/images/crc_error_detection/crc-not-security.svg]]
+
+/A CRC helps detect accidental errors. Protecting against intentional modification requires cryptographic mechanisms such as HMAC, digital signatures, and TLS./
+
+In particular, a CRC does not:
+
+- encrypt data;
+- hide its contents;
+- authenticate the sender;
+- prevent an attacker from modifying the message;
+- replace an HMAC or digital signature;
+- replace TLS.
+
+Suppose that we transmit:
+
+#+begin_src text
+Message: "pay 10 euros"
+CRC:     1234
+#+end_src
+
+A random error that altered the message would probably be detected. An attacker capable of replacing the text with =pay 1000 euros= could also calculate a new CRC. The receiver would obtain a formally valid result despite the intentional modification.
+
+Protecting authenticity and integrity against an attacker requires a mechanism tied to a key or to the identity of the signer, such as an HMAC or a digital signature. TLS also protects the communication channel, while encryption provides confidentiality.
+
+** CRC, Checksum, and Cryptographic Hash
+
+These terms are often used as though they were interchangeable, but they describe tools with different properties.
+
+*** Simple Checksum
+
+A simple checksum may consist of adding the bytes in a message:
+
+#+begin_src text
+byte1 + byte2 + byte3 = checksum
+#+end_src
+
+It is inexpensive to calculate but generally less effective than a CRC at detecting certain error patterns.
+
+*** CRC
+
+A CRC uses polynomial division and is designed to detect accidental errors, including several classes of burst errors. It provides a useful compromise between computational cost, storage overhead, and error-detection capability.
+
+*** Cryptographic Hash
+
+A cryptographic hash such as SHA-256 is designed to provide stronger properties, including resistance to finding collisions and preimages. However, it is important not to attribute guarantees to it that it does not provide: an unauthenticated hash does not prevent an attacker from modifying both the message and its digest.
+
+When the origin of the data must also be verified, or when the data must be protected against intentional alteration, an HMAC, digital signature, or another appropriate cryptographic mechanism is required.
+
+In short:
+
+- *simple checksum*: an inexpensive check with limited capabilities;
+- *CRC*: a fast and effective check for accidental errors;
+- *cryptographic hash*: a function with cryptographic properties, but no authentication when used by itself;
+- *HMAC or digital signature*: integrity protection and authenticity verification in the presence of intentional modification.
+
+** Common Mistakes
+
+*** Specifying Only the Width
+
+Saying “CRC-16” is not enough. The polynomial, initial value, input and output reflection, final XOR, and serialization conventions must also be specified.
+
+Two devices can both claim to use CRC-16 and still produce incompatible results.
+
+*** Calculating the CRC over the Wrong Bytes
+
+A protocol must define exactly which fields are covered. In PNG, for example, the CRC includes the chunk type and data but not the length field. In Ethernet, it does not include the preamble or Start Frame Delimiter.
+
+Adding or omitting even one byte changes the result.
+
+*** Confusing Byte Order with the Calculation
+
+The mathematical value and its representation on the wire are not the same thing. Modbus RTU transmits the least significant byte first. Reversing the two bytes produces an invalid frame even if the calculation itself was correct.
+
+*** Using a CRC as a Security Mechanism
+
+A CRC contains no secret key and can be recalculated by anyone. It is therefore unsuitable for detecting deliberate manipulation by an attacker.
+
+*** Choosing a Polynomial without Considering Message Length
+
+Detection capability also depends on the maximum size of the protected messages. A polynomial that provides suitable properties for short messages may not provide the same guarantees for much longer ones.
+
+When defining a new protocol, it is therefore better to start from documented and analyzed models rather than inventing a variant or selecting a polynomial merely because a library already provides it.
+
+** Conclusion
+
+We have seen how a CRC can efficiently detect many accidental errors during data transmission or storage. The underlying principle is relatively simple: sender and receiver apply the same model and verify that the control value is consistent with the message.
+
+This apparent simplicity should not be misleading. Two implementations will interoperate only if the CRC model, covered bytes, and serialization order are defined precisely. The polynomial must also be selected with the message length and required detection properties in mind.
+
+A CRC therefore remains a practical and efficient solution when the objective is to detect accidental errors. It is not a security mechanism and should not be used in place of HMAC, digital signatures, or cryptographic protocols.
+
+In short, there is no single generic “CRC.” There is a precisely defined model chosen for an equally precise use case.
+
+** Sources Consulted
+
+- [[https://datatracker.ietf.org/doc/html/rfc3385][RFC 3385: iSCSI Cyclic Redundancy Check / Checksum Considerations]]: a reference for CRC properties, burst errors, and undetected-error probabilities.
+- [[https://www.rfc-editor.org/rfc/rfc935.html][RFC 935: Reliable Link Layer Protocols]]: a historical reference for efficient CRC implementations, including shift registers.
+- [[https://docs.altera.com/r/docs/817676/25.3.1/gts-ethernet-hard-ip-user-guide-agilextm-5-fpgas-and-socs/insert-frame-check-sequence-crc-32][Intel/Altera: Insert Frame Check Sequence (CRC-32)]]: a reference for the FCS field in Ethernet frames.
+- [[https://www.modbus.org/file/secure/modbusoverserial.pdf][MODBUS over Serial Line Specification and Implementation Guide]]: a reference for the CRC-16 and byte order used by Modbus RTU.
+- [[https://www.can-cia.org/can-knowledge/can-fd-the-basic-idea][CAN in Automation: CAN FD, the basic idea]]: a reference for the CRC fields used by CAN FD.
+- [[https://www.w3.org/TR/PNG-Structure.html][W3C: PNG Specification, File Structure]]: a reference for the structure of PNG chunks and their CRC fields.
+- [[https://datatracker.ietf.org/doc/html/rfc1952][RFC 1952: GZIP file format specification version 4.3]]: a reference for the CRC32 field in the gzip format.
+- [[https://datatracker.ietf.org/doc/html/rfc7143][RFC 7143: Internet Small Computer System Interface, iSCSI Protocol]]: a reference for non-cryptographic integrity digests in iSCSI.
+- [[https://datatracker.ietf.org/doc/html/rfc4960][RFC 4960: Stream Control Transmission Protocol]]: a reference for the CRC32C checksum used by SCTP.
+- [[https://grpc.github.io/grpc/core/md_doc__p_r_o_t_o_c_o_l-_h_t_t_p2.html][gRPC Core: gRPC over HTTP/2]]: a reference for the gRPC message format over HTTP/2.
+- [[https://reveng.sourceforge.io/readme.htm][CRC RevEng: README and catalog parameters]]: a reference for the parameters that identify a CRC model.
+- [[https://commons.wikimedia.org/wiki/File:Network_cables_and_switch.jpg][Wikimedia Commons: Network cables and switch.jpg]]: cover image by ProjectManhattan, licensed under CC BY-SA 3.0.

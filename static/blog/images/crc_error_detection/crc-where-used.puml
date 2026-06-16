@@ -1,0 +1,24 @@
+@startuml
+title Where CRC appears
+skinparam backgroundColor white
+skinparam shadowing false
+
+left to right direction
+
+rectangle "Ethernet frame\nFCS / CRC-32" as ETH
+rectangle "CAN / CAN FD frame\nCRC-15, CRC-17, CRC-21" as CAN
+rectangle "Modbus RTU frame\nCRC-16 low byte first" as MOD
+rectangle "PNG chunk\n4 byte CRC" as PNG
+rectangle "gzip trailer\nCRC32" as GZIP
+rectangle "iSCSI / SCTP\nintegrity digest or CRC32C" as NET
+
+rectangle "CRC concept\nsmall check value\nfor accidental errors" as CRC
+
+CRC --> ETH
+CRC --> CAN
+CRC --> MOD
+CRC --> PNG
+CRC --> GZIP
+CRC --> NET
+
+@enduml

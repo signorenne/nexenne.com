@@ -1,0 +1,20 @@
+@startuml
+title CRC is integrity for accidents, not authentication
+skinparam backgroundColor white
+skinparam shadowing false
+
+left to right direction
+
+rectangle "Accidental error\nnoise, bad cable,\ncorrupted storage" as ERR
+rectangle "CRC check\nrecalculate and compare" as CRC
+rectangle "Detect corruption\nthen discard or retry" as DET
+
+rectangle "Intentional attacker\ncan modify payload\nand recompute CRC" as ATT
+rectangle "Security tools\nHMAC, signature,\nTLS or encryption" as SEC
+
+ERR --> CRC
+CRC --> DET
+ATT --> CRC : can still pass
+ATT --> SEC : needs cryptographic protection
+
+@enduml

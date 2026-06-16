@@ -1,0 +1,20 @@
+@startuml
+title CRC check flow
+skinparam backgroundColor white
+skinparam shadowing false
+
+start
+:Sender has payload bytes;
+:Calculate CRC with agreed parameters;
+:Append CRC to the payload;
+:Transmit or store the frame;
+:Receiver reads payload and received CRC;
+:Recalculate CRC on received payload;
+if (CRC values match?) then (yes)
+  :Accept payload as apparently intact;
+else (no)
+  :Reject payload or request retry;
+endif
+stop
+
+@enduml
