@@ -1,0 +1,19 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+title Rendering turns a scene description into an image
+
+rectangle "Program" as program
+rectangle "Scene data\ngeometry, camera, material, light" as scene
+rectangle "Graphics API\nOpenGL commands and state" as api
+rectangle "GPU pipeline" as gpu
+rectangle "Framebuffer" as framebuffer
+rectangle "Visible image" as image
+
+program --> scene
+scene --> api
+api --> gpu
+gpu --> framebuffer
+framebuffer --> image
+@enduml

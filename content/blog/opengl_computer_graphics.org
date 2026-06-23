@@ -1,0 +1,723 @@
+#+TITLE: Che cos’è la computer graphics?
+#+LANG: it
+#+DATE: 2026-06-23
+#+LASTMOD: 2026-07-21
+#+DESC: Introduzione alla computer graphics: come dati, rendering, pipeline, CPU, GPU e OpenGL diventano immagini digitali.
+#+IMAGE: /blog/covers/opengl_computer_graphics.webp
+#+READ: 19 min
+#+TAGS: Computer Graphics, OpenGL, Rendering, GPU
+#+CATEGORIES: Computer Graphics, Tutorial
+
+** Abstract
+Quando guardiamo un videogioco, un film d'animazione, una simulazione scientifica o anche soltanto una finestra colorata, stiamo osservando il risultato di un processo preciso: il computer trasforma dati e calcoli in immagini.
+
+A prima vista può sembrare quasi magia. Sullo schermo compaiono oggetti, luci, ombre, colori, movimenti e ambienti tridimensionali. Dietro a tutto questo, tuttavia, troviamo dati, memoria, algoritmi e hardware progettato per eseguire moltissime operazioni in parallelo.
+
+La computer graphics è proprio questo: l'insieme delle tecniche che permettono a un computer di generare, modificare, elaborare e mostrare immagini.
+
+In questa serie voglio partire dalle fondamenta, senza dare nulla per scontato. Prima di parlare di OpenGL, shader, VAO, VBO, framebuffer e pipeline, dobbiamo costruire una mappa generale del percorso che porta dal nostro codice a un'immagine digitale.
+
+Vediamo dunque che cos'è la computer graphics e perché è così importante per capire OpenGL.
+
+** Perché partire da qui?
+Quando si inizia a studiare OpenGL, la tentazione è partire subito dal codice.
+
+Si installa GLFW, si inizializza GLAD, si copia un esempio da un tutorial, si compila il progetto e si prova a mostrare il primo triangolo. Questo approccio può anche funzionare, ma spesso lascia una sensazione fastidiosa: il triangolo appare senza che sia chiaro il motivo.
+
+Il problema è che OpenGL non è una funzione magica che “disegna cose”. È un'API grafica definita da una specifica: descrive funzioni, comportamenti e regole che un'implementazione deve rispettare. Il Khronos OpenGL Registry raccoglie le specifiche ufficiali di OpenGL, del linguaggio GLSL e delle estensioni approvate.
+
+Questo significa che, quando usiamo OpenGL, dobbiamo ragionare su più livelli:
+
+- il nostro programma;
+- i dati che prepariamo;
+- il modo in cui li carichiamo in memoria;
+- gli shader che scriviamo;
+- la pipeline grafica;
+- l'implementazione e il driver;
+- la GPU;
+- il framebuffer;
+- la presentazione sullo schermo.
+
+Se non capiamo almeno l'idea generale di questo percorso, ogni errore diventa difficile da interpretare. Uno schermo nero può dipendere da un buffer configurato male, da uno shader non compilato, da una viewport errata, da un VAO non reso corrente o da una draw call sbagliata.
+
+Per questo motivo conviene partire dalla domanda più semplice:
+
+#+begin_quote
+Che cosa significa far disegnare un'immagine a un computer?
+#+end_quote
+
+** L'idea più semplice: un foglio a quadretti
+Immaginiamo un foglio a quadretti.
+
+Ogni quadretto può essere colorato con un colore diverso. Se coloriamo pochi quadretti, vediamo solo una forma molto grezza. Se invece i quadretti sono tantissimi, molto piccoli e molto vicini tra loro, il nostro occhio non distingue più ogni singolo quadratino. Vede un'immagine continua.
+
+Uno schermo può essere immaginato in modo simile.
+
+Non è una spiegazione fisicamente perfetta, perché gli schermi reali possono usare tecnologie e disposizioni dei subpixel differenti. Come modello mentale, però, funziona bene: l'immagine raster visualizzata può essere trattata come una griglia di piccoli elementi chiamati *pixel*.
+
+Un'immagine digitale, almeno nel caso raster, è quindi una griglia di pixel.
+
+Nel modello più semplice, ogni pixel è associato ad almeno due informazioni fondamentali:
+
+- una posizione;
+- uno o più valori, ad esempio quelli che rappresentano il colore.
+
+La posizione indica dove si trova il pixel nella griglia. I valori associati descrivono come deve apparire o quali informazioni deve conservare.
+
+Se abbiamo uno schermo da =1920x1080=, significa che possiamo immaginarlo come una griglia larga 1920 pixel e alta 1080 pixel.
+
+Il numero totale di pixel è:
+
+#+begin_src txt
+1920 × 1080 = 2.073.600 pixel
+#+end_src
+
+Quindi un singolo frame Full HD contiene più di due milioni di pixel.
+
+Se un programma grafico produce 60 frame al secondo, significa che deve preparare e presentare una nuova immagine circa ogni =16,67= millisecondi. Il carico reale non dipende soltanto dal numero di pixel, ma questo calcolo rende già evidente la scala del problema.
+
+Anche questa, nella sua forma più semplice, è computer graphics.
+
+Non ancora OpenGL, non ancora shader, non ancora triangoli. Ma l'obiettivo finale è già chiaro: produrre colori per punti dello schermo.
+
+** Il pixel non è l'inizio del processo
+Un errore comune è pensare che la computer graphics consista semplicemente nel colorare pixel uno per uno.
+
+In alcuni casi può anche essere così. Ad esempio, se scriviamo un programma che modifica direttamente un'immagine, potremmo davvero lavorare pixel per pixel.
+
+Tuttavia, nella grafica 3D moderna, di solito non partiamo dai pixel. Partiamo da una descrizione della scena.
+
+Ad esempio, invece di dire:
+
+#+begin_src txt
+colora questo pixel di rosso
+colora questo pixel di blu
+colora questo pixel di verde
+#+end_src
+
+possiamo dire:
+
+#+begin_src txt
+questa è la posizione dei vertici di un triangolo
+questa è la camera
+questa è la luce
+questo è il materiale
+questa è la texture
+ora calcola l’immagine finale
+#+end_src
+
+Il computer deve quindi trasformare una descrizione della scena in una griglia di pixel.
+
+Questa trasformazione è il cuore del rendering.
+
+** Cosa significa renderizzare?
+Renderizzare significa produrre un'immagine a partire da dati, regole e una descrizione della scena.
+
+Nel caso più semplice, la descrizione può essere:
+
+#+begin_src txt
+disegna un triangolo rosso
+#+end_src
+
+Nel caso di una scena 3D più complessa, la descrizione può includere:
+
+- modelli 3D;
+- posizioni;
+- rotazioni;
+- scale;
+- materiali;
+- texture;
+- luci;
+- camera;
+- ombre;
+- effetti di post-processing.
+
+Renderizzare vuol dire prendere tutte queste informazioni e calcolare l'immagine finale.
+
+In sostanza:
+
+#+begin_quote
+Il rendering è il processo che trasforma dati e regole in un'immagine.
+#+end_quote
+
+OpenGL è uno degli strumenti che possiamo usare per descrivere e avviare questo processo tramite una pipeline ben definita. L'OpenGL Wiki presenta la rendering pipeline come la sequenza di passaggi eseguiti in seguito a un comando di disegno.
+
+[[/blog/images/opengl_computer_graphics/rendering-flow.svg]]
+
+/Il rendering trasforma una descrizione della scena in comandi per la pipeline grafica, poi in contenuto del framebuffer e infine in immagine visibile./
+
+** Colori come numeri
+Per noi un colore è una percezione. Per un computer, invece, deve essere rappresentato mediante valori numerici.
+
+Uno dei modelli più comuni è RGB:
+
+- =R=: red, cioè rosso;
+- =G=: green, cioè verde;
+- =B=: blue, cioè blu.
+
+Nel comune formato a 8 bit per canale, ogni componente può assumere un valore da =0= a =255=:
+
+#+begin_src txt
+Nero   = (0,   0,   0)
+Bianco = (255, 255, 255)
+Rosso  = (255, 0,   0)
+#+end_src
+
+In OpenGL e negli shader lavoreremo spesso con componenti in virgola mobile normalizzate tra =0.0= e =1.0=. Lo stesso rosso può quindi essere scritto così:
+
+#+begin_src txt
+Rosso = (1.0, 0.0, 0.0)
+#+end_src
+
+Questa rappresentazione facilita operazioni come interpolazione, moltiplicazione e combinazione dei colori. Nel prossimo articolo approfondiremo canali, profondità in bit, spazi colore e memoria occupata dalle immagini.
+
+** Alpha e trasparenza
+Spesso non usiamo solo RGB, ma RGBA.
+
+La =A= indica alpha, cioè una componente spesso usata per rappresentare opacità o copertura.
+
+Un colore RGBA contiene quattro valori:
+
+#+begin_src txt
+R, G, B, A
+#+end_src
+
+Ad esempio:
+
+#+begin_src txt
+(1.0, 0.0, 0.0, 1.0)
+#+end_src
+
+può rappresentare un rosso completamente opaco.
+
+Invece:
+
+#+begin_src txt
+(1.0, 0.0, 0.0, 0.5)
+#+end_src
+
+può rappresentare un rosso semitrasparente.
+
+È doveroso specificare che alpha è soltanto una componente numerica: il suo significato dipende da come la usiamo. Nel caso comune della trasparenza, in OpenGL dobbiamo configurare anche il blending, cioè il modo in cui il colore sorgente viene combinato con quello già presente nel framebuffer.
+
+Per ora non ci interessa entrare nel dettaglio. Ci basta capire che anche la trasparenza viene trattata come un dato numerico.
+
+** Grafica 2D e grafica 3D
+La grafica 2D lavora con elementi su un piano.
+
+Esempi:
+
+- icone;
+- interfacce;
+- sprite;
+- testi;
+- mappe;
+- immagini;
+- elementi di un gioco bidimensionale.
+
+In 2D, una posizione può essere descritta con due coordinate:
+
+#+begin_src txt
+x, y
+#+end_src
+
+La grafica 3D aggiunge una terza coordinata:
+
+#+begin_src txt
+x, y, z
+#+end_src
+
+Questa terza coordinata introduce un ulteriore asse spaziale, spesso associato alla profondità rispetto alla vista.
+
+Un punto 3D può essere scritto così:
+
+#+begin_src txt
+(1.0, 2.0, 3.0)
+#+end_src
+
+Dove, secondo una convenzione intuitiva:
+
+- =x= indica lo spostamento orizzontale;
+- =y= indica lo spostamento verticale;
+- =z= indica la profondità.
+
+L'orientamento concreto degli assi dipende però dal sistema di coordinate adottato. OpenGL non impone che =y= rappresenti sempre l'alto o che =z= indichi sempre una particolare direzione.
+
+Tuttavia c'è un problema interessante: lo schermo è piatto.
+
+Anche quando disegniamo un mondo 3D, alla fine dobbiamo mostrarlo su una superficie 2D. Quindi la grafica 3D deve rispondere a una domanda fondamentale:
+
+#+begin_quote
+Come trasformiamo punti nello spazio tridimensionale in pixel su uno schermo bidimensionale?
+#+end_quote
+
+Questa domanda ci porterà più avanti a parlare di trasformazioni, matrici, camera, proiezione prospettica e spazio di clip.
+
+Per ora possiamo limitarci a osservare il problema: il mondo può essere descritto in 3D, ma l'immagine finale è 2D.
+
+** Modelli, triangoli e immagini finali
+Un'altra distinzione importante è quella tra modello 3D e immagine finale.
+
+Un modello 3D non è un'immagine. È una struttura di dati.
+
+Può contenere:
+
+- vertici;
+- facce o indici;
+- normali;
+- coordinate texture;
+- materiali;
+- dati per l'animazione;
+- altre informazioni.
+
+Quando guardiamo un modello 3D sullo schermo, stiamo guardando il risultato del rendering di quel modello, non il modello in sé.
+
+È un po' come una ricetta.
+
+La ricetta non è la torta. La ricetta descrive come preparare la torta. Allo stesso modo, un modello 3D non è l'immagine. Il modello contiene dati che il sistema grafico usa per produrre l'immagine.
+
+Nella grafica 3D rasterizzata, moltissimi modelli vengono rappresentati tramite triangoli. Anche forme apparentemente morbide, come una sfera o un personaggio, sono spesso approssimate con molti triangoli piccoli.
+
+I triangoli sono primitive semplici, sempre planari e facilmente rasterizzabili. Inoltre, superfici e poligoni più complessi possono essere suddivisi in triangoli, e l'hardware grafico è ottimizzato per elaborarli in modo efficiente.
+
+** CPU e GPU
+Per capire la computer graphics dobbiamo distinguere almeno due componenti:
+
+- CPU;
+- GPU.
+
+La CPU è un processore di uso generale, progettato per gestire operazioni molto diverse e privilegiare anche la latenza dei singoli compiti:
+
+- logica del programma;
+- input;
+- file e rete;
+- gestione della memoria;
+- caricamento dei dati;
+- preparazione dei comandi grafici.
+
+La GPU dispone invece di molte unità di esecuzione ed è progettata per ottenere un throughput elevato su grandi quantità di lavoro parallelo.
+
+Questa differenza è fondamentale.
+
+Immaginiamo di dover colorare un grande mosaico composto da milioni di tessere.
+
+Una persona può decidere la strategia, scegliere i colori e organizzare il lavoro. Tuttavia, se deve colorare ogni tessera da sola, impiegherà molto tempo.
+
+Una squadra enorme di persone, invece, può colorare molte tessere contemporaneamente.
+
+La CPU assomiglia di più alla persona che organizza. La GPU assomiglia alla squadra che esegue moltissime operazioni simili in parallelo.
+
+Ovviamente è una semplificazione: anche le CPU lavorano in parallelo e le GPU non eseguono soltanto grafica. L'analogia serve a distinguere il controllo generale del programma dal lavoro massicciamente parallelo tipico del rendering.
+
+Nel rendering, spesso dobbiamo fare calcoli simili per:
+
+- molti vertici;
+- molte primitive;
+- molti frammenti;
+- molti sample del framebuffer.
+
+La GPU è adatta proprio a questo tipo di lavoro.
+
+** Il ruolo di OpenGL
+A questo punto possiamo introdurre OpenGL in modo più preciso.
+
+OpenGL non è la GPU.
+
+OpenGL non è un motore grafico.
+
+OpenGL non è un programma che crea automaticamente una scena.
+
+OpenGL è un'API grafica specificata da Khronos. La specifica definisce il comportamento osservabile dell'API; i produttori e i progetti software forniscono poi implementazioni che, nel caso più comune, espongono tale comportamento tramite il driver grafico. Il Registry ufficiale contiene le specifiche dell'API, del linguaggio GLSL, delle estensioni e degli header collegati.
+
+Possiamo immaginare il percorso così:
+
+#+begin_src txt
+programma C++
+    ↓
+chiamate OpenGL
+    ↓
+implementazione e driver
+    ↓
+GPU
+    ↓
+framebuffer
+    ↓
+presentazione dei buffer
+    ↓
+schermo
+#+end_src
+
+Il nostro programma prepara i dati e chiama funzioni OpenGL.
+
+L'implementazione e il driver gestiscono quelle chiamate e organizzano il lavoro per l'hardware disponibile.
+
+Nel caso abituale, la GPU esegue gran parte del rendering.
+
+Il risultato può essere scritto in un framebuffer e successivamente presentato sullo schermo. La specifica non impone però una particolare architettura hardware: esistono anche implementazioni software.
+
+** La pipeline grafica come catena di montaggio
+La pipeline grafica può essere immaginata come una catena di montaggio.
+
+All'inizio entrano dati grezzi. Alla fine esce un'immagine.
+
+Una versione semplificata del percorso che useremo nella serie è questa:
+
+#+begin_src txt
+vertici
+    ↓
+vertex shader
+    ↓
+assemblaggio delle primitive
+    ↓
+clipping, divisione prospettica e viewport
+    ↓
+rasterizzazione
+    ↓
+fragment shader
+    ↓
+operazioni per-sample
+    ↓
+framebuffer
+#+end_src
+
+Ogni stadio ha un compito.
+
+Il vertex shader lavora sui vertici.
+
+L'assemblaggio delle primitive interpreta i vertici come punti, linee o triangoli.
+
+Il clipping elimina o modifica le parti esterne al volume visibile. La divisione prospettica e la trasformazione di viewport portano poi le coordinate nello spazio della finestra. La rasterizzazione produce quindi i frammenti coperti dalle primitive.
+
+Il fragment shader produce i valori di output dei frammenti, spesso uno o più colori.
+
+Le operazioni per-sample comprendono, tra le altre cose, scissor test, stencil test, depth test, blending e maschere di scrittura. Questi passaggi determinano quali valori modificano il framebuffer.
+
+Questa sequenza omette volutamente alcuni stadi opzionali. OpenGL 3.3, ad esempio, supporta anche il geometry shader, mentre le versioni successive introducono gli stadi di tessellation. Per ora ci interessa soltanto la mappa generale.
+
+Più avanti entreremo nel dettaglio di ogni stadio.
+
+** Frammento e pixel
+Qui conviene introdurre una distinzione che spesso confonde chi inizia: frammento e pixel non sono esattamente la stessa cosa.
+
+Un pixel è un elemento della griglia dell'immagine.
+
+Un frammento è un insieme di valori prodotto dalla rasterizzazione e rappresenta un possibile contributo al framebuffer. Con il multisampling può includere anche informazioni sulla copertura di più sample appartenenti all'area di un pixel.
+
+Un sample è una posizione di campionamento associata al framebuffer. Senza multisampling abbiamo normalmente un sample per pixel; con tecniche come MSAA possiamo averne più di uno.
+
+Detta in modo più semplice: quando un triangolo viene rasterizzato, OpenGL produce frammenti nelle zone dello schermo coperte da quel triangolo. Ogni frammento può poi essere elaborato dal fragment shader.
+
+Tuttavia non tutti i frammenti diventano automaticamente pixel finali.
+
+Il suo contributo può essere scartato, combinato o impedito da vari meccanismi:
+
+- =discard= nel fragment shader;
+- scissor test;
+- stencil test;
+- depth test;
+- blending;
+- maschere di scrittura.
+
+Quindi, in modo intuitivo:
+
+#+begin_src txt
+pixel     = elemento della griglia dell’immagine
+frammento = possibile contributo prodotto dalla rasterizzazione
+#+end_src
+
+Questa distinzione diventerà molto importante quando parleremo di rasterizzazione, depth buffer e fragment shader.
+
+** Esempio mentale: disegnare un triangolo rosso
+Supponiamo di voler disegnare un triangolo rosso.
+
+Da esseri umani potremmo descriverlo così:
+
+#+begin_src txt
+Voglio un triangolo rosso al centro dello schermo.
+#+end_src
+
+Il computer però non può lavorare con questa frase generica. Dobbiamo trasformarla in dati e istruzioni.
+
+Per OpenGL, il ragionamento sarà più simile a questo:
+
+#+begin_src txt
+Questi sono i tre vertici del triangolo.
+Questa è la configurazione per leggerli.
+Questo è il vertex shader.
+Questo è il fragment shader.
+Usa questi dati.
+Disegna una primitiva di tipo triangolo.
+#+end_src
+
+In forma molto semplificata, i vertici potrebbero essere:
+
+#+begin_src cpp
+float vertices[] = {
+    -0.5f, -0.5f, 0.0f,
+     0.5f, -0.5f, 0.0f,
+     0.0f,  0.5f, 0.0f
+};
+#+end_src
+
+Questi tre punti descrivono il triangolo.
+
+Il colore rosso potrebbe essere prodotto dal fragment shader:
+
+#+begin_src glsl
+#version 330 core
+
+out vec4 FragColor;
+
+void main()
+{
+    FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+}
+#+end_src
+
+Qui =vec4(1.0, 0.0, 0.0, 1.0)= significa:
+
+#+begin_src txt
+rosso = 1.0
+verde = 0.0
+blu = 0.0
+alpha = 1.0
+#+end_src
+
+Nel modello semplificato adottato finora, questo valore rappresenta un rosso completamente opaco.
+
+A questo punto, dopo aver configurato le risorse necessarie e reso corrente lo shader program, una draw call può avviare la pipeline.
+
+** Cosa succede davvero nella GPU?
+Naturalmente, la GPU non “vede” un triangolo come lo vediamo noi.
+
+La GPU lavora con numeri.
+
+Riceve dati organizzati in memoria. Esegue programmi chiamati shader. Applica regole di rasterizzazione. Produce frammenti. Calcola colori. Applica test. Scrive risultati.
+
+Se volessimo descrivere il processo in modo molto semplificato, potremmo scrivere:
+
+#+begin_src txt
+1. Il programma prepara i vertici.
+2. OpenGL riceve i comandi.
+3. Il driver organizza il lavoro per la GPU.
+4. La GPU esegue il vertex shader sui vertici.
+5. I vertici formano un triangolo.
+6. Il triangolo viene rasterizzato.
+7. Il fragment shader calcola il colore dei frammenti.
+8. Le operazioni per-sample determinano quali valori aggiornano il framebuffer.
+9. Il sistema di finestre presenta il buffer destinato alla visualizzazione.
+#+end_src
+
+Questa è la strada dal codice al pixel.
+
+È il percorso che seguiremo in tutta la serie.
+
+** Computer graphics non significa solo 3D
+Quando si parla di computer graphics, molti pensano subito ai videogiochi 3D.
+
+È comprensibile, ma riduttivo.
+
+La computer graphics comprende molti ambiti e applicazioni:
+
+- grafica 2D;
+- grafica 3D;
+- interfacce utente;
+- rendering in tempo reale;
+- rendering offline;
+- visualizzazione scientifica;
+- simulazioni;
+- realtà virtuale e aumentata;
+- animazione ed effetti visivi;
+- tipografia digitale;
+- CAD;
+- mappe e sistemi GIS.
+
+Si intreccia inoltre con discipline vicine, come l'elaborazione delle immagini e la computer vision, senza coincidere completamente con esse.
+
+OpenGL è solo uno degli strumenti possibili. Esistono anche Vulkan, Direct3D, Metal, WebGPU e altri sistemi.
+
+OpenGL rimane utile per studiare molti concetti fondamentali senza entrare immediatamente nella complessità di API più esplicite come Vulkan. Questo non significa che sia sempre la scelta migliore per un nuovo prodotto: dipende dalla piattaforma, dagli obiettivi e dai requisiti del progetto.
+
+** Rendering in tempo reale e rendering offline
+Un'altra distinzione importante è quella tra rendering in tempo reale e rendering offline.
+
+Il rendering in tempo reale deve produrre immagini molto velocemente.
+
+È il caso di:
+
+- videogiochi;
+- simulatori;
+- interfacce 3D;
+- realtà virtuale;
+- applicazioni interattive.
+
+Qui il sistema deve rispondere subito all'utente. Se muoviamo il mouse, premiamo un tasto o spostiamo la camera, l'immagine deve aggiornarsi quasi immediatamente.
+
+Il rendering offline, invece, può impiegare molto più tempo per generare una singola immagine.
+
+È il caso di:
+
+- film d'animazione;
+- rendering architettonici fotorealistici;
+- effetti visivi cinematografici;
+- immagini generate con tecniche di path tracing molto costose.
+
+Nel rendering offline, un singolo frame può richiedere secondi, minuti o ore. Nel rendering in tempo reale, invece, spesso abbiamo pochi millisecondi per frame.
+
+OpenGL è pensato soprattutto per il rendering interattivo e in tempo reale, anche se può essere usato anche in processi non interattivi o per il rendering off-screen.
+
+** Perché la computer graphics è difficile?
+La computer graphics è difficile perché unisce molti argomenti diversi.
+
+Non basta conoscere un linguaggio di programmazione.
+
+Nel tempo incontreremo nozioni di:
+
+- matematica;
+- geometria;
+- algebra lineare;
+- gestione della memoria;
+- architettura GPU;
+- programmazione parallela;
+- percezione visiva;
+- formati immagine;
+- API grafiche;
+- debugging.
+
+Tuttavia non bisogna spaventarsi.
+
+La soluzione è procedere per strati.
+
+Prima capiamo che cos'è un pixel, poi che cos'è un vertice e come più vertici formano una primitiva. Vedremo quindi come i dati arrivano alla GPU, come vengono elaborati dagli shader e come la rasterizzazione produce frammenti che possono contribuire al framebuffer.
+
+Ogni concetto è complicato se preso da solo e senza contesto. Diventa molto più comprensibile se inserito nel percorso completo.
+
+** Collegamento con OpenGL
+In OpenGL lavoreremo spesso con questa sequenza mentale:
+
+#+begin_src txt
+preparo i dati
+configuro le risorse OpenGL
+compilo e collego gli shader
+entro nel render loop
+eseguo una draw call
+i dati attraversano la pipeline
+il risultato raggiunge il framebuffer
+presento il buffer sullo schermo
+#+end_src
+
+Ad esempio, per disegnare il primo triangolo dovremo imparare:
+
+- come creare una finestra;
+- come creare e rendere corrente un contesto OpenGL;
+- come caricare le funzioni OpenGL;
+- come creare un VBO e un VAO;
+- come scrivere e compilare gli shader;
+- come collegarli in uno shader program;
+- come eseguire una draw call;
+- come presentare il risultato nella finestra.
+
+Questo può sembrare tanto per un solo triangolo.
+
+E lo è.
+
+Tuttavia è proprio questo il valore didattico del primo triangolo: ci costringe a toccare tutti i pezzi principali della pipeline moderna.
+
+** Errori comuni
+*** Pensare che OpenGL sia un motore grafico
+OpenGL non è Unity, Unreal Engine o Godot.
+
+Non gestisce automaticamente scene, materiali, luci, modelli, editor, fisica e animazioni.
+
+OpenGL offre un'interfaccia di livello più basso rispetto a questi motori e non fornisce da solo tutti i loro sottosistemi.
+
+*** Pensare che la GPU capisca gli oggetti
+La GPU non riceve “una macchina”, “una casa” o “un personaggio”.
+
+L'implementazione grafica riceve dati e comandi: vertici, indici, texture, uniform, shader e stato OpenGL.
+
+Siamo noi a dare significato a quei dati.
+
+*** Confondere modello e immagine
+Un modello 3D non è l'immagine finale.
+
+Il modello è una descrizione. L'immagine è il risultato del rendering.
+
+*** Confondere frammenti e pixel
+Un frammento non è sempre un pixel finale.
+
+È un possibile contributo al framebuffer, ma può essere scartato, mascherato o combinato con altri valori.
+
+*** Sottovalutare la memoria
+La grafica non è solo matematica. È anche memoria.
+
+Dati dei vertici, texture, attachment dei framebuffer e altri buffer devono essere creati, organizzati e usati correttamente.
+
+*** Cercare subito il codice senza capire il percorso
+Copiare codice può far apparire qualcosa sullo schermo, ma non aiuta davvero se non capiamo che cosa succede.
+
+L'obiettivo di questa serie non è solo ottenere un triangolo. È capire perché quel triangolo appare.
+
+** Domande frequenti
+*** Computer graphics e grafica digitale sono la stessa cosa?
+Dipende dal contesto.
+
+“Grafica digitale” è un'espressione più generica e può indicare immagini create o modificate con strumenti digitali. “Computer graphics” indica più precisamente il campo tecnico che studia come generare, rappresentare, elaborare e mostrare immagini tramite computer.
+
+*** OpenGL serve ancora?
+Per imparare i concetti fondamentali della grafica rasterizzata in tempo reale, sì. OpenGL 4.6 rimane la versione corrente della specifica desktop e continuano a esistere implementazioni conformi su hardware recente. Non è però l'unica API disponibile né sempre la scelta migliore per un nuovo motore complesso.
+
+Il supporto dipende inoltre dalla piattaforma e dai driver. Su macOS, ad esempio, OpenGL è deprecato dalla versione 10.14 e Apple raccomanda Metal per i nuovi progetti. In questa serie lo useremo soprattutto come strumento didattico e multipiattaforma, mantenendo come riferimento OpenGL 3.3 core.
+
+*** Devo conoscere molta matematica prima di iniziare?
+Non tutta subito.
+
+Per partire bastano coordinate, vettori molto semplici e un po' di familiarità con i numeri. Più avanti serviranno matrici, trasformazioni, proiezione e prodotti tra vettori. L'importante è introdurli nel momento giusto.
+
+*** Perché si usano così tanto i triangoli?
+Perché sono semplici e adatti alla rasterizzazione. Tre vertici non allineati definiscono un piano, un triangolo è sempre convesso e i poligoni più complessi possono essere suddivisi in triangoli.
+
+*** La computer graphics produce sempre immagini realistiche?
+No.
+
+La computer graphics può produrre immagini realistiche, stilizzate, astratte, tecniche, scientifiche o puramente funzionali. Un'interfaccia utente, un grafico scientifico e un videogioco realistico sono tutti esempi diversi di grafica generata al computer.
+
+** Mini-esercizio
+Prima di passare al prossimo articolo, provate a rispondere a queste domande senza guardare le sezioni precedenti.
+
+1. Che cos'è un pixel?
+2. Perché un colore può essere rappresentato con tre numeri?
+3. Qual è la differenza tra un modello 3D e l'immagine finale?
+4. Perché la GPU è adatta alla computer graphics?
+5. Che ruolo ha OpenGL nel percorso dal codice allo schermo?
+6. Che differenza c'è tra frammento e pixel?
+7. Che cosa significa renderizzare?
+
+Se riuscite a rispondere anche solo in modo semplice, avete già capito il punto centrale dell'articolo.
+
+** Conclusione
+Abbiamo visto come la computer graphics non sia magia, ma un processo tecnico che trasforma dati numerici in immagini visibili.
+
+Un'immagine raster può essere vista come una griglia di pixel, i cui valori possono essere rappresentati con numeri. Nella grafica 3D, però, di solito non partiamo dai pixel: partiamo da dati geometrici, materiali, texture, luci e shader. Il rendering trasforma questa descrizione in un'immagine.
+
+OpenGL si inserisce in questo percorso come API grafica: permette al programma di configurare risorse e stato, inviare comandi di disegno e avviare la pipeline che porterà i dati fino al framebuffer.
+
+In sostanza, il viaggio che faremo nei prossimi articoli sarà questo:
+
+#+begin_src txt
+codice → dati → OpenGL → implementazione → pipeline → frammenti → framebuffer → presentazione → pixel visibili
+#+end_src
+
+Capire questo percorso è il primo passo per non limitarsi a copiare esempi, ma iniziare davvero a comprendere come funziona la grafica moderna.
+
+** Fonti e riferimenti
+- [[https://registry.khronos.org/OpenGL/index_gl.php][Khronos OpenGL Registry]], per le specifiche ufficiali di OpenGL, GLSL, estensioni e header.
+- [[https://registry.khronos.org/OpenGL/specs/gl/glspec33.core.pdf][OpenGL 3.3 Core Profile Specification]], per la specifica di riferimento usata nella serie.
+- [[https://wikis.khronos.org/opengl/Rendering_Pipeline_Overview][OpenGL Wiki, =Rendering Pipeline Overview=]], per la descrizione generale degli stadi della pipeline di rendering.
+- [[https://wikis.khronos.org/opengl/Fragment][OpenGL Wiki, =Fragment=]], per la distinzione tecnica tra frammenti, rasterizzazione e area dei pixel.
+- [[https://www.khronos.org/opengl/][Khronos, =OpenGL=]], per lo stato e le caratteristiche generali dell'API.
+- [[https://www.khronos.org/conformance/adopters/conformant-products/opengl][Khronos, =OpenGL Conformant Products=]], per le implementazioni conformi registrate su hardware recente.
+- [[https://developer.apple.com/documentation/macos-release-notes/macos-mojave-10_14-release-notes/][Apple, =macOS Mojave 10.14 Release Notes=]], per la deprecazione di OpenGL su macOS.
+** Crediti immagine
+
+L'immagine di copertina usa [[https://commons.wikimedia.org/wiki/File:Utah_teapot_simple_2.png][Utah teapot simple 2]] di Dhatfield, pubblicata su Wikimedia Commons con licenza [[https://creativecommons.org/licenses/by-sa/3.0/][CC BY-SA 3.0]].

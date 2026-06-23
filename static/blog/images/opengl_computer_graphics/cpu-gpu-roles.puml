@@ -1,0 +1,27 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+title CPU and GPU cooperate during rendering
+
+rectangle "CPU" {
+  rectangle "Program logic" as logic
+  rectangle "Load data" as load
+  rectangle "Prepare OpenGL commands" as commands
+}
+
+rectangle "GPU" {
+  rectangle "Process many vertices" as vertices
+  rectangle "Rasterize primitives" as raster
+  rectangle "Shade many fragments" as fragments
+}
+
+rectangle "Framebuffer" as fb
+
+logic --> load
+load --> commands
+commands --> vertices
+vertices --> raster
+raster --> fragments
+fragments --> fb
+@enduml
