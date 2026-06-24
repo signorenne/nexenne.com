@@ -38,7 +38,7 @@ describe('buildFeed (en)', () => {
 	const xml = buildFeed('en');
 
 	it('declares the English channel metadata', () => {
-		expect(xml).toContain('<title>nexenne — Field notes</title>');
+		expect(xml).toContain('<title>nexenne - Field notes</title>');
 		expect(xml).toContain('<language>en</language>');
 		expect(xml).toContain('<atom:link href="https://nexenne.com/feed.xml" rel="self"');
 	});
@@ -59,7 +59,7 @@ describe('buildFeed (it)', () => {
 	const xml = buildFeed('it');
 
 	it('declares the Italian channel metadata', () => {
-		expect(xml).toContain('<title>nexenne — Appunti dal campo</title>');
+		expect(xml).toContain('<title>nexenne - Appunti dal campo</title>');
 		expect(xml).toContain('<language>it</language>');
 		expect(xml).toContain('<atom:link href="https://nexenne.com/it/feed.xml" rel="self"');
 	});

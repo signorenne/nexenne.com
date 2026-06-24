@@ -104,7 +104,7 @@
 		}
 		// The loader is normally dismissed by afterNavigate, once the destination
 		// has actually loaded. This is only a last-resort fallback so the overlay
-		// can't get stuck forever if a navigation never completes — kept long so
+		// can't get stuck forever if a navigation never completes. Kept long so
 		// slow connections still see the loader until the new page is ready.
 		safetyTimer = setTimeout(dismiss, 20000);
 	});
