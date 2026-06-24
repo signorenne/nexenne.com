@@ -7742,8 +7742,10 @@ main[data-page="uses"] .uses-box h3 {
 		justify-content: center;
 		flex-wrap: wrap;
 	}
-	/* When the booking grid collapses to one column, the lone button would
-	   stretch to fill the cell — keep it content-width and centered. */
+	/* Booking block collapses to one column on phones: center its content. */
+	.services-booking-grid {
+		text-align: center;
+	}
 	.services-booking-grid .btn {
 		justify-self: center;
 	}
