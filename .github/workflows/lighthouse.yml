@@ -1,0 +1,53 @@
+name: Lighthouse
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  lighthouse:
+    name: Lighthouse budget
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # This project uses Yarn 4 (see "packageManager" in package.json).
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build (no base path, served at root)
+        run: yarn build
+
+      - name: Serve build and wait
+        run: |
+          yarn preview --port 4173 --host 127.0.0.1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4173/ >/dev/null && break
+            sleep 1
+          done
+
+      - name: Run Lighthouse
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: |
+            http://127.0.0.1:4173/
+            http://127.0.0.1:4173/blog/iptables_vs_nftables/
+            http://127.0.0.1:4173/work/knob1/
+          configPath: ./lighthouserc.json
+          temporaryPublicStorage: true

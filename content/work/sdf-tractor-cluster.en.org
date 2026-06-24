@@ -1,0 +1,68 @@
+#+TITLE: SDF Group · tractor HMI & iCluster
+#+LANG: en
+#+TRANSLATED_FROM: it
+#+AUTO_TRANSLATED: false
+#+CLIENT: SDF - SAME Deutz-Fahr · via Re:Lab R&D
+#+ROLE: Embedded and HMI developer
+#+YEAR: Since January 2025
+#+SUMMARY: Structuring digital cluster software that turns machine data into Qt/QML pages, indicators, alarms, and controls validated directly on the tractor display.
+#+TAGS: Qt/QML, C++, Embedded Linux, HMI, Hardware integration, Dedicated protocols
+#+COLOR: lime
+#+ACCENT: Digital iCluster · machine data and HMI
+#+METRICS: Scope :: Cabin software ; Stack :: Qt 6 / QML · C++ ; Mode :: Onsite · Treviglio
+
+* Context
+
+In a modern tractor, the cabin is a digital control center. Its displays must bring together machine data, system status, warnings, and controls in an interface that remains readable during field work and road travel.
+
+The DEUTZ-FAHR Series 8 TTV clearly shows the scale of this system. Its SigmaVision cabin combines a 15-inch ultrawide iCluster on the pillar with a 12.8-inch iMonitor 5 on the iControl armrest. The cluster can organize information around the operating context, prioritizing speed, temperatures, and levels on the road or engine, transmission, linkage, and hydraulic data in the field.
+
+[[/work/sdf-tractor-cluster/series-8-ttv.webp]]
+
+/DEUTZ-FAHR Series 8 TTV unveiled at Agritechnica 2025. Photo: [[https://agronotizie.imagelinenetwork.com/agrimeccanica/2025/12/12/nuova-serie-8-ttv-il-futuro-di-alta-potenza-secondo-deutz-fahr/88569][AgroNotizie]]./
+
+* My contribution
+
+I work on site with the SDF R&D team through Re:Lab on the software that connects the machine to the digital cluster. My contribution spans several layers of the stack: signal acquisition, application state, HMI components, and validation on the reference display.
+
+The key is keeping hardware and interface responsibilities clearly separated. QML pages should not decode messages from the machine or manage hardware interfaces directly. They should receive coherent data, know when a value is invalid, and react predictably to updates.
+
+* From machine data to application state
+
+For machine communication, I separated message reception, signal interpretation, and the state used by the application. I introduced checks that distinguish valid data from incomplete, stale, or unexpected values.
+
+This keeps the graphical layer independent of the dedicated protocol and prevents it from displaying a value simply because it was received. Instead, the HMI receives validated application state that is easier to use and diagnose.
+
+For local inputs and outputs, I developed a hardware-abstraction library integrated with Qt. Reads, writes, and notifications follow the same asynchronous event model as the rest of the application, avoiding duplicated low-level logic across individual screens.
+
+* Cluster pages and QML components
+
+I developed cluster pages and reusable QML components for indicators, measurements, machine states, controls, popups, and alarms. Each element must update reliably, behave consistently across screens, and handle unavailable data explicitly.
+
+Warnings require shared rules. Priority, lifetime, dismissal, and synchronization with machine state cannot be managed separately by each page. I therefore worked on common components connected to both local machine data and alarms received from other services through internal communication channels.
+
+[[/work/sdf-tractor-cluster/icluster-controls.webp]]
+
+/Series 8 TTV iCluster, iControl armrest, and iMonitor 5. Photo: [[https://agronotizie.imagelinenetwork.com/agrimeccanica/2025/12/12/nuova-serie-8-ttv-il-futuro-di-alta-potenza-secondo-deutz-fahr/88569][AgroNotizie]]./
+
+* Reliability and performance
+
+Testing on real hardware exposes issues that can remain hidden on a development machine: a delayed update, an unclear state transition, an ambiguous warning sequence, or an input event that interferes with an animation.
+
+During validation, I observe data, graphics, input, and audio together. When an issue appears, I can trace the entire path and determine whether it originates in the signal, state transformation, or screen logic. This approach helps me address latency-sensitive paths and regressions that appear as the product evolves.
+
+* Outcomes
+
+- Machine data is transformed into validated application state before reaching the HMI.
+- Input and output abstraction follows Qt's asynchronous event model.
+- Shared QML components keep indicators, controls, and warnings consistent.
+- Integration issues, latency, and regressions are analyzed directly on real hardware.
+
+* Stack
+
+Qt 6 · QML · C++ · Embedded Linux · CMake · dedicated protocols · hardware integration.
+
+* Further reading
+
+- [[https://agronotizie.imagelinenetwork.com/agrimeccanica/2025/12/12/nuova-serie-8-ttv-il-futuro-di-alta-potenza-secondo-deutz-fahr/88569][AgroNotizie · New Series 8 TTV]]
+- [[https://www.deutz-fahr.com/en-nd/new-age][DEUTZ-FAHR · official Series 8 page]]

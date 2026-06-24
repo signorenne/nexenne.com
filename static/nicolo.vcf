@@ -1,0 +1,10 @@
+BEGIN:VCARD
+VERSION:3.0
+FN:Nicolò Plebani
+N:Plebani;Nicolò;;;
+TITLE:Software Architect
+EMAIL;TYPE=INTERNET:nicolo@nexenne.com
+TEL;TYPE=CELL:+393463116428
+URL:https://nexenne.com
+ADR;TYPE=WORK:;;;Bergamo;;;Italy
+END:VCARD

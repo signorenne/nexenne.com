@@ -1,0 +1,40 @@
+#+TITLE: Content Pipeline
+
+The writing lives outside the app. The app reads it at build time and turns it
+into static pages.
+
+* Source Folders
+
+- =content/blog/= blog posts in Markdown or Org mode
+- =content/work/= work case studies in Markdown or Org mode
+- =content/resume/= resume source content
+
+* Blog And Work Loaders
+
+=src/lib/content/blog.server.ts= and =src/lib/content/work.server.ts= use
+=import.meta.glob= with =eager: true= to load content at build time.
+
+Each file is:
+
+1. Parsed by =parseByPath=.
+2. Validated with a Zod schema.
+3. Grouped by slug into a bilingual bundle. A bundle holds a =byLang= map (the
+   English and Italian versions) and a =source= fallback, so a page can show the
+   requested language and fall back when a translation is missing.
+4. Returned to route loaders as full content or as lighter metadata.
+
+Work bundles are sorted newest first using =src/lib/content/recency.ts=, which
+turns a free-text date into a sortable number. Drafts show in development and are
+skipped in production.
+
+* Parser
+
+=src/lib/content/parser.server.ts= handles both formats:
+
+- Markdown: =gray-matter=, =remark-parse=, =remark-gfm=, =remark-rehype=
+- Org: =uniorg-parse= and =uniorg-rehype=
+- Code highlighting: =rehype-highlight=
+- HTML output: =rehype-stringify=
+
+It also builds the table of contents from headings, adds code-line wrappers,
+and fixes internal links/images when a =BASE_PATH= is used.

@@ -1,0 +1,10 @@
+/* TEAM */
+Software Architect: Nicolò Plebani
+Site: nexenne.com
+Location: Bergamo, Italy · remote
+
+/* SITE */
+Built with: SvelteKit, TypeScript, self-hosted fonts
+Standards: HTML5, CSS3, RSS, JSON-LD, PWA
+Hosting: static (GitHub Pages)
+Languages: English, Italiano

@@ -1,0 +1,180 @@
+#+TITLE: Features, Services & Integrations
+
+A study and reference map of everything built on top of the base SvelteKit
+site: external services, packages, environment variables, and how each feature
+works. Use it to remember what is wired where and what needs occasional
+maintenance.
+
+* External services & accounts
+
+- *Web3Forms* delivers the contact form without a backend. It needs a free
+  access key tied to an email, used client side. Set
+  =PUBLIC_WEB3FORMS_ACCESS_KEY=. Without it, the form falls back to a =mailto:=
+  link. See =TODO.md= for setup. The API is a POST to
+  =https://api.web3forms.com/submit= with form data that includes the access key.
+- *GitHub Pages* hosts the static build and runs the deploy (pre-existing). See
+  [[file:deployment.org][deployment.org]] and =.github/workflows/deploy.yml=.
+- *Google Fonts* is no longer used. Fonts are self-hosted for privacy and
+  performance.
+- No analytics, comments, or trackers, by design.
+
+* Packages added
+
+- =vitest= (dev) is the unit test runner. Scripts: =yarn test= runs once,
+  =yarn test:watch= watches. Config lives in =vitest.config.ts=.
+- =satori= (dev) turns a JSX-like element tree into SVG. It renders the
+  per-article Open Graph cards at build time.
+- =@resvg/resvg-wasm= (dev) rasterizes that SVG to PNG. It is pure WASM with no
+  native binary, and pairs with satori in =src/lib/og/render.server.ts=.
+
+* Environment variables
+
+- =PUBLIC_WEB3FORMS_ACCESS_KEY= is the contact form key. It is public by design,
+  because Web3Forms keys live in client code. Locally, copy =.env.example= to
+  =.env=. In CI and production, set it as a repository secret; the deploy
+  workflow passes it to the build step. It is read through =$env/dynamic/public=.
+
+* Fonts (self-hosted)
+
+- Web fonts live in =static/fonts/= (Inter Tight, Space Grotesk, JetBrains Mono
+  with its italic, Fraunces, plus the Nexenne Icons subset).
+- The =@font-face= rules and the first-paint =<link rel="preload">= tags are in
+  =src/app.css= and =src/app.html=. There is no third-party font request.
+- =src/lib/og/fonts/= holds TTF copies (Space Grotesk and JetBrains Mono) used
+  only by satori at build time, because satori cannot read woff2. These are not
+  shipped to visitors.
+
+* Bilingual URL routing
+
+- English lives at the root and Italian under =/it/=, both prerendered.
+- All page routes live under =src/routes/[[lang=lang]]/=. The matcher
+  =src/params/lang.ts= matches only =it=.
+- =src/lib/paths.ts= is the single source for links: =lpath= and =lhref= build
+  language-prefixed hrefs, =lgoto= navigates, =mirrorPath= toggles language,
+  =stripLang= and =langFromParam= help with detection. Never build internal
+  links by hand; always go through these helpers.
+- Language is driven by the URL. The store is set from =$page.params.lang= in the
+  root layout, =src/hooks.server.ts= stamps the html lang attribute for
+  prerender, and the boot script in =app.html= sets it for the first paint.
+- Dynamic routes (the =[slug]= pages) must emit both languages in their =entries=
+  generator (one with =lang: ''= and one with =lang: 'it'=) or they will not
+  prerender.
+- For SEO, the layout head adds hreflang alternates, =sitemap.xml= emits both
+  languages with =xhtml:link= alternates, and there are two RSS feeds
+  (=/feed.xml= for English and =/it/feed.xml= for Italian) sharing one builder in
+  =src/lib/content/feed.server.ts=.
+
+* Testing
+
+- =vitest.config.ts= maps =$lib= and stubs the =$app/*= virtual modules (in
+  =src/test/stubs/=) so logic can run outside SvelteKit. =__APP_VERSION__= is
+  defined for tests.
+- Covered: =paths.ts=, the i18n dictionary parity (the English and Italian key
+  sets must match) plus its helpers, =content/parser.server=, =content/recency=,
+  the real blog loader, the =toast= store, and the =search.json= and
+  =sitemap.xml= endpoints.
+- Because of the parity test, every new i18n key must be added to both languages.
+
+* CI and deployment
+
+- =.github/workflows/deploy.yml= runs on push to =main=: check, lint, test,
+  build, then deploy to Pages. The build step receives
+  =PUBLIC_WEB3FORMS_ACCESS_KEY=.
+- =.github/workflows/lighthouse.yml= runs on push and pull requests. It builds,
+  serves the build, and runs Lighthouse CI against the home page plus a post and
+  a case study. Budgets are in =lighthouserc.json=: accessibility and SEO are
+  hard gates (at least 0.95), while performance and best practices are warnings,
+  because CI performance numbers are noisy.
+
+* Search (command palette)
+
+- The build-time index is =src/routes/search.json/+server.ts=. It emits one entry
+  per page per language: static pages come from their i18n keys, the resume from
+  its content, and blog and work entries from their rendered HTML stripped to
+  text.
+- =CommandPalette.svelte= fetches the index on first open, ranks matches (title
+  before body), shows highlighted snippets, and navigates with =?q=term=.
+- =src/lib/highlight.ts= highlights the term in the page using the CSS Custom
+  Highlight API, which does not mutate the DOM and therefore never breaks
+  animated components. It is wired in the layout and clears on Escape, click, or
+  scroll, then removes =?q=.
+
+* Offline and PWA
+
+- =src/service-worker.ts= is auto-registered by SvelteKit. It precaches the build
+  assets and static files, serves hashed assets cache-first, and serves pages
+  network-first with an offline fallback. The manifest is
+  =static/site.webmanifest=. Test it against a built preview, not the dev server.
+
+* UX systems
+
+- *Toasts*: =src/lib/stores/toast.ts= and =Toaster.svelte=. They support tones
+  (default, success, error), action buttons (such as Undo on a language switch),
+  dedupe, and click-to-dismiss. Used by copy-email, code copy, language switch,
+  and the theme toggle.
+- *Language banner*: =LangSuggest.svelte=. When the browser language differs from
+  the page, it offers to switch and is shown in the target language. The choice
+  is remembered in =localStorage= under =nexenne.langPrompt=.
+- *Share*: =src/lib/share.ts= (=sharePage=). It uses the native share sheet, and
+  otherwise copies the link and shows a toast. It lives in the article rail
+  (=ArticleNav.svelte=).
+- *Code copy and heading anchors*: =src/lib/actions/proseEnhance.ts=, an action
+  on the =.prose= container. It adds a copy button per code block and a
+  hover-to-copy anchor per heading.
+- *View Transitions*: =onNavigate= in the layout (a crossfade, skipped under
+  reduced motion).
+- *Linkable tags and related items*: article tags link to =/blog/?tag=X= and
+  =/work/?tag=X=. The related list is computed on the server by shared tags in
+  the =[slug]/+page.server.ts= loaders.
+
+* SEO
+
+- hreflang and canonical links in the layout head, plus a per-language og:locale.
+- Structured data (JSON-LD): Person and WebSite globally, plus BlogPosting or
+  CreativeWork and a BreadcrumbList on articles and case studies.
+- Per-article Open Graph images: =src/routes/og/[slug].png= (satori plus
+  resvg-wasm), referenced as og:image.
+- =static/.well-known/security.txt= (RFC 9116) and =static/humans.txt=.
+- =sitemap.xml=, =robots.txt=, and the RSS feeds.
+
+* Resume specifics
+
+- The accent follows the site accent (=--cv-accent: var(--accent)=).
+- Experience and projects are ordered newest first using
+  =src/lib/content/recency.ts=, which parses Italian and English date strings
+  into a sortable number.
+- Skills list soft skills first, then technical ones; the content mirrors the
+  real CV.
+- Print has a dedicated =@media print= type scale in =app.css= so the PDF matches
+  the on-screen density.
+
+* Accessibility
+
+- The command palette traps focus and restores it on close.
+- Global =:focus-visible= outlines, plus =prefers-contrast: more= support.
+- =prefers-reduced-motion= is respected; the motion-off class disables animations
+  and view transitions.
+
+* Key files (quick map)
+
+- Links and i18n: =src/lib/paths.ts=, =src/lib/i18n.ts=
+- Search: =src/routes/search.json/+server.ts=, =src/lib/highlight.ts=,
+  =src/lib/components/CommandPalette.svelte=
+- Feeds and sitemap: =src/lib/content/feed.server.ts=, =src/routes/feed.xml=,
+  =src/routes/it/feed.xml=, =src/routes/sitemap.xml=
+- OG images: =src/lib/og/render.server.ts=, =src/routes/og/[slug].png=
+- PWA: =src/service-worker.ts=
+- Contact: =src/routes/[[lang=lang]]/contact/+page.svelte=
+- CI: =.github/workflows/deploy.yml=, =.github/workflows/lighthouse.yml=
+
+* Maintenance checklist
+
+- [ ] Set =PUBLIC_WEB3FORMS_ACCESS_KEY= (repo secret and local =.env=). See
+  =TODO.md=.
+- [ ] Refresh the =Expires= date in =security.txt= once a year.
+- [ ] Add every new i18n key to both English and Italian; the parity test
+  enforces this.
+- [ ] Put new pages under =src/routes/[[lang=lang]]/=, and have new dynamic
+  routes emit both languages in their =entries= generator.
+- [ ] Build all internal links through the =paths.ts= helpers, never by hand.
+- [ ] Run =yarn check && yarn lint && yarn test && yarn build= before pushing.

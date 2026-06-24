@@ -1,0 +1,91 @@
+#+TITLE: Developing The Site
+
+This is the short version for day-to-day changes.
+
+* Before You Edit
+
+Run the dev server:
+
+#+begin_src sh
+yarn dev
+#+end_src
+
+Then change one area at a time:
+
+- app code in =src/=
+- writing in =content/=
+- public assets in =static/=
+- project notes in =docs/=
+
+* Common Changes
+
+| Change               | Start Here                             |
+| UI copy              | =src/lib/i18n.ts=                      |
+| Main navigation      | =src/lib/data.ts=                      |
+| Page layout          | =src/routes/+layout.svelte=            |
+| A page               | =src/routes/<page>/+page.svelte=       |
+| Blog/work content    | =content/blog/= or =content/work/=     |
+| Content parsing      | =src/lib/content/parser.server.ts=     |
+| Global styles        | =src/app.css=                          |
+| Theme/tweak behavior | =src/lib/tweaks.ts= and =src/app.html= |
+
+* Adding A Page
+
+1. Create =src/routes/<name>/+page.svelte=.
+2. Add =+page.server.ts= only if the page needs data.
+3. Add navigation metadata in =src/lib/data.ts= if the page should appear in
+   the side map or command palette.
+4. Add labels in =src/lib/i18n.ts= for English and Italian.
+
+* Adding A Blog Post
+
+1. Add a file under =content/blog/=.
+2. Use =.md= or =.org=.
+3. Include the required frontmatter: title, date, language, description.
+4. Add cover images under =static/blog/covers/=.
+5. Add an English sibling with =.en.= in the filename when needed.
+
+Example:
+
+#+begin_example
+content/blog/my-post.md
+content/blog/my-post.en.md
+#+end_example
+
+Both files resolve to the same slug: =my-post=.
+
+* Adding A Work Case Study
+
+Use =content/work/=. Required fields are title, client, role, year, and
+language. Metrics, accent, color, tags, and translations are optional but useful.
+
+* Adding A Component
+
+1. Create =src/lib/components/MyThing.svelte=.
+2. Import it with =$lib/components/MyThing.svelte=.
+3. Keep styles in =src/app.css= unless local component CSS is clearer.
+4. Extract only when the component has behavior, reuse, or enough markup to
+   make the route hard to read.
+
+* Before Committing
+
+Run:
+
+#+begin_src sh
+yarn check
+yarn build
+#+end_src
+
+If you changed formatting-sensitive files, run:
+
+#+begin_src sh
+yarn format:check
+#+end_src
+
+* Rules Of Thumb
+
+- Keep content in =content/=, not inside components.
+- Keep UI text in =src/lib/i18n.ts=.
+- Keep site-wide facts in =src/lib/data.ts=.
+- Keep the site static; do not add runtime server dependencies casually.
+- Comment only when the reason is not obvious from the code.

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="%lang%">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg?v=5" />
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
+		<link rel="manifest" href="%sveltekit.assets%/site.webmanifest" />
+		<link rel="author" type="text/plain" href="%sveltekit.assets%/humans.txt" />
+		<meta name="theme-color" content="#0a0a0f" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+		<!-- Self-hosted fonts (see @font-face in app.css), so there is no third-party
+		     request. Preload the two faces used on first paint under the default theme. -->
+		<link
+			rel="preload"
+			href="%sveltekit.assets%/fonts/jetbrains-mono.woff2"
+			as="font"
+			type="font/woff2"
+			crossorigin
+		/>
+		<link
+			rel="preload"
+			href="%sveltekit.assets%/fonts/inter-tight.woff2"
+			as="font"
+			type="font/woff2"
+			crossorigin
+		/>
+
+		<script>
+			// Run before Svelte mounts so stored visual preferences are applied on first paint.
+			(function () {
+				var DEFAULTS = {
+					theme: 'system',
+					accent: 'violet',
+					font: 'mono-sans',
+					hero: 'stack',
+					density: 'comfortable',
+					motion: true,
+					resizeHud: false,
+					nav: 'sidemap',
+					workCard: 'bento'
+				};
+				var stored = {};
+				try {
+					stored = JSON.parse(localStorage.getItem('nexenne.tweaks') || '{}');
+					Object.keys(stored).forEach(function (k) {
+						DEFAULTS[k] = stored[k];
+					});
+				} catch (e) {}
+				// With no explicit choice, follow the OS "reduce motion" setting.
+				if (
+					stored.motion === undefined &&
+					window.matchMedia &&
+					window.matchMedia('(prefers-reduced-motion: reduce)').matches
+				) {
+					DEFAULTS.motion = false;
+				}
+				var root = document.documentElement;
+				var theme =
+					DEFAULTS.theme === 'system'
+						? window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+							? 'light'
+							: 'dark'
+						: DEFAULTS.theme;
+				root.setAttribute('data-theme', theme);
+				root.setAttribute('data-density', DEFAULTS.density);
+				root.className =
+					'accent-' +
+					DEFAULTS.accent +
+					' font-' +
+					DEFAULTS.font +
+					(DEFAULTS.motion ? '' : ' motion-off');
+				// Language is driven by the URL: English at the root, Italian under /it/.
+				var path = window.location.pathname;
+				root.setAttribute('lang', path === '/it' || path.indexOf('/it/') === 0 ? 'it' : 'en');
+				window.__nexenneBootTweaks = DEFAULTS;
+			})();
+		</script>
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div class="bg-grid"></div>
+		<div class="cursor-dot" id="cursor-dot"></div>
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>

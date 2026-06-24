@@ -1,0 +1,38 @@
+#+TITLE: Styling
+
+Most styling lives in =src/app.css=. That is a deliberate choice for this site:
+the design is easier to maintain when tokens, page styles, and prose styles are
+visible in one place.
+
+* System
+
+- Plain CSS
+- CSS custom properties for tokens
+- Theme classes and attributes on =html=
+- Component class names used by Svelte markup
+
+* Main Controls
+
+- =data-theme= switches light/dark/system output.
+- =accent-<name>= changes accent color variables.
+- =font-<name>= changes font pairing.
+- =data-density= changes spacing density.
+- =motion-off= disables motion-heavy effects.
+
+The early script in =src/app.html= applies these before Svelte mounts, so the
+first paint already has the right look.
+
+* Where To Edit
+
+- Tokens and theme variables: near the top of =src/app.css=
+- Page and component visuals: class blocks in =src/app.css=
+- Generated article HTML: prose and code sections in =src/app.css=
+- Local component CSS: only when global CSS would make the component harder to
+  move or understand
+
+* Conventions
+
+- Prefer existing variables over raw colors.
+- Keep new class names specific and readable.
+- Check mobile and desktop after layout changes.
+- Comment only when the reason is not obvious from the selector or token.

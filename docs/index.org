@@ -1,0 +1,37 @@
+#+TITLE: Project Docs
+
+Short notes for the parts of this site that are easy to forget.
+
+Read =how-it-fits-together.org= first, then jump to the file you are touching.
+
+* Start Here
+
+- [[file:how-it-fits-together.org][How it fits together]]
+- [[file:features-and-integrations.org][Features, services & integrations]]
+- [[file:development-setup.org][Development setup]]
+- [[file:developing.org][Developing the site]]
+- [[file:sveltekit.org][How SvelteKit works here]]
+- [[file:content-pipeline.org][Content pipeline]]
+- [[file:deployment.org][Deployment]]
+- [[file:troubleshooting.org][Troubleshooting]]
+
+* Config Files
+
+- [[file:package-json.org][package.json]]
+- [[file:yarn-lock.org][yarn.lock]]
+- [[file:yarnrc-yml.org][.yarnrc.yml]]
+- [[file:vite-config.org][vite.config.ts]]
+- [[file:svelte-config.org][svelte.config.js]]
+- [[file:tsconfig-json.org][tsconfig.json]]
+- [[file:eslint-config.org][eslint.config.js]]
+
+* App Files
+
+- [[file:app-html.org][src/app.html]]
+- [[file:app-css.org][src/app.css]]
+- [[file:app-d-ts.org][src/app.d.ts]]
+- [[file:source-layout.org][src/ layout]]
+- [[file:routes.org][routes]]
+- [[file:components.org][components]]
+- [[file:styling.org][styling]]
+- [[file:static-and-build.org][static and build output]]

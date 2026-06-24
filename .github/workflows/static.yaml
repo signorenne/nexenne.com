@@ -1,0 +1,73 @@
+# Build the SvelteKit site and deploy the generated static output to GitHub Pages.
+# NOTE: this is NOT GitHub's "Static HTML" starter. That starter uploads `path: '.'`
+# (the raw repository, which has no index.html at its root) and is why the site
+# served "Page not found". This workflow runs the build and uploads `build/`.
+name: Deploy to GitHub Pages
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches: ['main']
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run
+# in-progress and latest queued. Do NOT cancel in-progress production deploys.
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history + tags so the build can derive the version from the latest git tag.
+          fetch-depth: 0
+
+      # This project uses Yarn 4 (see "packageManager" in package.json), so enable
+      # Corepack before setting up the Node cache for Yarn.
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build
+        # BASE_PATH is intentionally left unset: the site uses a custom domain
+        # (static/CNAME) and is served from the root, so svelte.config.js defaults
+        # the base to '' — correct for https://nexenne.com/.
+        run: yarn build
+        env:
+          # Set this as a repository secret to enable contact-form delivery.
+          PUBLIC_WEB3FORMS_ACCESS_KEY: ${{ secrets.PUBLIC_WEB3FORMS_ACCESS_KEY }}
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # The generated static site, NOT the repository root.
+          path: build
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

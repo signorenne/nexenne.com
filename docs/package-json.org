@@ -1,0 +1,34 @@
+#+TITLE: package.json
+
+=package.json= is the project's manifest. Yarn 4 reads it on every install.
+
+* In This File
+
+- Project name and private flag.
+- ES module mode through ="type": "module"=.
+- Commands under =scripts=.
+- Runtime packages under =dependencies=.
+- Tooling packages under =devDependencies=.
+- Forced transitive package versions under =resolutions= (Yarn's =overrides=
+  equivalent).
+- =packageManager= pins the Yarn version Corepack / classic-Yarn should use,
+  so contributors get the same release without thinking about it.
+
+* Scripts
+
+- =dev= starts the local Vite server.
+- =build= generates the static site.
+- =preview= serves =build/= locally.
+- =check= refreshes SvelteKit types and runs =svelte-check=.
+- =format= runs Prettier on supported files.
+- =format:check= checks formatting without editing.
+- =lint= runs ESLint.
+- =prepare= lets Husky install hooks when dependencies are installed.
+
+Run any of them with =yarn <script>=. Yarn 4 forwards unknown subcommands to
+=package.json= scripts, so no =run= keyword is needed.
+
+* Dependencies
+
+Keep runtime dependencies for code that is used by the app or content pipeline.
+Keep compilers, linters, formatters, and local tools in =devDependencies=.

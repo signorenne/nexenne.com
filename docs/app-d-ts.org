@@ -1,0 +1,12 @@
+#+TITLE: src/app.d.ts
+
+=src/app.d.ts= is for ambient TypeScript declarations.
+
+SvelteKit reads this file for app-level types. Right now, the only project
+specific type is =window.__nexenneBootTweaks=, which is created by the early
+script in =src/app.html=.
+
+* App Namespace
+
+The empty =App= namespace is kept because SvelteKit expects this file to be the
+place for future app types: custom errors, locals, page data, or platform data.
