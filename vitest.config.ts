@@ -17,7 +17,9 @@ export default defineConfig({
 	},
 	define: {
 		// Provided by vite.config.ts at build time; stubbed for tests.
-		__APP_VERSION__: '"test"'
+		__APP_VERSION__: '"test"',
+		__GIT_COMMIT_HASH__: '""',
+		__GIT_COMMIT_DATE__: '""'
 	},
 	test: {
 		environment: 'node',
