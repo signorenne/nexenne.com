@@ -1,5 +1,8 @@
 #+TITLE: package.json
 
+This file owns the explanation of =package.json=. Dependency policy lives in
+[[file:dependencies.org][Dependency policy]].
+
 =package.json= is the project's manifest. Yarn 4 reads it on every install.
 
 * In This File

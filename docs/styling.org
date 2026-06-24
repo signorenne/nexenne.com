@@ -1,5 +1,8 @@
 #+TITLE: Styling
 
+This file owns concrete CSS mechanics. Surface principles live in
+[[file:../DESIGN.org][DESIGN.org]].
+
 Most styling lives in =src/app.css=. That is a deliberate choice for this site:
 the design is easier to maintain when tokens, page styles, and prose styles are
 visible in one place.

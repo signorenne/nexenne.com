@@ -1,23 +1,23 @@
 #+TITLE: vite.config.ts
 
-=vite.config.ts= is intentionally tiny.
-
-Vite is still the dev server and bundler, but SvelteKit owns most of the app
-behavior. This file mainly turns on the SvelteKit plugin.
+This file owns the explanation of Vite configuration. Vite is the dev server and
+bundler. SvelteKit owns most app behavior, but this file also injects
+build-time version metadata used by =src/lib/data.ts=.
 
 * Current Config
 
-#+begin_src ts
-import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+=plugins: [sveltekit()]= connects Vite to SvelteKit. The =define= block exposes:
 
-export default defineConfig({
-  plugins: [sveltekit()]
-});
-#+end_src
+- =__APP_VERSION__= from =PUBLIC_APP_VERSION=, =APP_VERSION=, the latest git tag,
+  or =v0.0.0=.
+- =__GIT_COMMIT_HASH__= from =git rev-parse --short HEAD=.
+- =__GIT_COMMIT_DATE__= from the last commit date as =YYYY-MM-DD=.
 
-* What This Means
+These constants are declared in =src/app.d.ts= and read through
+=src/lib/data.ts= for footer/status metadata.
 
-The =sveltekit()= plugin connects Vite to SvelteKit. It teaches Vite how to
-compile Svelte files, understand routes, serve the dev app, and build the
-production output.
+* Why Git History Matters
+
+CI checks out full history in the workflows so =git describe --tags --abbrev=0=
+can find the latest release tag. If git metadata is unavailable, the build still
+succeeds with the =v0.0.0= fallback and empty commit fields.

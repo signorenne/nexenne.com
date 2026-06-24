@@ -1,0 +1,107 @@
+#+TITLE: Project Setup
+#+OPTIONS: toc:2 num:nil ^:nil
+#+STARTUP: showall
+
+This page owns the operational setup map: tools, scripts, hooks, generated
+folders, CI, secrets, and where to jump next. Process rules live in
+[[file:../CONVENTIONS.org][CONVENTIONS.org]].
+
+* Quick Start
+
+#+begin_src sh
+corepack enable              # optional when your yarn launcher already works
+yarn install --immutable
+yarn dev
+#+end_src
+
+Before pushing:
+
+#+begin_src sh
+yarn format:check
+yarn check
+yarn lint
+yarn test
+yarn build
+#+end_src
+
+* Requirements
+
+| tool        | expectation                                               |
+|-------------+-----------------------------------------------------------|
+| Node.js     | Node 24 in CI; use a matching local version (see =.nvmrc=) |
+| Yarn        | any launcher that delegates to the pinned Yarn release     |
+| Git         | needed for version metadata during build                  |
+| Browser     | modern desktop/mobile browser for preview checks          |
+
+Yarn is pinned in =package.json= and =.yarnrc.yml=. The checked-in binary lives
+at =.yarn/releases/yarn-4.15.0.cjs=, and the project uses
+=nodeLinker: node-modules=.
+
+* Scripts
+
+| command             | what it does                                      |
+|---------------------+---------------------------------------------------|
+| =yarn dev=          | Vite dev server                                   |
+| =yarn build=        | SvelteKit static build plus =scripts/postbuild.mjs= |
+| =yarn preview=      | serve the generated =build/= folder               |
+| =yarn check=        | =svelte-kit sync= and =svelte-check=              |
+| =yarn lint=         | ESLint for JS, TS, and Svelte                     |
+| =yarn test=         | Vitest once                                       |
+| =yarn test:watch=   | Vitest in watch mode                              |
+| =yarn format=       | Prettier write for supported files                |
+| =yarn format:check= | Prettier check for supported files                |
+| =yarn prepare=      | Husky hook setup                                  |
+
+* Local Hooks
+
+=.husky/pre-commit= formats staged JS, TS, Svelte, CSS, HTML, JSON, and
+Markdown files, then stages the formatted result. It looks for a working Node
+binary explicitly so commits from GUI tools still behave.
+
+Org files are not formatted by the hook. Keep them tidy by hand until an
+Org-aware formatter is introduced.
+
+* CI Workflows
+
+| workflow                           | trigger                    | notes                          |
+|------------------------------------+----------------------------+--------------------------------|
+| =.github/workflows/quality.yml=    | pull requests, main pushes | format, check, lint, test, build |
+| =.github/workflows/lighthouse.yml= | pull requests, main pushes | builds, previews, runs LHCI    |
+| =.github/workflows/static.yaml=    | main pushes, manual runs   | deploys =build/= to Pages      |
+
+The deploy workflow uses =fetch-depth: 0= so =vite.config.ts= can derive the
+latest git tag, commit hash, and commit date for the site metadata.
+
+* Generated Folders
+
+- =node_modules/= dependencies installed by Yarn.
+- =.svelte-kit/= generated SvelteKit types and intermediate output.
+- =build/= production static site output.
+- =.yarn/install-state.gz= Yarn install metadata.
+
+Delete and regenerate these when they get stale. Do not patch generated output
+directly.
+
+* Environment
+
+=PUBLIC_WEB3FORMS_ACCESS_KEY= enables real contact-form delivery through
+Web3Forms. Without it, the contact form falls back to =mailto:=. Locally, copy
+=.env.example= to =.env=. In GitHub, add it as an Actions repository secret;
+=.github/workflows/static.yaml= passes it to the build.
+
+* Repository Metadata
+
+- [[file:../.editorconfig][.editorconfig]] keeps line endings and indentation expectations visible to editors.
+- [[file:../.gitattributes][.gitattributes]] normalizes LF line endings and marks Org docs as documentation.
+- [[file:../.gitignore][.gitignore]] keeps generated output, secrets, and local assistant/editor state out of git.
+- [[file:../LICENSE][LICENSE]] is MIT.
+
+* Related
+
+- [[file:../AGENTS.org][Agent operating guide]]
+- [[file:../CONVENTIONS.org][Project conventions]]
+- [[file:development-setup.org][Development setup]]
+- [[file:developing.org][Developing the site]]
+- [[file:deployment.org][Deployment]]
+- [[file:features-and-integrations.org][Features, services & integrations]]
+- [[file:troubleshooting.org][Troubleshooting]]

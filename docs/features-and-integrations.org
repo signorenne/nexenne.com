@@ -1,8 +1,8 @@
 #+TITLE: Features, Services & Integrations
 
-A study and reference map of everything built on top of the base SvelteKit
-site: external services, packages, environment variables, and how each feature
-works. Use it to remember what is wired where and what needs occasional
+This file owns the reference map for features built on top of the base
+SvelteKit site: external services, packages, environment variables, and how each
+feature works. Use it to remember what is wired where and what needs occasional
 maintenance.
 
 * External services & accounts
@@ -10,10 +10,10 @@ maintenance.
 - *Web3Forms* delivers the contact form without a backend. It needs a free
   access key tied to an email, used client side. Set
   =PUBLIC_WEB3FORMS_ACCESS_KEY=. Without it, the form falls back to a =mailto:=
-  link. See =TODO.md= for setup. The API is a POST to
+  link. See [[file:../TODO.org][TODO.org]] for setup. The API is a POST to
   =https://api.web3forms.com/submit= with form data that includes the access key.
 - *GitHub Pages* hosts the static build and runs the deploy (pre-existing). See
-  [[file:deployment.org][deployment.org]] and =.github/workflows/deploy.yml=.
+  [[file:deployment.org][deployment.org]] and =.github/workflows/static.yaml=.
 - *Google Fonts* is no longer used. Fonts are self-hosted for privacy and
   performance.
 - No analytics, comments, or trackers, by design.
@@ -66,9 +66,12 @@ maintenance.
 
 * Testing
 
+The policy owner is [[file:testing.org][testing.org]]. This section lists the
+feature-specific coverage that exists today.
+
 - =vitest.config.ts= maps =$lib= and stubs the =$app/*= virtual modules (in
-  =src/test/stubs/=) so logic can run outside SvelteKit. =__APP_VERSION__= is
-  defined for tests.
+  =src/test/stubs/=) so logic can run outside SvelteKit. The build-time globals
+  from =vite.config.ts= are defined for tests.
 - Covered: =paths.ts=, the i18n dictionary parity (the English and Italian key
   sets must match) plus its helpers, =content/parser.server=, =content/recency=,
   the real blog loader, the =toast= store, and the =search.json= and
@@ -77,9 +80,11 @@ maintenance.
 
 * CI and deployment
 
-- =.github/workflows/deploy.yml= runs on push to =main=: check, lint, test,
-  build, then deploy to Pages. The build step receives
-  =PUBLIC_WEB3FORMS_ACCESS_KEY=.
+- =.github/workflows/quality.yml= runs on pull requests and pushes to =main=:
+  format check, Svelte/TypeScript check, lint, test, and build.
+- =.github/workflows/static.yaml= runs on push to =main= and manual dispatch:
+  build, then deploy =build/= to Pages. The build step receives
+  =PUBLIC_WEB3FORMS_ACCESS_KEY= from repository secrets.
 - =.github/workflows/lighthouse.yml= runs on push and pull requests. It builds,
   serves the build, and runs Lighthouse CI against the home page plus a post and
   a case study. Budgets are in =lighthouserc.json=: accessibility and SEO are
@@ -165,12 +170,13 @@ maintenance.
 - OG images: =src/lib/og/render.server.ts=, =src/routes/og/[slug].png=
 - PWA: =src/service-worker.ts=
 - Contact: =src/routes/[[lang=lang]]/contact/+page.svelte=
-- CI: =.github/workflows/deploy.yml=, =.github/workflows/lighthouse.yml=
+- CI: =.github/workflows/quality.yml=, =.github/workflows/static.yaml=,
+  =.github/workflows/lighthouse.yml=
 
 * Maintenance checklist
 
 - [ ] Set =PUBLIC_WEB3FORMS_ACCESS_KEY= (repo secret and local =.env=). See
-  =TODO.md=.
+  [[file:../TODO.org][TODO.org]].
 - [ ] Refresh the =Expires= date in =security.txt= once a year.
 - [ ] Add every new i18n key to both English and Italian; the parity test
   enforces this.

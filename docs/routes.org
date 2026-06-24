@@ -1,5 +1,8 @@
 #+TITLE: Routes
 
+This file owns routing rules and URL shape. File placement rules live in
+[[file:file-system.org][File system layout]].
+
 SvelteKit maps =src/routes/= directly to URLs. If a page exists on the site,
 there is almost always a folder for it here.
 

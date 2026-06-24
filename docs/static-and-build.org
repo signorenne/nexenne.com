@@ -1,5 +1,8 @@
 #+TITLE: Static And Build Output
 
+This file owns the explanation of public static files and generated build
+output. Deploy behavior lives in [[file:deployment.org][Deployment]].
+
 * static
 
 =static/= is copied through as public files.
@@ -8,8 +11,14 @@ Use it for assets that should have stable public paths, such as:
 
 - favicon
 - robots.txt
+- CNAME and .nojekyll for GitHub Pages
+- .well-known/security.txt
+- web manifest and app icons
 - images
 - screenshots
+
+Do not import these assets from code when they need a stable public URL; link to
+their public path instead.
 
 * build
 
@@ -17,6 +26,9 @@ Use it for assets that should have stable public paths, such as:
 
 It is the final static site produced by SvelteKit and =adapter-static=. Do not
 edit it by hand.
+
+After SvelteKit finishes, =scripts/postbuild.mjs= replaces the fallback
+=build/404.html= with the rendered =/404/= page.
 
 * .svelte-kit
 

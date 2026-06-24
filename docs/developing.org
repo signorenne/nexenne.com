@@ -1,8 +1,14 @@
 #+TITLE: Developing The Site
 
-This is the short version for day-to-day changes.
+This file owns the short version for day-to-day changes.
+
+Agent contributors should read [[file:../AGENTS.org][AGENTS.org]] first. File placement
+decisions are owned by [[file:file-system.org][File system layout]].
 
 * Before You Edit
+
+If you are returning after time away, start with
+[[file:maintenance.org][Returning after a break]] first.
 
 Run the dev server:
 
@@ -23,7 +29,7 @@ Then change one area at a time:
 | UI copy              | =src/lib/i18n.ts=                      |
 | Main navigation      | =src/lib/data.ts=                      |
 | Page layout          | =src/routes/+layout.svelte=            |
-| A page               | =src/routes/<page>/+page.svelte=       |
+| A page               | =src/routes/[[lang=lang]]/<page>/+page.svelte= |
 | Blog/work content    | =content/blog/= or =content/work/=     |
 | Content parsing      | =src/lib/content/parser.server.ts=     |
 | Global styles        | =src/app.css=                          |
@@ -31,7 +37,9 @@ Then change one area at a time:
 
 * Adding A Page
 
-1. Create =src/routes/<name>/+page.svelte=.
+1. Create =src/routes/[[lang=lang]]/<name>/+page.svelte= so it serves both
+   languages (English at the root, Italian under =/it/=). Use a top-level
+   =src/routes/<name>/= only for language-independent endpoints.
 2. Add =+page.server.ts= only if the page needs data.
 3. Add navigation metadata in =src/lib/data.ts= if the page should appear in
    the side map or command palette.
@@ -72,15 +80,15 @@ language. Metrics, accent, color, tags, and translations are optional but useful
 Run:
 
 #+begin_src sh
+yarn format:check
 yarn check
+yarn lint
+yarn test
 yarn build
 #+end_src
 
-If you changed formatting-sensitive files, run:
-
-#+begin_src sh
-yarn format:check
-#+end_src
+The same gates are described in [[file:../CONTRIBUTING.org][CONTRIBUTING.org]] and mirrored by
+=.github/workflows/quality.yml=.
 
 * Rules Of Thumb
 
@@ -89,3 +97,4 @@ yarn format:check
 - Keep site-wide facts in =src/lib/data.ts=.
 - Keep the site static; do not add runtime server dependencies casually.
 - Comment only when the reason is not obvious from the code.
+- Keep durable project notes in Org mode and link them from [[file:index.org][docs/index.org]].

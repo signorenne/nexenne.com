@@ -1,37 +1,120 @@
-#+TITLE: Project Docs
+#+TITLE: Docs Map
+#+OPTIONS: toc:2 num:nil ^:nil
+#+STARTUP: showall
 
-Short notes for the parts of this site that are easy to forget.
+This file owns the documentation map. Start here to find the right file for the
+job, then load only what that role needs. Every doc has one owner. If a concept
+lives in two places, one of them should link to the owner instead.
 
-Read =how-it-fits-together.org= first, then jump to the file you are touching.
+* Role To Doc Matrix
 
-* Start Here
+Load top to bottom. A role rarely needs every doc at once, so pull the deep dive
+only when the task touches it.
 
-- [[file:how-it-fits-together.org][How it fits together]]
-- [[file:features-and-integrations.org][Features, services & integrations]]
-- [[file:development-setup.org][Development setup]]
-- [[file:developing.org][Developing the site]]
-- [[file:sveltekit.org][How SvelteKit works here]]
-- [[file:content-pipeline.org][Content pipeline]]
-- [[file:deployment.org][Deployment]]
-- [[file:troubleshooting.org][Troubleshooting]]
+| doc                                                                         | scout | planner | implementer | reviewer | release | onboarding |
+|-----------------------------------------------------------------------------+-------+---------+-------------+----------+---------+------------|
+| [[file:../README.org][README.org]]                                            |       |         |             |          |         | x          |
+| [[file:../VISION.org][VISION.org]]                                            | x     | x       |             |          |         | x          |
+| [[file:../DESIGN.org][DESIGN.org]]                                            |       | x       | x           | x        |         | x          |
+| [[file:../AGENTS.org][AGENTS.org]]                                            | x     | x       | x           | x        |         | x          |
+| [[file:../CONVENTIONS.org][CONVENTIONS.org]]                                  |       | x       | x           | x        | x       | x          |
+| [[file:../STYLE_GUIDE.org][STYLE_GUIDE.org]]                                  |       | x       | x           | x        |         | x          |
+| [[file:../CONTRIBUTING.org][CONTRIBUTING.org]]                                |       | x       | x           | x        | x       | x          |
+| [[file:glossary.org][glossary.org]]                                           | x     | x       | x           | x        |         | x          |
+| [[file:file-system.org][file-system.org]]                                     | x     | x       | x           | x        |         | x          |
+| [[file:how-it-fits-together.org][how-it-fits-together.org]]                   | x     | x       | x           | x        |         | x          |
+| [[file:project-setup.org][project-setup.org]]                                 |       | x       | x           | x        | x       | x          |
+| [[file:development-setup.org][development-setup.org]]                         |       |         | x           |          |         | x          |
+| [[file:developing.org][developing.org]]                                       |       | x       | x           | x        |         | x          |
+| [[file:routes.org][routes.org]]                                               | x     | x       | x           | x        |         | x          |
+| [[file:components.org][components.org]]                                       |       | x       | x           | x        |         | x          |
+| [[file:styling.org][styling.org]]                                             |       | x       | x           | x        |         | x          |
+| [[file:tone-of-voice.org][tone-of-voice.org]]                                 |       | x       | x           | x        | x       | x          |
+| [[file:content-pipeline.org][content-pipeline.org]]                           | x     | x       | x           | x        |         | x          |
+| [[file:testing.org][testing.org]]                                             |       | x       | x           | x        |         |            |
+| [[file:dependencies.org][dependencies.org]]                                   |       | x       | x           | x        |         |            |
+| [[file:features-and-integrations.org][features-and-integrations.org]]         | x     | x       | x           | x        | x       | x          |
+| [[file:deployment.org][deployment.org]]                                       |       | x       | x           | x        | x       | x          |
+| [[file:maintenance.org][maintenance.org]]                                     | x     | x       |             | x        | x       | x          |
+| [[file:troubleshooting.org][troubleshooting.org]]                             | x     | x       | x           | x        | x       | x          |
+| config/app file docs below                                                   |       |         | x           | x        |         | x          |
 
-* Config Files
+* Reference Map
 
-- [[file:package-json.org][package.json]]
-- [[file:yarn-lock.org][yarn.lock]]
-- [[file:yarnrc-yml.org][.yarnrc.yml]]
-- [[file:vite-config.org][vite.config.ts]]
-- [[file:svelte-config.org][svelte.config.js]]
-- [[file:tsconfig-json.org][tsconfig.json]]
-- [[file:eslint-config.org][eslint.config.js]]
+The graph is hub and spoke.
 
-* App Files
+- *Root hubs*: [[file:../README.org][README]], [[file:../VISION.org][VISION]], [[file:../DESIGN.org][DESIGN]],
+  [[file:../AGENTS.org][AGENTS]], [[file:../CONVENTIONS.org][CONVENTIONS]],
+  [[file:../STYLE_GUIDE.org][STYLE_GUIDE]], [[file:../CONTRIBUTING.org][CONTRIBUTING]].
+- *Spokes*: focused docs under =docs/=.
+- *Summary down, deep dive up*: hubs keep the short rule an agent must remember.
+  The full explanation, examples, and edge cases live in the spoke.
+- *No lateral duplication*: spokes link to each other instead of copying shared
+  paragraphs.
+- *One owner per concept*: the registry below names the owner.
 
-- [[file:app-html.org][src/app.html]]
-- [[file:app-css.org][src/app.css]]
-- [[file:app-d-ts.org][src/app.d.ts]]
-- [[file:source-layout.org][src/ layout]]
-- [[file:routes.org][routes]]
-- [[file:components.org][components]]
-- [[file:styling.org][styling]]
-- [[file:static-and-build.org][static and build output]]
+* Guidelines For Future Additions
+
+- Add every new doc to this file.
+- Open each doc with a one-line ownership statement and pointers to related docs.
+- Keep root hubs short enough to hold in working memory.
+- Keep spokes focused on one concept.
+- Split a topic into a cluster only when one file grows past one screen and has
+  at least three independently loadable subtopics.
+- Project docs are Org mode. Do not add Markdown project docs.
+
+* Registry
+
+** Hubs
+
+| doc                                          | purpose                                                    | roles                                |
+|----------------------------------------------+------------------------------------------------------------+--------------------------------------|
+| [[file:../README.org][README.org]]           | Project overview, quick start, layout, main links.         | onboarding                           |
+| [[file:../VISION.org][VISION.org]]           | Why the site exists and the durable product model.         | scout, planner, onboarding           |
+| [[file:../DESIGN.org][DESIGN.org]]           | Surface principles: visual system, copy, accessibility.    | planner, implementer, reviewer       |
+| [[file:../AGENTS.org][AGENTS.org]]           | Code-agent floor, hard rules, forbidden patterns, gates.   | all code roles, onboarding           |
+| [[file:../CONVENTIONS.org][CONVENTIONS.org]] | Process hub: commands, hooks, CI, git, docs governance.    | planner, implementer, reviewer, release |
+| [[file:../STYLE_GUIDE.org][STYLE_GUIDE.org]] | Code, content, styling, accessibility, dependency style.   | implementer, reviewer                |
+| [[file:../CONTRIBUTING.org][CONTRIBUTING.org]] | Human workflow, commits, quality gates, review checklist. | planner, implementer, reviewer       |
+| [[file:../AI_DISCLAIMER.org][AI_DISCLAIMER.org]] | AI-assistant accountability note.                         | all                                  |
+| [[file:../TODO.org][TODO.org]]               | Pending operational tasks.                                 | planner, release                     |
+| [[file:../LICENSE][LICENSE]]                 | MIT license.                                               | onboarding                           |
+
+** Spokes
+
+| doc                                                                  | purpose                                                   | roles                         |
+|----------------------------------------------------------------------+-----------------------------------------------------------+-------------------------------|
+| [[file:glossary.org][glossary.org]]                                  | Canonical definitions for project terms.                  | all                           |
+| [[file:file-system.org][file-system.org]]                            | Where new code, content, assets, tests, and docs go.      | all code roles, onboarding    |
+| [[file:how-it-fits-together.org][how-it-fits-together.org]]          | Build flow, runtime shape, and checks.                    | scout, planner, onboarding    |
+| [[file:project-setup.org][project-setup.org]]                        | Tools, scripts, hooks, CI, generated folders, secrets.    | planner, implementer, release |
+| [[file:development-setup.org][development-setup.org]]                | Local Node/Yarn setup and daily loop.                     | implementer, onboarding       |
+| [[file:developing.org][developing.org]]                              | Day-to-day change recipes.                                | planner, implementer          |
+| [[file:routes.org][routes.org]]                                      | Bilingual route tree, dynamic entries, endpoints.         | planner, implementer, reviewer |
+| [[file:components.org][components.org]]                              | Reusable component inventory and extraction rule.         | implementer, reviewer         |
+| [[file:styling.org][styling.org]]                                    | CSS tokens, themes, tweak controls, edit locations.       | implementer, reviewer         |
+| [[file:tone-of-voice.org][tone-of-voice.org]]                        | UI copy, docs tone, punctuation, and comments.            | implementer, reviewer, release |
+| [[file:content-pipeline.org][content-pipeline.org]]                  | Markdown/Org parsing, content bundles, frontmatter.       | planner, implementer, reviewer |
+| [[file:testing.org][testing.org]]                                    | Test policy and Vitest usage.                             | planner, implementer, reviewer |
+| [[file:dependencies.org][dependencies.org]]                          | Dependency vetting and update policy.                     | planner, implementer, reviewer |
+| [[file:features-and-integrations.org][features-and-integrations.org]] | Services, env vars, search, SEO, PWA, maintenance list.   | all                           |
+| [[file:deployment.org][deployment.org]]                              | Static build, preview, GitHub Pages deploy.               | implementer, release          |
+| [[file:maintenance.org][maintenance.org]]                            | Return-after-break and recurring checks.                  | scout, planner, release       |
+| [[file:troubleshooting.org][troubleshooting.org]]                    | Common failures and fixes.                                | all                           |
+
+** Config And App File Spokes
+
+| doc                                                 | purpose                                            | roles                    |
+|-----------------------------------------------------+----------------------------------------------------+--------------------------|
+| [[file:package-json.org][package-json.org]]         | Manifest, scripts, dependency sections.            | implementer, reviewer    |
+| [[file:yarn-lock.org][yarn-lock.org]]               | Lockfile role.                                     | implementer, reviewer    |
+| [[file:yarnrc-yml.org][yarnrc-yml.org]]             | Yarn linker and pinned release.                    | implementer, onboarding  |
+| [[file:vite-config.org][vite-config.org]]           | SvelteKit plugin and build-time metadata.          | implementer, reviewer    |
+| [[file:svelte-config.org][svelte-config.org]]       | Static adapter and base path config.               | implementer, release     |
+| [[file:tsconfig-json.org][tsconfig-json.org]]       | TypeScript compiler settings.                      | implementer, reviewer    |
+| [[file:eslint-config.org][eslint-config.org]]       | ESLint flat config and local rules.                | implementer, reviewer    |
+| [[file:app-html.org][app-html.org]]                 | Document shell and first-paint preferences.        | implementer, reviewer    |
+| [[file:app-css.org][app-css.org]]                   | Global CSS file explanation.                       | implementer, reviewer    |
+| [[file:app-d-ts.org][app-d-ts.org]]                 | Ambient TypeScript declarations.                   | implementer, reviewer    |
+| [[file:source-layout.org][source-layout.org]]       | Short map of =src/=.                               | implementer, onboarding  |
+| [[file:static-and-build.org][static-and-build.org]] | Static assets and generated output.                | implementer, release     |

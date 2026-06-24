@@ -1,5 +1,8 @@
 #+TITLE: svelte.config.js
 
+This file owns the explanation of SvelteKit project configuration. Static output
+behavior lives in [[file:deployment.org][Deployment]].
+
 =svelte.config.js= is where SvelteKit gets the project-level options that do
 not belong in route files.
 

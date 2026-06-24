@@ -1,15 +1,23 @@
 #+TITLE: Deployment
 
-The deploy artifact is just static files.
+This file owns static build and deploy behavior. Process rules live in
+[[file:../CONVENTIONS.org][CONVENTIONS.org]]. The deploy artifact is just static files
+in =build/=. GitHub Pages serves those files at the root custom domain from
+=static/CNAME=.
 
 * Build
 
 #+begin_src sh
+yarn format:check
 yarn check
+yarn lint
+yarn test
 yarn build
 #+end_src
 
-The build writes the final site to =build/=.
+The build writes the final site to =build/=. =scripts/postbuild.mjs= then copies
+the rendered =build/404/index.html= over =build/404.html= so static-host 404s
+show real content before JavaScript loads.
 
 * Preview
 
@@ -23,6 +31,10 @@ Use preview after a build to inspect what will actually be deployed.
 
 =svelte.config.js= uses =@sveltejs/adapter-static=. Pages are prerendered, so
 the host does not need a Node server.
+
+The generated output includes files copied from =static/=, including =CNAME=,
+=.nojekyll=, =robots.txt=, =site.webmanifest=, =humans.txt=, and
+=.well-known/security.txt=.
 
 * Base Path
 
@@ -41,9 +53,23 @@ root domain.
 - Keep source assets in =static/=.
 - Never patch files directly inside =build/=.
 
+* GitHub Actions
+
+- =.github/workflows/quality.yml= runs the quality gates on pull requests and
+  pushes to =main=.
+- =.github/workflows/lighthouse.yml= builds, previews, and runs Lighthouse CI.
+- =.github/workflows/static.yaml= builds and deploys =build/= to GitHub Pages on
+  pushes to =main= or manual workflow runs.
+
+The deploy workflow leaves =BASE_PATH= unset because =nexenne.com= is served
+from the domain root.
+
 * Before Shipping
 
+- =yarn format:check=
 - =yarn check=
+- =yarn lint=
+- =yarn test=
 - =yarn build=
 - =yarn preview=
 - Check a blog post, a work page, RSS, sitemap, and 404.

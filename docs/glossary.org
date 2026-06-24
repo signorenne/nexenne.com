@@ -1,0 +1,69 @@
+#+TITLE: Glossary
+#+OPTIONS: toc:2 num:nil ^:nil
+#+STARTUP: showall
+
+This file owns canonical definitions for project terms that are easy to
+half-remember.
+
+* App And Build Terms
+
+- *SvelteKit*: the framework around Svelte components. It owns routes, layouts,
+  loaders, errors, generated types, and adapter output.
+- *Vite*: the dev server and bundler. SvelteKit plugs into it through
+  =sveltekit()= in =vite.config.ts=.
+- *Prerender*: build-time generation of HTML for routes. This repo sets
+  =prerender = true= globally.
+- *adapter-static*: the SvelteKit adapter that writes static files to =build/=.
+- *Base path*: an optional production prefix from =BASE_PATH=. It is empty for
+  =https://nexenne.com/=.
+- *Postbuild*: =scripts/postbuild.mjs= copies the rendered =/404/= page over the
+  fallback =build/404.html= so static-host 404s are not blank before JS loads.
+
+* Routing Terms
+
+- *Route file*: a special SvelteKit file such as =+page.svelte=,
+  =+page.server.ts=, =+layout.svelte=, or =+server.ts=.
+- *Optional language segment*: =src/routes/[[lang=lang]]/= lets English live at
+  the root and Italian under =/it/=.
+- *Param matcher*: =src/params/lang.ts= only matches =it= as a language code.
+- *Entries generator*: a SvelteKit export used by dynamic prerendered routes to
+  list every slug/language combination to build.
+- *Endpoint*: a =+server.ts= route that returns data such as RSS, sitemap,
+  search JSON, or Open Graph images.
+
+* Content Terms
+
+- *Slug*: the URL-safe identifier derived from a content filename without its
+  extension or language suffix.
+- *Language sibling*: an English file with =.en.= in the filename beside the
+  Italian/default source, sharing one slug.
+- *Content bundle*: the grouped representation of language siblings, with a
+  =byLang= map and fallback source.
+- *Frontmatter*: metadata at the top of Markdown or Org content, validated by
+  Zod schemas in =src/lib/content/=.
+- *Draft*: content marked so it shows in development but is skipped in
+  production.
+
+* Site Features
+
+- *Command palette*: =CommandPalette.svelte=, backed by the prerendered
+  =/search.json= index.
+- *Highlight API*: the browser CSS Custom Highlight API used by
+  =src/lib/highlight.ts= to mark search terms without rewriting article DOM.
+- *OG image*: an Open Graph PNG generated through satori and resvg-wasm at
+  =src/routes/og/[slug].png=.
+- *PWA/service worker*: =src/service-worker.ts= precaches build and static files
+  and provides offline behavior.
+- *Web3Forms*: the external contact-form service controlled by
+  =PUBLIC_WEB3FORMS_ACCESS_KEY=.
+
+* Repo Terms
+
+- *Quality workflow*: =.github/workflows/quality.yml=, the CI gate for format,
+  check, lint, tests, and build.
+- *Deploy workflow*: =.github/workflows/static.yaml=, the GitHub Pages deploy.
+- *Lighthouse budget*: assertions in =lighthouserc.json= run by
+  =.github/workflows/lighthouse.yml=.
+- *Generated folder*: =node_modules/=, =.svelte-kit/=, or =build/=. Regenerate,
+  do not edit.
+- *Project docs*: Org-mode files at the repo root and under =docs/=.

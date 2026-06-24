@@ -1,5 +1,8 @@
 #+TITLE: Content Pipeline
 
+This file owns authored content loading and parsing. File placement rules live
+in [[file:file-system.org][File system layout]].
+
 The writing lives outside the app. The app reads it at build time and turns it
 into static pages.
 

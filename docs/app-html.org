@@ -1,5 +1,8 @@
 #+TITLE: src/app.html
 
+This file owns the explanation of the SvelteKit document shell and first-paint
+preference script. Styling mechanics live in [[file:styling.org][Styling]].
+
 =src/app.html= is the document shell SvelteKit renders into.
 
 * What Lives Here
