@@ -3504,6 +3504,7 @@ footer.foot {
 		opacity: 1;
 	}
 }
+/* The overlay covers the page during navigation, so the fade would be hidden. */
 .motion-off .page-anim,
 .is-transitioning .page-anim {
 	animation: none;

@@ -14,7 +14,7 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
-	import { onNavigate, afterNavigate } from '$app/navigation';
+	import { afterNavigate } from '$app/navigation';
 	import { highlightIn, clearHighlights } from '$lib/highlight';
 	import SideMap from '$lib/components/SideMap.svelte';
 	import Nav from '$lib/components/Nav.svelte';
@@ -253,24 +253,6 @@
 			return;
 		}
 	}
-
-	// Smooth cross-page morphs via the View Transitions API, where supported.
-	// Skipped when the visitor prefers reduced motion (the `motion-off` class).
-	onNavigate((navigation) => {
-		if (typeof document === 'undefined') return;
-		const doc = document as Document & {
-			startViewTransition?: (cb: () => Promise<void> | void) => void;
-		};
-		if (!doc.startViewTransition) return;
-		if (document.documentElement.classList.contains('motion-off')) return;
-
-		return new Promise<void>((resolve) => {
-			doc.startViewTransition!(async () => {
-				resolve();
-				await navigation.complete;
-			});
-		});
-	});
 
 	let mainEl: HTMLElement;
 	let disarm: (() => void) | null = null;
