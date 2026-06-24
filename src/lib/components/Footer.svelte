@@ -76,7 +76,7 @@
 			<h4>{$t('footer.channels')}</h4>
 			{#each SITE.socials as s}
 				<a href={s.href} data-hover
-					>{s.label} · <span style="color: var(--muted);">{s.handle}</span></a
+					>{s.label} · <span style="color: var(--muted); white-space: nowrap;">{s.handle}</span></a
 				>
 			{/each}
 		</div>
