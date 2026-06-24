@@ -3415,8 +3415,13 @@ footer.foot {
 	align-items: start;
 }
 @media (max-width: 880px) {
+	/* Brand spans the full width on top; the three link groups sit in a 3-col row
+	   below, instead of the cramped 2-col where the brand got squeezed in half. */
 	.foot-inner {
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: 1fr 1fr 1fr;
+	}
+	.foot-inner > div:first-child {
+		grid-column: 1 / -1;
 	}
 }
 /* The two middle link lists are wrapped in .foot-cols. On desktop it's invisible
