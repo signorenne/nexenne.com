@@ -146,7 +146,10 @@
 					<h3>{$t('contact.lines')}</h3>
 					<ul style="list-style: none; padding: 0;">
 						<li><span class="k">{$t('contact.lines.email')}</span> · {SITE.email}</li>
-						<li><span class="k">{$t('contact.lines.phone')}</span> · {SITE.phone}</li>
+						<li>
+							<span class="k">{$t('contact.lines.phone')}</span> ·
+							<span style="white-space: nowrap;">{SITE.phone}</span>
+						</li>
 						<li><span class="k">{$t('contact.lines.github')}</span> · github.com/signorenne</li>
 					</ul>
 				</div>
