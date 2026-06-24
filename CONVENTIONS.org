@@ -1,0 +1,109 @@
+#+TITLE: Project Conventions
+#+OPTIONS: toc:2 num:nil ^:nil
+#+STARTUP: showall
+
+This file is the process hub. It owns setup commands, git workflow, CI, release
+and docs governance. Code-agent floor rules live in [[file:AGENTS.org][AGENTS.org]].
+Detailed topic references live under [[file:docs/index.org][docs/]].
+
+* Project Model
+
+- SvelteKit static site, prerendered into =build/=.
+- GitHub Pages deploys =build/= from =.github/workflows/static.yaml=.
+- English lives at the root. Italian lives under =/it/=.
+- Authored content lives in =content/=. Public assets live in =static/=.
+- Yarn 4 is pinned by =package.json= and =.yarnrc.yml=.
+- The repo uses =nodeLinker: node-modules=.
+
+* Local Commands
+
+#+begin_src sh
+yarn install --immutable
+yarn dev
+yarn format:check
+yarn check
+yarn lint
+yarn test
+yarn build
+yarn preview
+#+end_src
+
+See [[file:docs/project-setup.org][Project setup]] for the operational details and
+[[file:docs/troubleshooting.org][Troubleshooting]] when Node, Yarn, SvelteKit types, or content loading fail.
+
+* Hooks
+
+Husky is installed by the =prepare= script. The pre-commit hook formats staged
+JS, TS, Svelte, CSS, HTML, JSON, and Markdown files, then stages the result.
+
+Org files are maintained by hand. Do not add Org files to the Prettier globs
+unless an Org-aware formatter is introduced.
+
+* CI
+
+| workflow                           | trigger                    | purpose                          |
+|------------------------------------+----------------------------+----------------------------------|
+| =.github/workflows/quality.yml=    | PRs, pushes to =main=      | format, check, lint, test, build |
+| =.github/workflows/lighthouse.yml= | PRs, pushes to =main=      | Lighthouse budgets               |
+| =.github/workflows/static.yaml=    | pushes to =main=, manual   | GitHub Pages deploy              |
+
+CI should be stricter than local convenience. Do not make CI green by weakening
+tests, skipping checks, or hiding warnings that represent real failures.
+
+* Git Workflow
+
+- Work on a branch off =main=.
+- Keep one concern per branch.
+- Do not commit generated output.
+- Do not bypass hooks with =--no-verify=.
+- Commit subject format:
+
+#+begin_src text
+type(scope): description
+#+end_src
+
+Allowed types: =feat=, =fix=, =refactor=, =test=, =docs=, =build=, =chore=,
+=ci=, =style=, =perf=.
+
+Useful scopes: =routes=, =content=, =components=, =style=, =docs=, =ci=,
+=build=, =repo=.
+
+* Documentation Governance
+
+The docs are hub and spoke.
+
+- *Root hubs*: =README.org=, =VISION.org=, =DESIGN.org=, =AGENTS.org=,
+  =CONVENTIONS.org=, =STYLE_GUIDE.org=, =CONTRIBUTING.org=.
+- *Spokes*: granular topic docs under =docs/=.
+- *Registry*: every doc must be listed in [[file:docs/index.org][docs/index.org]].
+
+Rules:
+
+- One concept has one owner. Other docs link to the owner.
+- Hubs keep the working-memory floor. Spokes keep full explanation and edge
+  cases.
+- A spoke starts with a sentence saying what it owns and where related docs live.
+- Do not duplicate full paragraphs between docs.
+- If a topic outgrows one file and has at least three independently loadable
+  subtopics, split it into a cluster: =docs/<name>.org= as the thin index plus
+  =docs/<name>/= for the deep files.
+- An unregistered doc is an orphan. Register it before finishing the change.
+
+* Release And Deploy
+
+There is no package release flow for this site. Shipping means merging to
+=main= and letting GitHub Pages deploy =build/=.
+
+Before deploy-impacting changes, run:
+
+#+begin_src sh
+yarn install --immutable
+yarn format:check
+yarn check
+yarn lint
+yarn test
+yarn build
+#+end_src
+
+Then preview =build/= with =yarn preview=. Check home, one blog post, one work
+page, =/it/=, RSS, sitemap, and a missing URL.

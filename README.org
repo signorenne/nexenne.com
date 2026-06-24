@@ -1,35 +1,118 @@
 #+TITLE: nexenne.com
+#+SUBTITLE: personal static site and portfolio
+#+AUTHOR: signorenne
+#+OPTIONS: toc:2 num:nil ^:nil
+#+STARTUP: showall
 
-Personal site for nexenne.com.
+* What It Is
 
-Built with SvelteKit, generated as static HTML, and fed by local Markdown and
-Org content.
+Personal site for =nexenne.com=: portfolio, technical writing, work case
+studies, resume, contact page, command palette, bilingual routes, RSS, sitemap,
+Open Graph images, and PWA/offline support.
 
-* Use
+It is built with SvelteKit, generated as static HTML, and fed by local Markdown
+and Org content. Production is GitHub Pages serving the generated =build/=
+folder.
+
+* Start Here
+
+- Agent doing code work: [[file:AGENTS.org][AGENTS.org]].
+- Returning after time away: [[file:docs/maintenance.org][Returning after a break]].
+- Setting up the repo: [[file:docs/project-setup.org][Project setup]] and
+  [[file:docs/development-setup.org][Development setup]].
+- Understanding the shape: [[file:docs/how-it-fits-together.org][How it fits together]].
+- Day-to-day edits: [[file:docs/developing.org][Developing the site]].
+- Definitions: [[file:docs/glossary.org][Glossary]].
+
+The full documentation map is [[file:docs/index.org][docs/index.org]].
+
+* Quick Start
 
 #+begin_src sh
-yarn install
+yarn install --immutable
 yarn dev
 yarn check
+yarn test
 yarn build
 #+end_src
 
 The project uses [[https://yarnpkg.com/][Yarn 4]], pinned via =packageManager= in
-=package.json= and shipped in =.yarn/releases/=. You only need a Yarn launcher
-on =PATH= (=npm i -g yarn= installs the classic shim, which delegates to the
-pinned 4.x release).
+=package.json= and =.yarnrc.yml=. You only need a Yarn launcher on =PATH=; the
+repo's checked-in Yarn release does the rest.
 
-* Map
+* Quality Gates
 
-- =src/routes/= pages, layouts, and route loaders
-- =src/lib/= shared code: components, stores, data, content loaders
-- =content/= articles, case studies, and resume source
-- =static/= files served as-is
-- =docs/= short notes about how the project is put together
+Run these before pushing a change:
 
-* Docs
+#+begin_src sh
+yarn format:check
+yarn check
+yarn lint
+yarn test
+yarn build
+#+end_src
 
-- [[file:docs/index.org][Docs index]]
-- [[file:docs/how-it-fits-together.org][How the project fits together]]
-- [[file:docs/sveltekit.org][How SvelteKit works here]]
-- [[file:docs/content-pipeline.org][Content pipeline]]
+GitHub Actions mirrors the same idea:
+
+- [[file:.github/workflows/quality.yml][quality.yml]]: format, Svelte/TypeScript check, lint, tests, build.
+- [[file:.github/workflows/lighthouse.yml][lighthouse.yml]]: Lighthouse budgets against built pages.
+- [[file:.github/workflows/static.yaml][static.yaml]]: GitHub Pages deploy from =build/=.
+
+* Layout
+
+#+begin_src text
+nexenne_com/
+|-- src/routes/          SvelteKit routes, layouts, endpoints
+|-- src/lib/             shared code: components, stores, data, content loaders
+|-- content/             blog posts, case studies, resume source
+|-- static/              public files copied as-is
+|-- docs/                Org-mode project knowledge base
+|-- scripts/             build helpers, currently the 404 postbuild patch
+|-- AGENTS.org           code-agent working rules
+|-- CONVENTIONS.org      commands, git, CI, docs governance
+|-- VISION.org           purpose and durable mental model
+|-- DESIGN.org           surface principles
+|-- STYLE_GUIDE.org      code, content, and docs conventions
+|-- CONTRIBUTING.org     workflow, gates, commits, review checklist
+|-- AI_DISCLAIMER.org    AI-assistant accountability note
+`-- LICENSE              MIT
+#+end_src
+
+* Documentation
+
+Project docs are Org mode and internally linked:
+
+- [[file:docs/index.org][Docs map]] : role matrix and registered docs map.
+- [[file:AGENTS.org][Agent operating guide]] : code-agent floor and forbidden patterns.
+- [[file:CONVENTIONS.org][Project conventions]] : commands, hooks, CI, git, docs governance.
+- [[file:VISION.org][Project vision]] : why the site exists and how to think about it.
+- [[file:DESIGN.org][Design principles]] : visual, copy, and accessibility principles.
+- [[file:docs/project-setup.org][Project setup]] : tools, scripts, hooks, CI, generated folders.
+- [[file:docs/file-system.org][File system layout]] : where new code, content, assets, tests, and docs go.
+- [[file:docs/tone-of-voice.org][Tone of voice]] : UI copy, docs tone, punctuation, comments.
+- [[file:docs/features-and-integrations.org][Features, services & integrations]] : services, packages, env vars, SEO, PWA.
+- [[file:docs/content-pipeline.org][Content pipeline]] : Markdown/Org parsing and content bundles.
+- [[file:docs/routes.org][Routes]] : bilingual routing and endpoints.
+- [[file:docs/deployment.org][Deployment]] : static build, Pages, preview, pre-ship checks.
+- [[file:docs/troubleshooting.org][Troubleshooting]] : common failure paths.
+
+* Environment
+
+=PUBLIC_WEB3FORMS_ACCESS_KEY= enables contact-form delivery through Web3Forms.
+Without it, the contact form falls back to =mailto:=. Copy =.env.example= to
+=.env= for local testing and set the same name as a GitHub Actions secret for
+production.
+
+* Style And Contribution
+
+Use [[file:AGENTS.org][AGENTS.org]] for the agent working-memory floor,
+[[file:CONVENTIONS.org][CONVENTIONS.org]] for process and docs governance,
+[[file:STYLE_GUIDE.org][STYLE_GUIDE.org]] for code/content conventions, and
+[[file:CONTRIBUTING.org][CONTRIBUTING.org]] for workflow, commit messages, local
+gates, and review checklists. AI-assisted work is allowed under the
+accountability rules in [[file:AI_DISCLAIMER.org][AI_DISCLAIMER.org]].
+
+* License
+
+MIT, see [[file:LICENSE][LICENSE]]. License and authorship live there and in git,
+not in per-file headers.

@@ -1,0 +1,157 @@
+#+TITLE: Contributing to nexenne.com
+#+OPTIONS: toc:2 num:nil ^:nil
+#+STARTUP: showall
+
+This site is small on purpose, but it still has a real workflow. The goal is to
+make any future change easy to pick up after months away from the repo: read the
+linked docs, run the same local gates as CI, change one area, and leave the map
+better than you found it.
+
+* Workflow
+
+1. Read [[file:README.org][README.org]], [[file:AGENTS.org][AGENTS.org]], then use
+   [[file:docs/index.org][docs/index.org]] as the map.
+2. Set up dependencies with =yarn install --immutable=.
+3. Work on a branch off =main=.
+4. Keep one change focused: page, component, content item, workflow, or docs.
+5. Follow [[file:CONVENTIONS.org][CONVENTIONS.org]] and
+   [[file:STYLE_GUIDE.org][STYLE_GUIDE.org]]. Keep project docs in Org mode.
+6. Run the local gates before pushing:
+
+#+begin_src sh
+yarn format:check
+yarn check
+yarn lint
+yarn test
+yarn build
+#+end_src
+
+The shorter daily loop is usually =yarn dev= while editing, then =yarn check &&
+yarn test && yarn build= before you call the change done.
+
+* Local Setup
+
+The project pins Yarn 4 in =package.json= and =.yarnrc.yml=. A normal Yarn or
+Corepack launcher is enough; the repo's checked-in Yarn release does the rest.
+See [[file:docs/project-setup.org][Project setup]] and
+[[file:docs/development-setup.org][Development setup]] for details.
+
+#+begin_src sh
+corepack enable          # optional if your yarn launcher already works
+yarn install --immutable
+yarn dev
+#+end_src
+
+Husky installs from the =prepare= script. The pre-commit hook formats staged
+JavaScript, TypeScript, Svelte, CSS, HTML, JSON, and Markdown files with the
+repo's Prettier config, then stages the formatted result.
+
+* Common Changes
+
+| Change              | Start at                                      | Remember                                 |
+|---------------------+-----------------------------------------------+------------------------------------------|
+| Route/page          | [[file:docs/routes.org][docs/routes.org]]                 | add i18n labels and navigation metadata  |
+| Component           | [[file:docs/components.org][docs/components.org]]             | extract only when it carries behavior    |
+| Blog/work content   | [[file:docs/content-pipeline.org][docs/content-pipeline.org]]       | required frontmatter is schema-checked   |
+| Styling             | [[file:docs/styling.org][docs/styling.org]]                 | prefer existing tokens and CSS variables |
+| File placement      | [[file:docs/file-system.org][docs/file-system.org]]             | one owner for every new file             |
+| Testing             | [[file:docs/testing.org][docs/testing.org]]                 | behavior and contracts, not internals    |
+| Integration/service | [[file:docs/features-and-integrations.org][docs/features-and-integrations.org]] | document env vars and maintenance tasks  |
+| Build/deploy        | [[file:docs/deployment.org][docs/deployment.org]]             | never edit =build/= by hand              |
+| Forgotten term      | [[file:docs/glossary.org][docs/glossary.org]]               | add definitions when the repo gains one  |
+
+* Content Rules
+
+- Authored site content lives under =content/=.
+- Blog and work entries may be Markdown or Org mode because the site parser
+  supports both.
+- Project documentation lives in Org mode: =README.org=, top-level policy docs,
+  and every file under =docs/=.
+- Required content metadata is enforced by Zod schemas in =src/lib/content/=.
+- Bilingual content uses an =.en.= filename for English siblings; both files
+  share the same slug.
+
+* Code Rules
+
+- Use TypeScript and SvelteKit idioms already present in the repo.
+- Build internal links through =$lib/paths.ts=.
+- Put shared UI in =src/lib/components/= only when reuse or behavior justifies it.
+- Put user-facing labels in =src/lib/i18n.ts= and keep English/Italian keys in
+  sync; the parity test enforces this.
+- Keep the site static. Do not add runtime server dependencies unless the deploy
+  model changes intentionally.
+- Add or update Vitest coverage for shared logic, parsers, stores, endpoints,
+  and anything with non-obvious branching.
+
+Full details live in [[file:STYLE_GUIDE.org][STYLE_GUIDE.org]].
+
+* Quality Gates
+
+Local scripts:
+
+| command              | purpose                                               |
+|----------------------+-------------------------------------------------------|
+| =yarn format:check=  | Prettier check for supported source/config files      |
+| =yarn check=         | =svelte-kit sync= plus =svelte-check=                 |
+| =yarn lint=          | ESLint over JavaScript, TypeScript, and Svelte        |
+| =yarn test=          | Vitest unit and endpoint tests                        |
+| =yarn build=         | static SvelteKit build plus the post-build 404 patch  |
+| =yarn preview=       | serve the generated =build/= output locally           |
+
+GitHub Actions:
+
+| workflow                                  | when                  | purpose                         |
+|-------------------------------------------+-----------------------+---------------------------------|
+| =.github/workflows/quality.yml=           | PRs and pushes to main | format, check, lint, test, build |
+| =.github/workflows/lighthouse.yml=        | PRs and pushes to main | Lighthouse budgets              |
+| =.github/workflows/static.yaml=           | pushes to main         | build and deploy to Pages       |
+
+* Commit Messages
+
+Use a short subject in this shape:
+
+#+begin_src text
+type(scope): description
+#+end_src
+
+The description is lower-case, imperative, and has no trailing period.
+
+| type     | use for                                      |
+|----------+----------------------------------------------|
+| feat     | new visible behavior or content section      |
+| fix      | bug fix                                      |
+| refactor | restructuring without behavior change        |
+| perf     | performance improvement without behavior change |
+| test     | tests only                                   |
+| docs     | documentation only                           |
+| build    | package, Vite, SvelteKit, or Yarn changes    |
+| chore    | repo housekeeping                            |
+| ci       | GitHub Actions and automation                |
+| style    | formatting-only changes                      |
+
+Examples:
+
+#+begin_src text
+feat(routes): add services page
+fix(content): preserve base path in article links
+docs(repo): add maintenance guide
+ci(quality): run vitest before deploy
+#+end_src
+
+Do not add assistant or AI trailers. The committer owns the change; see
+[[file:AI_DISCLAIMER.org][AI_DISCLAIMER.org]].
+
+* Review Checklist
+
+- [ ] The change is scoped and understandable on its own.
+- [ ] Links, language prefixes, and base path behavior are correct.
+- [ ] English and Italian labels stay in sync.
+- [ ] Accessibility is preserved: labels, focus, contrast, reduced motion.
+- [ ] Static build, RSS, sitemap, search, and 404 still work when touched.
+- [ ] New dependencies, services, or env vars are documented.
+- [ ] The relevant doc page links to the new concept or file.
+
+* License
+
+By contributing, you agree that your contribution is provided under the MIT
+license in [[file:LICENSE][LICENSE]].

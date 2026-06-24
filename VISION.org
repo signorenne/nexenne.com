@@ -1,0 +1,51 @@
+#+TITLE: Project Vision
+#+OPTIONS: toc:2 num:nil ^:nil
+#+STARTUP: showall
+
+This file owns the durable "why" and mental model for =nexenne.com=. For code
+rules read [[file:AGENTS.org][AGENTS.org]]. For process rules read
+[[file:CONVENTIONS.org][CONVENTIONS.org]].
+
+* Purpose
+
+=nexenne.com= is a personal professional site: it presents Nicolò Plebani's work,
+services, writing, resume, contact paths, and technical identity in a fast,
+static, maintainable form.
+
+The site should be easy to restart after long gaps. Documentation is part of the
+product: a future human or agent should be able to read the map, load the right
+spokes, make a focused change, and verify it without rediscovering the system.
+
+* Product Principles
+
+- Static first: the deployed site should not need a Node server.
+- Local content first: blog, work, and resume source live in the repo.
+- Bilingual by URL: English at root, Italian under =/it/=.
+- Privacy-respecting: no analytics, comments, trackers, or third-party fonts.
+- Fast to inspect: generated pages, RSS, sitemap, search index, and OG images
+  are build outputs with source files in predictable places.
+- Maintainable over clever: fewer moving parts, documented exceptions, clear
+  verification.
+
+* Core Concepts
+
+- *Site shell*: root layout, navigation, side map, footer, tools, toasts, and
+  language behavior.
+- *Content bundle*: grouped language siblings for one blog post, work item, or
+  resume section.
+- *Language-aware path*: internal URLs built through =src/lib/paths.ts= so base
+  path and =/it/= rules stay centralized.
+- *Static output*: the generated =build/= folder deployed by GitHub Pages.
+- *Feature spoke*: one doc that owns a durable concept, such as routing,
+  content, testing, or dependencies.
+- *Working-memory floor*: short rules that an agent must keep active while
+  editing, stored in [[file:AGENTS.org][AGENTS.org]].
+
+* Success Criteria
+
+- A new contributor can run the site from the README.
+- An agent can identify the right docs for a task from [[file:docs/index.org][docs/index.org]].
+- Every new durable concept has one owning doc.
+- The full quality gate passes before deploy-sensitive changes.
+- The site remains useful, accessible, and fast even when JavaScript loads late
+  or a visitor is offline.

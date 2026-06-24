@@ -1,0 +1,122 @@
+#+TITLE: nexenne.com style guide
+#+SUBTITLE: code, content, and documentation rules for the site
+#+OPTIONS: toc:2 num:nil ^:nil
+#+STARTUP: showall
+
+The aim is simple: open a file after months away and know what kind of change
+belongs there. Tooling handles formatting; this guide explains the choices the
+tooling cannot express.
+
+When this guide and the configured tools disagree, the tools win first, then the
+guide should be updated.
+
+* Formatting
+
+- Prettier owns layout for JavaScript, TypeScript, Svelte, CSS, HTML, JSON, and
+  Markdown.
+- Use tabs in source files and two-space indentation in JSON, YAML, Markdown,
+  and Org files. =.editorconfig= mirrors this.
+- Single quotes, semicolons, trailing commas disabled, 100-column print width.
+- Do not ask Prettier to format Org files unless an Org-aware formatter is added.
+- Keep generated folders out of formatting and linting: =build/=,
+  =.svelte-kit/=, =node_modules/=, =static/=, and =content/=.
+
+* TypeScript
+
+- The project is strict TypeScript. Prefer precise types over =any=; use
+  =unknown= at boundaries and narrow it.
+- Use =type= for object shapes unless an =interface= is already the local style
+  or declaration merging is useful.
+- Keep imports explicit. Shared app code should use =$lib/...= aliases.
+- Use early returns for invalid states and keep data transformations readable.
+- Keep browser-only work out of server modules and server-only filesystem work
+  out of client components.
+- Comment the reason for a non-obvious choice; do not narrate the obvious.
+
+* Svelte
+
+- Follow the configured Svelte file order: options, scripts, markup, styles.
+- Route-specific UI can stay in the route. Extract to =src/lib/components/= when
+  there is reuse, behavior, or enough markup to obscure the page.
+- Keep page data loading in =+page.server.ts= when it reads local content or
+  depends on build-time data.
+- Keep user-visible labels in =src/lib/i18n.ts= when they are part of the app
+  shell, navigation, commands, or reusable UI.
+- Build all internal links through =lpath=, =lhref=, or =lgoto= from
+  =src/lib/paths.ts=.
+- Respect =prefers-reduced-motion= and existing motion controls for new effects.
+
+* Routes And Static Output
+
+- English lives at the root; Italian lives under =/it/=.
+- New pages belong under =src/routes/[[lang=lang]]/= unless they are language
+  independent endpoints.
+- Dynamic prerendered routes must provide both language entries when content is
+  bilingual.
+- Keep =prerender = true= and =trailingSlash = 'always'= in mind when adding URLs.
+- Do not introduce runtime server requirements casually. The deploy target is
+  static GitHub Pages.
+
+* Content
+
+- Site content lives under =content/blog/=, =content/work/=, and
+  =content/resume/=.
+- Markdown and Org are both valid for authored content.
+- Project documentation lives in Org mode: top-level =*.org= files and =docs/=.
+- Required frontmatter belongs to the Zod schemas in =src/lib/content/=.
+- Drafts may exist locally, but production builds skip them.
+- Keep images in =static/= when they need stable public URLs.
+
+* Styling
+
+- Most CSS lives in =src/app.css= by design. Prefer existing custom properties
+  over raw values.
+- Keep the token system understandable: theme, accent, font, density, and motion
+  controls must stay compatible with the boot script in =src/app.html=.
+- New class names should describe the role in this site, not a temporary visual
+  detail.
+- Check mobile and desktop after layout changes.
+- Preserve visible focus states and high-contrast/reduced-motion behavior.
+
+* Accessibility
+
+- Interactive controls need an accessible name.
+- Keyboard navigation must work for menus, dialogs, command palette behavior,
+  and custom controls.
+- Do not rely on color alone for state.
+- Preserve heading order in rendered pages and generated article HTML.
+- If adding motion, provide a reduced-motion path through existing settings.
+
+* Tests
+
+- Use Vitest for shared logic, stores, parser behavior, route endpoints, sitemap,
+  feeds, and language helpers.
+- Tests run outside SvelteKit, so =$app/*= imports are stubbed in
+  =vitest.config.ts=.
+- Add focused tests when changing parsing, routing helpers, i18n parity,
+  generated endpoints, or build-time content grouping.
+- For UI-only changes, at least run =yarn check= and =yarn build=.
+
+* Documentation
+
+- Documentation governance lives in [[file:CONVENTIONS.org][CONVENTIONS.org]].
+- Tone and punctuation rules live in [[file:docs/tone-of-voice.org][Tone Of Voice]].
+- Every durable concept gets a link from [[file:docs/index.org][docs/index.org]] or a nearby doc.
+- When a file exists mainly to configure tooling, keep its explanation under
+  =docs/<file-name>.org=.
+- When a workflow changes, update [[file:CONTRIBUTING.org][CONTRIBUTING.org]] and
+  [[file:docs/project-setup.org][docs/project-setup.org]].
+- When a recurring maintenance task appears, add it to [[file:TODO.org][TODO.org]] or
+  [[file:docs/maintenance.org][docs/maintenance.org]].
+- Prefer short, linked notes over one enormous page. The index is the map.
+- Keep commit messages to a single =type(scope): description= sentence. Do not
+  add a multi-paragraph body.
+
+* Dependencies
+
+- Keep runtime dependencies small and justified.
+- Put compilers, linters, test tools, and build-only tools in =devDependencies=.
+- Prefer SvelteKit, Vite, and existing platform APIs before adding a package.
+- Document new external services in
+  [[file:docs/features-and-integrations.org][Features, services & integrations]] and add any required env vars to
+  =.env.example=.

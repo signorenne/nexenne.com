@@ -1,0 +1,56 @@
+#+TITLE: Design Principles
+#+OPTIONS: toc:2 num:nil ^:nil
+#+STARTUP: showall
+
+This file owns the surface principles for the site: how it should feel, read,
+and behave. Concrete CSS mechanics live in [[file:docs/styling.org][docs/styling.org]];
+copy mechanics live in [[file:docs/tone-of-voice.org][docs/tone-of-voice.org]].
+
+* Experience
+
+The site should feel technical, personal, calm, and precise. It is a working
+portfolio and writing archive, not a generic landing page.
+
+Prioritize:
+
+- immediate signal about who Nicolò is and what he builds,
+- fast scanning for clients and collaborators,
+- readable long-form technical content,
+- accessible controls and keyboard paths,
+- strong mobile behavior without hiding important navigation.
+
+* Visual System
+
+- Use the existing token system in =src/app.css= before adding new values.
+- Keep visual preferences coordinated across =src/app.html=, =src/lib/tweaks.ts=,
+  and CSS tokens.
+- Prefer purposeful motion. Respect reduced-motion settings.
+- Self-host fonts and avoid third-party visual dependencies.
+- Keep page structure inspectable: sections should be clear without relying on
+  decorative effects.
+
+* Copy And Tone
+
+The full owner is [[file:docs/tone-of-voice.org][Tone Of Voice]].
+
+- Be concrete and direct.
+- Prefer useful labels over clever ones for commands and navigation.
+- Keep service and project copy grounded in real work.
+- Put app-shell labels in =src/lib/i18n.ts= for both languages.
+- Keep technical articles readable and source-backed where needed.
+
+* Accessibility Floor
+
+- Every interactive element needs an accessible name.
+- Focus states must remain visible.
+- Do not rely on color alone to communicate state.
+- Preserve heading order.
+- Test important flows with keyboard navigation.
+
+* Related Docs
+
+- [[file:docs/styling.org][Styling]]
+- [[file:docs/tone-of-voice.org][Tone Of Voice]]
+- [[file:docs/components.org][Components]]
+- [[file:docs/routes.org][Routes]]
+- [[file:docs/features-and-integrations.org][Features, services & integrations]]
