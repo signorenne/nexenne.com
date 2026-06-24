@@ -8033,6 +8033,11 @@ main[data-page="uses"] .uses-box h3 {
 		grid-template-columns: 1fr !important;
 		gap: var(--sp-5) !important;
 	}
+	/* Sections keep a large top padding on desktop. On the contact page that left
+	   a big gap between the title and the form on phones, so trim it here. */
+	main[data-page="contact"] .section {
+		padding-top: var(--sp-5);
+	}
 	/* Centre the "Core technologies" chip cloud (and its heading) on phones. */
 	.chip-cloud {
 		justify-content: center;
