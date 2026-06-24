@@ -165,12 +165,16 @@
 			border-color var(--t-med) var(--ease-out),
 			color var(--t-med) var(--ease-out);
 	}
-	.guide-fab:hover {
-		transform: translateY(-2px) scale(1.05);
-		border-color: var(--accent);
-		color: var(--accent);
+	/* Mouse-only, like the tweaks gear: avoids a stuck rotation on touch. */
+	@media (hover: hover) {
+		.guide-fab:hover {
+			transform: rotate(-12deg) scale(1.05);
+			border-color: var(--accent);
+			color: var(--accent);
+		}
 	}
 	.guide-fab.is-open {
+		transform: rotate(45deg);
 		border-color: var(--accent);
 		color: var(--accent);
 	}
