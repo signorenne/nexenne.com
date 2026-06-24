@@ -1,5 +1,8 @@
 #+TITLE: .yarnrc.yml
 
+This file owns the explanation of per-project Yarn configuration. Setup commands
+live in [[file:project-setup.org][Project setup]].
+
 =.yarnrc.yml= is Yarn 4's per-project config file.
 
 * In This File

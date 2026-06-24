@@ -1,0 +1,56 @@
+#+TITLE: Tone Of Voice
+#+OPTIONS: toc:2 num:nil ^:nil
+#+STARTUP: showall
+
+This file owns how the site and repo talk: app copy, docs, commit text, UI
+labels, comments, and operational notes. Design principles live in
+[[file:../DESIGN.org][DESIGN.org]].
+
+* Voice
+
+- Concrete, calm, and technical.
+- Personal without becoming chatty in UI labels.
+- Clear before clever.
+- Specific about real work, real systems, and real constraints.
+- Short where the reader is trying to act.
+- More explanatory only in docs, articles, and troubleshooting notes.
+
+* UI Copy
+
+- Prefer command labels that say what happens: =View projects=, =Contact me=,
+  =Copy link=.
+- Avoid jokes, idioms, and vague labels in controls.
+- Keep navigation words stable because search, side map, and command palette
+  depend on recognition.
+- Add app-shell copy in =src/lib/i18n.ts= for English and Italian together.
+- Keep error and fallback messages actionable.
+
+* Project Docs
+
+- Start each doc with what it owns.
+- Link to the owning doc instead of copying a rule.
+- Use short paragraphs and tables when an agent needs to execute steps.
+- Prefer exact commands and exact paths.
+- Keep docs in Org mode.
+
+* Punctuation
+
+- Do not use em dashes in code, comments, docs, commits, UI copy, or content.
+- Use a colon, comma, semicolon, parentheses, or a plain hyphen instead.
+- Keep apostrophes and accented names when they are correct for the text.
+- Avoid decorative punctuation in headings and labels.
+
+* Comments
+
+- Comments explain why a non-obvious choice exists.
+- Do not narrate what the next line literally does.
+- Remove commented-out code.
+- Keep comments short enough that future edits are likely to keep them true.
+
+* Articles And Case Studies
+
+- Technical articles can be warmer and more narrative than UI copy.
+- Preserve clarity over polish.
+- Link or cite external facts when the article depends on them.
+- Case studies should describe role, constraints, choices, and outcomes without
+  exaggeration.

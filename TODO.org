@@ -1,0 +1,34 @@
+#+TITLE: TODO
+#+OPTIONS: toc:nil num:nil ^:nil
+#+STARTUP: showall
+
+* TODO Enable contact-form delivery (Web3Forms)
+
+The contact form (=/contact=) is wired to [[https://web3forms.com][Web3Forms]] but needs an access key
+to deliver messages. Until the key is set, the form falls back to opening the
+visitor's email client (=mailto:=); submissions are not delivered to an inbox.
+
+Steps:
+
+1. Go to [[https://web3forms.com][web3forms.com]] and create a free access key using the email address
+   where submissions should arrive, for example =nicolo@nexenne.com=.
+2. Production: add the key as a repository secret.
+   - Repo -> Settings -> Secrets and variables -> Actions -> New repository secret.
+   - Name: =PUBLIC_WEB3FORMS_ACCESS_KEY=.
+   - Value: your key.
+   - The deploy workflow passes it to the build from
+     =.github/workflows/static.yaml=.
+3. Local testing: copy =.env.example= to =.env= and set
+   =PUBLIC_WEB3FORMS_ACCESS_KEY=, then run =yarn dev=.
+4. Verify by submitting the deployed form and confirming the message arrives.
+
+Notes:
+
+- Web3Forms access keys are public by design because they live in client code.
+- The form includes a hidden honeypot (=botcheck=) for basic spam protection.
+- No backend is needed; this works on the static GitHub Pages build.
+
+* TODO Refresh security.txt yearly
+
+=static/.well-known/security.txt= has an =Expires:= date. Bump it roughly one
+year ahead before it lapses; RFC 9116 requires a future date.

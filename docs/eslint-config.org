@@ -1,5 +1,8 @@
 #+TITLE: eslint.config.js
 
+This file owns the explanation of ESLint configuration. Code rules live in
+[[file:../AGENTS.org][AGENTS.org]] and [[file:../STYLE_GUIDE.org][STYLE_GUIDE.org]].
+
 =eslint.config.js= is the lint ruleset.
 
 It uses ESLint's flat config format and covers JavaScript, TypeScript, and

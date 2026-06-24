@@ -1,0 +1,51 @@
+#+TITLE: Dependency Policy
+#+OPTIONS: toc:2 num:nil ^:nil
+#+STARTUP: showall
+
+This file owns the policy for adding, updating, and reviewing dependencies.
+Package metadata details live in [[file:package-json.org][package-json.org]].
+
+* Principle
+
+Every dependency becomes part of the maintenance surface. Prefer the platform,
+SvelteKit, Vite, Node built-ins, browser APIs, and existing packages before
+adding another package.
+
+* Before Adding A Package
+
+Check:
+
+1. Necessity: can the repo solve this with existing code or a small local helper?
+2. Runtime impact: does it ship to visitors or run only at build/test time?
+3. Maintenance: recent releases, active issue handling, stable maintainer.
+4. Adoption: established package or clearly justified niche tool.
+5. License: MIT, Apache-2.0, BSD, or ISC preferred.
+6. Security: no known unpatched vulnerability.
+7. Transitive size: inspect what the package brings with it.
+8. Fit: does it match SvelteKit static output and the repo's style?
+
+* Rules
+
+- Runtime packages go in =dependencies= only when app/build code imports them.
+- Tooling packages go in =devDependencies=.
+- Do not add browser analytics, tracking, or third-party font services.
+- Do not add a service dependency without documenting env vars and failure mode.
+- Keep =yarn.lock= changes reviewable.
+- Run =yarn install --immutable= after dependency edits.
+
+* Existing Core Packages
+
+- SvelteKit, Svelte, Vite, TypeScript.
+- Unified/remark/rehype/uniorg for content parsing.
+- Zod for content schema validation.
+- Vitest for tests.
+- satori and resvg-wasm for generated Open Graph images.
+
+* Documentation Requirements
+
+When adding a dependency, update:
+
+- [[file:package-json.org][package-json.org]] if the script/package role changes.
+- [[file:features-and-integrations.org][features-and-integrations]] if the package powers a feature.
+- [[file:project-setup.org][project-setup]] if local setup changes.
+- =.env.example= and [[file:../TODO.org][TODO.org]] if an external service needs configuration.

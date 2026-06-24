@@ -1,0 +1,84 @@
+#+TITLE: Returning After A Break
+#+OPTIONS: toc:2 num:nil ^:nil
+#+STARTUP: showall
+
+This file owns the return-after-break checklist. Use it when the site has been
+quiet for a while and you need to regain the shape of it without spelunking
+through every file.
+
+* First Fifteen Minutes
+
+#+begin_src sh
+git status --short
+yarn install --immutable
+yarn check
+yarn test
+yarn build
+#+end_src
+
+Then open:
+
+- [[file:index.org][Docs map]] for the map.
+- [[file:how-it-fits-together.org][How it fits together]] for the build-time/runtime split.
+- [[file:features-and-integrations.org][Features, services & integrations]] for the moving parts.
+- [[file:../TODO.org][TODO.org]] for pending operational tasks.
+
+If the build fails, jump to [[file:troubleshooting.org][Troubleshooting]] before changing code.
+
+* Freshness Checks
+
+- =static/.well-known/security.txt= must have a future =Expires= date.
+- =PUBLIC_WEB3FORMS_ACCESS_KEY= should exist locally or as a GitHub secret if
+  contact-form delivery is expected.
+- =yarn --version= should report the pinned Yarn 4 release from =.yarnrc.yml=.
+- Git tags should exist when you want the footer/version metadata to show a real
+  release instead of =v0.0.0=.
+- Lighthouse budgets should still match the public pages chosen in
+  =.github/workflows/lighthouse.yml=.
+
+* Before Editing
+
+1. Pick the area you are touching from [[file:index.org][docs/index.org]].
+2. Read the nearby doc before opening many files.
+3. Run =yarn dev= and keep the page visible.
+4. Change one concern at a time.
+5. Update the relevant doc if you learn something durable.
+
+* Before Publishing
+
+#+begin_src sh
+yarn format:check
+yarn check
+yarn lint
+yarn test
+yarn build
+yarn preview
+#+end_src
+
+In preview, click at least:
+
+- home page
+- one blog post
+- one work page
+- =/it/= language path
+- =/feed.xml=
+- =/sitemap.xml=
+- a missing URL that should show 404 content
+
+* Annual Tasks
+
+- Refresh =static/.well-known/security.txt= before its =Expires= date.
+- Review dependencies with the package manager and changelogs before upgrading.
+- Re-run Lighthouse locally or in CI after visible layout changes.
+- Check that =static/CNAME= still matches the production domain.
+- Confirm =.env.example= documents every public environment variable.
+
+* When Adding A New Moving Part
+
+Add the concept in three places:
+
+1. The implementation file.
+2. A short doc page or section under =docs/=.
+3. A link from [[file:index.org][docs/index.org]] or the closest existing topic.
+
+If it creates a recurring task, add it to [[file:../TODO.org][TODO.org]].

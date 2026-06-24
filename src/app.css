@@ -3920,7 +3920,7 @@ html.is-transitioning {
 .motion-off .cursor-dot {
 	display: none;
 }
-/* No real pointer to track on touch / no-hover devices — never show the dot. */
+/* No real pointer to track on touch / no-hover devices, so never show the dot. */
 @media (hover: none), (pointer: coarse) {
 	.cursor-dot {
 		display: none !important;
@@ -6423,7 +6423,7 @@ main[data-page="uses"] .uses-box h3 {
 	.app > :not(main) {
 		display: none !important;
 	}
-	/* Scope to the layout's #main-content only — NOT any <main>, because the CV's
+	/* Scope to the layout's #main-content only, NOT any <main>, because the CV's
 	   own left column is <main class="cv-main">, which must stay visible. */
 	#main-content > :not(.page-anim) {
 		display: none !important;
@@ -7108,11 +7108,11 @@ main[data-page="uses"] .uses-box h3 {
 @media print {
 	/* The margin MUST live on @page: it's the only thing applied to *every* printed
 	   page. Padding on .cv-sheet only spaces the top of page 1 and the bottom of
-	   the last page — intermediate page breaks flow edge-to-edge. A real @page
+	   the last page. Intermediate page breaks flow edge-to-edge. A real @page
 	   margin (>= a printer's ~0.25in hardware band) is also honored identically in
 	   "Save as PDF" and on a physical printer, so the two match.
 	   Note: a margin box gives the browser room to draw its auto headers/footers
-	   (date/URL/page#); CSS can't disable those — uncheck "Headers and footers" in
+	   (date/URL/page#). CSS can't disable those; uncheck "Headers and footers" in
 	   the print dialog's More settings (the browser remembers the choice). */
 	@page {
 		size: A4;
@@ -7281,7 +7281,7 @@ main[data-page="uses"] .uses-box h3 {
 		transform: translateX(-100%);
 		transition: transform 280ms var(--ease-out);
 		width: 240px !important;
-		/* No shadow while parked off-screen — its rightward offset would otherwise
+		/* No shadow while parked off-screen; its rightward offset would otherwise
 		   bleed a faint shadow onto the left edge of the page. Only shadow when open. */
 		box-shadow: none;
 		padding-top: 14px;
@@ -7776,7 +7776,7 @@ main[data-page="uses"] .uses-box h3 {
 		text-align: center;
 	}
 
-	/* Mobile footer — "Identity + centered 2-col":
+	/* Mobile footer: "Identity + centered 2-col":
 	   1. brand / bio / contact: centered identity block
 	   2. Navigation + Pages: a centered pair of left-aligned link columns
 	   3. Channels: centered row of social chips
@@ -7789,7 +7789,7 @@ main[data-page="uses"] .uses-box h3 {
 		text-align: center;
 	}
 
-	/* 1 — identity block */
+	/* 1: identity block */
 	.foot-inner > div:first-child {
 		max-width: 100%;
 	}
@@ -7805,7 +7805,7 @@ main[data-page="uses"] .uses-box h3 {
 		flex-wrap: wrap !important;
 	}
 
-	/* 2 — the two link lists, centered as a pair with centered content to match
+	/* 2: the two link lists, centered as a pair with centered content to match
 	   the rest of the (centered) mobile footer */
 	.foot-cols {
 		display: flex;
@@ -7821,7 +7821,7 @@ main[data-page="uses"] .uses-box h3 {
 		text-align: center;
 	}
 
-	/* 3 — Channels: centered chip row */
+	/* 3: Channels: centered chip row */
 	.foot-inner > div:last-child {
 		display: flex;
 		flex-wrap: wrap;
@@ -8119,7 +8119,7 @@ button:focus:not(:focus-visible) {
 
 /* ---------------------------------------------------------------------------
    Touch devices keep the :hover state "stuck" after a tap, which freezes any
-   hover-driven transform mid-state — e.g. a theme/lang/gear icon left slightly
+   hover-driven transform mid-state, e.g. a theme/lang/gear icon left slightly
    rotated. data-hover is the project-wide marker for elements with hover
    effects, so cancel their hover transforms wherever there's no real hover.
    (State transforms set via classes, like .is-open, are preserved below.)

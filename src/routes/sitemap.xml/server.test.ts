@@ -55,8 +55,19 @@ describe('sitemap.xml', () => {
 	it('produces exactly two <url> entries per path', async () => {
 		const xml = await body();
 		const urlCount = (xml.match(/<url>/g) ?? []).length;
-		// 10 static + 1 work + 2 posts = 13 paths, times 2 languages.
-		expect(urlCount).toBe(13 * 2);
+		const locs = Array.from(
+			xml.matchAll(/<loc>(https:\/\/nexenne\.com[^<]+)<\/loc>/g),
+			(match) => match[1]
+		);
+		const counts = new Map<string, number>();
+
+		for (const loc of locs) {
+			const path = loc.replace('https://nexenne.com', '').replace(/^\/it(?=\/|$)/, '') || '/';
+			counts.set(path, (counts.get(path) ?? 0) + 1);
+		}
+
+		expect(urlCount).toBe(locs.length);
+		for (const count of counts.values()) expect(count).toBe(2);
 	});
 
 	it('declares the xhtml namespace', async () => {

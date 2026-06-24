@@ -1,5 +1,8 @@
 #+TITLE: How SvelteKit Works Here
 
+This file owns the SvelteKit mental model for this repo. Route-specific rules
+live in [[file:routes.org][Routes]].
+
 Svelte handles the components. SvelteKit handles the site around them: routes,
 layouts, loaders, generated types, errors, and the static adapter.
 

@@ -1,0 +1,67 @@
+#+TITLE: Testing
+#+OPTIONS: toc:2 num:nil ^:nil
+#+STARTUP: showall
+
+This file owns what to test and how. For where tests live, read
+[[file:file-system.org][File system layout]]. For local commands, read
+[[file:project-setup.org][Project setup]].
+
+* Framework
+
+Tests use Vitest. The config is [[file:../vitest.config.ts][vitest.config.ts]].
+
+Important config details:
+
+- =$lib= maps to =src/lib=.
+- =$app/*= virtual modules map to =src/test/stubs/=.
+- Vite build-time globals are stubbed for tests.
+- Test files match =src/**/*.{test,spec}.ts=.
+- The environment is Node.
+
+* What Needs Tests
+
+- Content parsing and frontmatter validation.
+- Blog, work, resume, feed, sitemap, search, and OG-adjacent server logic.
+- Language helpers and path helpers.
+- Stores with behavior.
+- Bug fixes that can regress.
+- Non-trivial pure helpers.
+
+UI-only layout changes may not need new tests, but they still need =yarn check=
+and =yarn build=.
+
+* Rules
+
+- Test behavior and public contracts, not implementation details.
+- Keep assertions focused. Prefer a few meaningful checks over snapshots of
+  everything.
+- If a test fails because the code does the wrong thing, fix the code.
+- If a test fails because the documented contract changed, update the owning doc
+  and then update the test.
+- Do not make a test weaker just to pass the gate.
+
+* Commands
+
+#+begin_src sh
+yarn test
+yarn test:watch
+#+end_src
+
+Run the full gate before deploy-sensitive work:
+
+#+begin_src sh
+yarn format:check
+yarn check
+yarn lint
+yarn test
+yarn build
+#+end_src
+
+* Adding A Test
+
+1. Put the test near the source.
+2. Name it =*.test.ts=.
+3. Use the public function, endpoint =GET=, or store API.
+4. Stub SvelteKit modules in =src/test/stubs/= only when the import is shared by
+   more than one test.
+5. Keep fixtures small and local unless they represent real content behavior.

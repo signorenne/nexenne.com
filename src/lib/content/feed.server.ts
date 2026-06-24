@@ -4,12 +4,12 @@ import type { ContentLang } from './types';
 
 const META: Record<ContentLang, { title: string; desc: string; lang: string }> = {
 	en: {
-		title: 'nexenne — Field notes',
+		title: 'nexenne - Field notes',
 		desc: 'Technical notes on automotive HMI, embedded firmware, Android and field work.',
 		lang: 'en'
 	},
 	it: {
-		title: 'nexenne — Appunti dal campo',
+		title: 'nexenne - Appunti dal campo',
 		desc: 'Note tecniche su HMI automotive, firmware embedded, Android e lavoro sul campo.',
 		lang: 'it'
 	}

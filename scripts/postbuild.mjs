@@ -10,5 +10,5 @@ if (existsSync(src)) {
 	copyFileSync(src, dst);
 	console.log('postbuild: replaced empty 404.html fallback with the rendered /404 page');
 } else {
-	console.warn(`postbuild: ${src} not found — leaving the fallback 404.html as-is`);
+	console.warn(`postbuild: ${src} not found; leaving the fallback 404.html as-is`);
 }

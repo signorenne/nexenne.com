@@ -1,8 +1,14 @@
 #+TITLE: Development Setup
 
+This file owns local development setup. The broader process hub is
+[[file:../CONVENTIONS.org][CONVENTIONS.org]].
+
+For the full setup map, including hooks and CI, see
+[[file:project-setup.org][Project setup]].
+
 * Requirements
 
-- Node.js
+- Node.js (CI uses Node 22)
 - Yarn launcher on =PATH= (any version; project pins its own)
 - Project dependencies installed with =yarn install=
 
@@ -18,15 +24,22 @@ The simplest setup is:
 npm install -g yarn   # installs Yarn classic as a launcher
 #+end_src
 
+Corepack also works:
+
+#+begin_src sh
+corepack enable
+#+end_src
+
 If a shell cannot find =node= or =yarn=, fix the shell path first. The repo
 commands assume those names exist.
 
 * Commands
 
 #+begin_src sh
-yarn install
+yarn install --immutable
 yarn dev
 yarn check
+yarn test
 yarn build
 yarn preview
 #+end_src
@@ -39,7 +52,7 @@ runs the =build= script directly, with no =run= keyword needed.
 1. Start =yarn dev=.
 2. Open the Vite URL it prints.
 3. Edit =src/= for app code or =content/= for writing.
-4. Run =yarn check= before committing.
+4. Run =yarn check= and =yarn test= before committing.
 5. Run =yarn build= before deploying.
 
 * Generated Folders

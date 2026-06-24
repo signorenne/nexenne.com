@@ -1,0 +1,116 @@
+#+TITLE: File System Layout
+#+OPTIONS: toc:2 num:nil ^:nil
+#+STARTUP: showall
+
+This file owns where new code, content, assets, tests, and docs go. For the
+broader architecture read [[file:how-it-fits-together.org][How it fits together]].
+For naming and style read [[file:../STYLE_GUIDE.org][STYLE_GUIDE.org]].
+
+* Top Level
+
+#+begin_src text
+nexenne_com/
+|-- src/                 SvelteKit app code
+|-- content/             authored blog, work, and resume source
+|-- static/              public assets copied as-is
+|-- docs/                Org-mode topic spokes
+|-- scripts/             local build helpers
+|-- .github/workflows/   CI and deploy workflows
+|-- AGENTS.org           code-agent working rules
+|-- CONVENTIONS.org      process and docs-governance hub
+|-- DESIGN.org           surface principles
+|-- VISION.org           durable product model
+`-- README.org           front door
+#+end_src
+
+Generated folders are not source: =build/=, =.svelte-kit/=, =node_modules/=.
+
+* src
+
+#+begin_src text
+src/
+|-- routes/              route tree and endpoints
+|-- lib/                 shared app code
+|-- params/              SvelteKit route matchers
+|-- test/stubs/          test replacements for SvelteKit virtual modules
+|-- app.css              global CSS and tokens
+|-- app.d.ts             ambient declarations
+|-- app.html             document shell and first-paint script
+|-- hooks.server.ts      server hook for prerender-time html attributes
+`-- service-worker.ts    PWA/offline behavior
+#+end_src
+
+* Routes
+
+- Pages go under =src/routes/[[lang=lang]]/= unless they are intentionally
+  language independent.
+- Endpoints use =+server.ts=.
+- Dynamic routes that prerender must export every required =entries= value.
+- The root =+layout.svelte= owns the shared shell.
+- Route loaders read content through =src/lib/content/= helpers.
+
+* lib
+
+| folder/file             | owns                                                |
+|-------------------------+-----------------------------------------------------|
+| =components/=           | reusable Svelte components                          |
+| =content/=              | server-only content loading, parsing, feeds         |
+| =stores/=               | client-side Svelte stores                           |
+| =actions/=              | reusable Svelte actions                             |
+| =og/=                   | Open Graph image rendering                          |
+| =data.ts=               | site facts, navigation, stack, experience data       |
+| =i18n.ts=               | app-shell labels and language store                 |
+| =paths.ts=              | language-aware links and navigation helpers         |
+| =highlight.ts=          | search-result highlighting                          |
+| =share.ts=              | native share and copy fallback                      |
+| =tweaks.ts=             | visual preference model                             |
+
+* Content
+
+- =content/blog/= blog posts.
+- =content/work/= case studies.
+- =content/resume/= resume source.
+
+Markdown and Org are both supported for authored site content. Project docs use
+Org only.
+
+* Tests
+
+- Co-locate test files with the source they exercise when practical.
+- Endpoint tests sit beside their endpoint as =server.test.ts=.
+- SvelteKit virtual modules are stubbed under =src/test/stubs/=.
+- Test policy lives in [[file:testing.org][testing.org]].
+
+* Decision Tree
+
+#+begin_src text
+new public page?
+  -> src/routes/[[lang=lang]]/<name>/+page.svelte
+
+page needs build-time data?
+  -> add +page.server.ts beside the route
+
+new API/static endpoint?
+  -> src/routes/<name>/+server.ts
+
+new reusable component?
+  -> src/lib/components/<Name>.svelte
+
+used by one route only?
+  -> keep inside that route first
+
+new parser/loader/feed behavior?
+  -> src/lib/content/
+
+new client state?
+  -> src/lib/stores/
+
+new public asset with stable URL?
+  -> static/
+
+new blog/work/resume source?
+  -> content/
+
+new durable project rule?
+  -> owning *.org doc, then register in docs/index.org
+#+end_src

@@ -1,5 +1,9 @@
 #+TITLE: Components
 
+This file owns the reusable component inventory. File placement rules live in
+[[file:file-system.org][File system layout]], and surface principles live in
+[[file:../DESIGN.org][DESIGN.org]].
+
 Reusable UI lives in =src/lib/components/=. Route-specific markup can stay in a
 route until another page needs it.
 

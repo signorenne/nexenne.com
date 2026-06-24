@@ -112,7 +112,7 @@
 
 		// Publish the header height as --nav-h (used to offset the mobile drawer).
 		// Measure in a rAF so layout has settled, and re-measure on every event that
-		// can change it or leave a stale value — resize, orientation, font load, and
+		// can change it or leave a stale value: resize, orientation, font load, and
 		// crucially when the page is restored from the bfcache (lock/unlock, tab
 		// switch) where onMount does NOT run again. A wrong value here is what made
 		// the drawer drift below/over the header after returning to the page.

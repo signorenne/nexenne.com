@@ -43,7 +43,7 @@
 
 	// The URL is the source of truth for language: `/` is English, `/it/` is Italian.
 	// Derive it from the pathname (not just the route param) so it's also correct
-	// on the 404 fallback, where no route matched and $page.params.lang is absent —
+	// on the 404 fallback, where no route matched and $page.params.lang is absent;
 	// otherwise an unknown /it/… URL would render the error page in English.
 	$: lang.set(langFromPath($page.url.pathname));
 

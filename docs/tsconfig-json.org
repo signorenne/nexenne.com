@@ -1,5 +1,8 @@
 #+TITLE: tsconfig.json
 
+This file owns the explanation of TypeScript compiler configuration. Code style
+rules live in [[file:../STYLE_GUIDE.org][STYLE_GUIDE.org]].
+
 =tsconfig.json= tells TypeScript how to read this project.
 
 * In This File

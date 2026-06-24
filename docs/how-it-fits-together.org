@@ -1,5 +1,8 @@
 #+TITLE: How It Fits Together
 
+This file owns the high-level build flow and runtime shape. File placement rules
+live in [[file:file-system.org][File system layout]].
+
 This site is static at the edge, but it still has a build-time app behind it.
 Most problems make more sense if you keep that split in mind.
 

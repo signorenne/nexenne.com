@@ -1,5 +1,8 @@
 #+TITLE: src/app.d.ts
 
+This file owns the explanation of ambient TypeScript declarations. Build-time
+metadata sources are documented in [[file:vite-config.org][vite-config.org]].
+
 =src/app.d.ts= is for ambient TypeScript declarations.
 
 SvelteKit reads this file for app-level types. Right now, the only project

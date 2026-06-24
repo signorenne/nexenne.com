@@ -1,0 +1,12 @@
+# Normalize line endings to LF in the repo, regardless of contributor OS.
+* text=auto eol=lf
+
+# Always-LF scripts; CRLF shebang lines break on Unix-like systems.
+*.sh text eol=lf
+
+# Treat project prose as documentation for language stats.
+*.org linguist-documentation
+README.org linguist-documentation
+CONTRIBUTING.org linguist-documentation
+STYLE_GUIDE.org linguist-documentation
+AI_DISCLAIMER.org linguist-documentation

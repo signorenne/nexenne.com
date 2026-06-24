@@ -1,5 +1,8 @@
 #+TITLE: src Layout
 
+This is the short map of =src/=. The owner for file placement decisions is
+[[file:file-system.org][File system layout]].
+
 =src/= is the app. Content lives next to it in =content/=, but this is where
 SvelteKit starts.
 

@@ -1,5 +1,8 @@
 #+TITLE: src/app.css
 
+This file owns the explanation of =src/app.css=. Concrete styling rules live in
+[[file:styling.org][Styling]], and surface principles live in [[file:../DESIGN.org][DESIGN.org]].
+
 =src/app.css= is the global stylesheet and the visual system.
 
 * What It Covers

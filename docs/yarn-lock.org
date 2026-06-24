@@ -1,5 +1,8 @@
 #+TITLE: yarn.lock
 
+This file owns the explanation of the Yarn lockfile. Dependency policy lives in
+[[file:dependencies.org][Dependency policy]].
+
 =yarn.lock= is Yarn's receipt for the dependency tree.
 
 * Why It Matters

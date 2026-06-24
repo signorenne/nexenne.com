@@ -1,5 +1,8 @@
 #+TITLE: Troubleshooting
 
+This file owns common failure modes and fixes. Setup details live in
+[[file:project-setup.org][Project setup]].
+
 * node Or yarn Not Found
 
 The shell cannot see Node or the Yarn launcher. Fix =PATH= (or install Node
