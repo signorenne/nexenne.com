@@ -7996,6 +7996,11 @@ main[data-page="uses"] .uses-box h3 {
 	grid-template-columns: 1.1fr 0.9fr;
 	gap: var(--sp-7);
 }
+/* The form sits right under the title, so it does not need the full section top
+   padding. Trim it on every view (mobile gets a bit less, see the 720 block). */
+main[data-page="contact"] .section {
+	padding-top: var(--sp-7);
+}
 .post-foot-grid {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
@@ -8033,10 +8038,8 @@ main[data-page="uses"] .uses-box h3 {
 		grid-template-columns: 1fr !important;
 		gap: var(--sp-5) !important;
 	}
-	/* Sections keep a large top padding on desktop. On the contact page that left
-	   a big gap between the title and the form on phones, so trim it here. */
 	main[data-page="contact"] .section {
-		padding-top: var(--sp-5);
+		padding-top: var(--sp-4);
 	}
 	/* Centre the "Core technologies" chip cloud (and its heading) on phones. */
 	.chip-cloud {
