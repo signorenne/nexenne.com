@@ -16,7 +16,7 @@ folder.
 
 * Start Here
 
-- Agent doing code work: [[file:AGENTS.org][AGENTS.org]].
+- Agent doing code work: [[file:AGENTS.md][AGENTS.md]].
 - Returning after time away: [[file:docs/maintenance.org][Returning after a break]].
 - Setting up the repo: [[file:docs/project-setup.org][Project setup]] and
   [[file:docs/development-setup.org][Development setup]].
@@ -68,7 +68,9 @@ nexenne_com/
 |-- static/              public files copied as-is
 |-- docs/                Org-mode project knowledge base
 |-- scripts/             build helpers, currently the 404 postbuild patch
-|-- AGENTS.org           code-agent working rules
+|-- AGENTS.md           code-agent working rules
+|-- CLAUDE.md           Claude Code bridge to AGENTS.md
+|-- GEMINI.md           Gemini bridge to AGENTS.md
 |-- CONVENTIONS.org      commands, git, CI, docs governance
 |-- VISION.org           purpose and durable mental model
 |-- DESIGN.org           surface principles
@@ -80,10 +82,13 @@ nexenne_com/
 
 * Documentation
 
-Project docs are Org mode and internally linked:
+Project docs are Org mode and internally linked. The Markdown assistant
+entrypoints (=AGENTS.md=, =CLAUDE.md=, =GEMINI.md=, and
+=.github/copilot-instructions.md=) exist only for tool discovery; =AGENTS.md=
+is canonical and the other files point back to it.
 
 - [[file:docs/index.org][Docs map]] : role matrix and registered docs map.
-- [[file:AGENTS.org][Agent operating guide]] : code-agent floor and forbidden patterns.
+- [[file:AGENTS.md][Agent operating guide]] : code-agent floor and forbidden patterns.
 - [[file:CONVENTIONS.org][Project conventions]] : commands, hooks, CI, git, docs governance.
 - [[file:VISION.org][Project vision]] : why the site exists and how to think about it.
 - [[file:DESIGN.org][Design principles]] : visual, copy, and accessibility principles.
@@ -105,7 +110,7 @@ production.
 
 * Style And Contribution
 
-Use [[file:AGENTS.org][AGENTS.org]] for the agent working-memory floor,
+Use [[file:AGENTS.md][AGENTS.md]] for the agent working-memory floor,
 [[file:CONVENTIONS.org][CONVENTIONS.org]] for process and docs governance,
 [[file:STYLE_GUIDE.org][STYLE_GUIDE.org]] for code/content conventions, and
 [[file:CONTRIBUTING.org][CONTRIBUTING.org]] for workflow, commit messages, local

@@ -18,8 +18,13 @@ dist/
 
 # Local AI assistant state
 .codex/
+.claude/
 .cursor/
+.gemini/
+.copilot/
+.continue/
 .windsurf/
+.aider*
 AGENTS.local.md
 
 # Environment and secrets

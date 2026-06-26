@@ -3,7 +3,7 @@
 #+STARTUP: showall
 
 This file owns the durable "why" and mental model for =nexenne.com=. For code
-rules read [[file:AGENTS.org][AGENTS.org]]. For process rules read
+rules read [[file:AGENTS.md][AGENTS.md]]. For process rules read
 [[file:CONVENTIONS.org][CONVENTIONS.org]].
 
 * Purpose
@@ -39,7 +39,7 @@ spokes, make a focused change, and verify it without rediscovering the system.
 - *Feature spoke*: one doc that owns a durable concept, such as routing,
   content, testing, or dependencies.
 - *Working-memory floor*: short rules that an agent must keep active while
-  editing, stored in [[file:AGENTS.org][AGENTS.org]].
+  editing, stored in [[file:AGENTS.md][AGENTS.md]].
 
 * Success Criteria
 
