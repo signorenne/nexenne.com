@@ -11,7 +11,7 @@
 	export let data: PageData;
 	$: ({ posts, works, worksTotal, postsTotal } = data);
 
-	$: sourcePosts = posts.map((b) => b.source);
+	$: sourcePosts = posts.map((b) => b.byLang[$lang as ContentLang] ?? b.source);
 	$: localizedWorks = works.map((b) => b.byLang[$lang as ContentLang] ?? b.source);
 
 	function go(path: string) {
