@@ -3,13 +3,14 @@
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 	import { lhref, lgoto } from '$lib/paths';
-	import { t } from '$lib/i18n';
+	import { lang, t } from '$lib/i18n';
+	import type { ContentLang } from '$lib/content/types';
 	import type { PageData } from './$types';
 
 	export let data: PageData;
 	$: ({ posts } = data);
 
-	$: localized = posts.map((b) => b.source);
+	$: localized = posts.map((b) => b.byLang[$lang as ContentLang] ?? b.source);
 
 	let q = '';
 	let activeTag: string | null = null;
