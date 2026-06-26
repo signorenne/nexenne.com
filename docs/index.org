@@ -16,7 +16,7 @@ only when the task touches it.
 | [[file:../README.org][README.org]]                                            |       |         |             |          |         | x          |
 | [[file:../VISION.org][VISION.org]]                                            | x     | x       |             |          |         | x          |
 | [[file:../DESIGN.org][DESIGN.org]]                                            |       | x       | x           | x        |         | x          |
-| [[file:../AGENTS.org][AGENTS.org]]                                            | x     | x       | x           | x        |         | x          |
+| [[file:../AGENTS.md][AGENTS.md]]                                            | x     | x       | x           | x        |         | x          |
 | [[file:../CONVENTIONS.org][CONVENTIONS.org]]                                  |       | x       | x           | x        | x       | x          |
 | [[file:../STYLE_GUIDE.org][STYLE_GUIDE.org]]                                  |       | x       | x           | x        |         | x          |
 | [[file:../CONTRIBUTING.org][CONTRIBUTING.org]]                                |       | x       | x           | x        | x       | x          |
@@ -44,8 +44,11 @@ only when the task touches it.
 The graph is hub and spoke.
 
 - *Root hubs*: [[file:../README.org][README]], [[file:../VISION.org][VISION]], [[file:../DESIGN.org][DESIGN]],
-  [[file:../AGENTS.org][AGENTS]], [[file:../CONVENTIONS.org][CONVENTIONS]],
+  [[file:../AGENTS.md][AGENTS]], [[file:../CONVENTIONS.org][CONVENTIONS]],
   [[file:../STYLE_GUIDE.org][STYLE_GUIDE]], [[file:../CONTRIBUTING.org][CONTRIBUTING]].
+- *Assistant bridges*: [[file:../CLAUDE.md][CLAUDE]], [[file:../GEMINI.md][GEMINI]], and
+  [[file:../.github/copilot-instructions.md][copilot-instructions]] point back to
+  [[file:../AGENTS.md][AGENTS]] so assistant rules stay in one file.
 - *Spokes*: focused docs under =docs/=.
 - *Summary down, deep dive up*: hubs keep the short rule an agent must remember.
   The full explanation, examples, and edge cases live in the spoke.
@@ -61,7 +64,8 @@ The graph is hub and spoke.
 - Keep spokes focused on one concept.
 - Split a topic into a cluster only when one file grows past one screen and has
   at least three independently loadable subtopics.
-- Project docs are Org mode. Do not add Markdown project docs.
+- Project docs are Org mode. Do not add Markdown project docs, except
+  =AGENTS.md= and tiny assistant bridge files that point back to it.
 
 * Registry
 
@@ -72,7 +76,10 @@ The graph is hub and spoke.
 | [[file:../README.org][README.org]]           | Project overview, quick start, layout, main links.         | onboarding                           |
 | [[file:../VISION.org][VISION.org]]           | Why the site exists and the durable product model.         | scout, planner, onboarding           |
 | [[file:../DESIGN.org][DESIGN.org]]           | Surface principles: visual system, copy, accessibility.    | planner, implementer, reviewer       |
-| [[file:../AGENTS.org][AGENTS.org]]           | Code-agent floor, hard rules, forbidden patterns, gates.   | all code roles, onboarding           |
+| [[file:../AGENTS.md][AGENTS.md]]           | Code-agent floor, hard rules, forbidden patterns, gates.   | all code roles, onboarding           |
+| [[file:../CLAUDE.md][CLAUDE.md]]           | Claude Code bridge to =AGENTS.md=.                         | tool entrypoint                      |
+| [[file:../GEMINI.md][GEMINI.md]]           | Gemini bridge to =AGENTS.md=.                              | tool entrypoint                      |
+| [[file:../.github/copilot-instructions.md][copilot-instructions.md]] | GitHub Copilot bridge to =AGENTS.md=. | tool entrypoint |
 | [[file:../CONVENTIONS.org][CONVENTIONS.org]] | Process hub: commands, hooks, CI, git, docs governance.    | planner, implementer, reviewer, release |
 | [[file:../STYLE_GUIDE.org][STYLE_GUIDE.org]] | Code, content, styling, accessibility, dependency style.   | implementer, reviewer                |
 | [[file:../CONTRIBUTING.org][CONTRIBUTING.org]] | Human workflow, commits, quality gates, review checklist. | planner, implementer, reviewer       |

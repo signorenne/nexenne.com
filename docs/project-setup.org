@@ -98,7 +98,7 @@ Web3Forms. Without it, the contact form falls back to =mailto:=. Locally, copy
 
 * Related
 
-- [[file:../AGENTS.org][Agent operating guide]]
+- [[file:../AGENTS.md][Agent operating guide]]
 - [[file:../CONVENTIONS.org][Project conventions]]
 - [[file:development-setup.org][Development setup]]
 - [[file:developing.org][Developing the site]]

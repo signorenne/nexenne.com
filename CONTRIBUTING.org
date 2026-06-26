@@ -9,7 +9,7 @@ better than you found it.
 
 * Workflow
 
-1. Read [[file:README.org][README.org]], [[file:AGENTS.org][AGENTS.org]], then use
+1. Read [[file:README.org][README.org]], [[file:AGENTS.md][AGENTS.md]], then use
    [[file:docs/index.org][docs/index.org]] as the map.
 2. Set up dependencies with =yarn install --immutable=.
 3. Work on a branch off =main=.

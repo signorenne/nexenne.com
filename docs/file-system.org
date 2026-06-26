@@ -16,7 +16,9 @@ nexenne_com/
 |-- docs/                Org-mode topic spokes
 |-- scripts/             local build helpers
 |-- .github/workflows/   CI and deploy workflows
-|-- AGENTS.org           code-agent working rules
+|-- AGENTS.md           code-agent working rules
+|-- CLAUDE.md           Claude Code bridge to AGENTS.md
+|-- GEMINI.md           Gemini bridge to AGENTS.md
 |-- CONVENTIONS.org      process and docs-governance hub
 |-- DESIGN.org           surface principles
 |-- VISION.org           durable product model
@@ -24,6 +26,8 @@ nexenne_com/
 #+end_src
 
 Generated folders are not source: =build/=, =.svelte-kit/=, =node_modules/=.
+=AGENTS.md= is the canonical assistant guide; tool-specific Markdown bridges
+must point to it instead of duplicating rules.
 
 * src
 

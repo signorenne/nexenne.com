@@ -2,7 +2,7 @@
 
 This file owns the short version for day-to-day changes.
 
-Agent contributors should read [[file:../AGENTS.org][AGENTS.org]] first. File placement
+Agent contributors should read [[file:../AGENTS.md][AGENTS.md]] first. File placement
 decisions are owned by [[file:file-system.org][File system layout]].
 
 * Before You Edit

@@ -3,7 +3,7 @@
 #+STARTUP: showall
 
 This file is the process hub. It owns setup commands, git workflow, CI, release
-and docs governance. Code-agent floor rules live in [[file:AGENTS.org][AGENTS.org]].
+and docs governance. Code-agent floor rules live in [[file:AGENTS.md][AGENTS.md]].
 Detailed topic references live under [[file:docs/index.org][docs/]].
 
 * Project Model
@@ -72,8 +72,11 @@ Useful scopes: =routes=, =content=, =components=, =style=, =docs=, =ci=,
 
 The docs are hub and spoke.
 
-- *Root hubs*: =README.org=, =VISION.org=, =DESIGN.org=, =AGENTS.org=,
+- *Root hubs*: =README.org=, =VISION.org=, =DESIGN.org=, =AGENTS.md=,
   =CONVENTIONS.org=, =STYLE_GUIDE.org=, =CONTRIBUTING.org=.
+- *Assistant bridges*: =CLAUDE.md=, =GEMINI.md=, and
+  =.github/copilot-instructions.md= point to =AGENTS.md= and must not duplicate
+  rules.
 - *Spokes*: granular topic docs under =docs/=.
 - *Registry*: every doc must be listed in [[file:docs/index.org][docs/index.org]].
 
@@ -87,6 +90,8 @@ Rules:
 - If a topic outgrows one file and has at least three independently loadable
   subtopics, split it into a cluster: =docs/<name>.org= as the thin index plus
   =docs/<name>/= for the deep files.
+- Project docs are Org mode. =AGENTS.md= and tiny assistant bridge files are the
+  only Markdown exception.
 - An unregistered doc is an orphan. Register it before finishing the change.
 
 * Release And Deploy
