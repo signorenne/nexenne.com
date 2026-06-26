@@ -581,7 +581,7 @@ a.chip:hover,
 }
 
 .section {
-	padding: var(--sp-10) 0;
+	padding: clamp(var(--sp-7), 8vw, var(--sp-10)) 0;
 	position: relative;
 }
 .section + .section {
