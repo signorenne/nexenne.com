@@ -2133,6 +2133,9 @@ a.chip:hover,
 }
 .bf-search input {
 	flex: 1;
+	/* Allow the field to shrink below its intrinsic ~20ch size so a tight row
+	   (icon + input + clear button) never forces overflow on narrow phones. */
+	min-width: 0;
 	border: 0;
 	outline: 0;
 	background: transparent;
@@ -4599,6 +4602,9 @@ html.is-transitioning {
 	color: var(--ink);
 	outline: none;
 	transition: border-color var(--t-fast) var(--ease);
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
 }
 .form input:focus,
 .form textarea:focus,
