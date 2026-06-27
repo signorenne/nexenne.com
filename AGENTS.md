@@ -68,19 +68,19 @@ Do not load everything by habit. Load the smallest set that covers the task.
 
 Use [docs/file-system.org](docs/file-system.org) as the owner. The quick floor:
 
-| new thing | location |
-| --- | --- |
-| page route | `src/routes/[[lang=lang]]/<name>/` |
-| language-independent endpoint | `src/routes/<name>/+server.ts` |
-| reusable Svelte component | `src/lib/components/` |
-| route-only markup | keep it in the route |
-| content parser/loader logic | `src/lib/content/` |
-| internal link helper | `src/lib/paths.ts` |
-| user-facing app copy | `src/lib/i18n.ts` in both languages |
-| site-wide facts/navigation | `src/lib/data.ts` |
-| authored blog/work/resume content | `content/` |
-| public static asset | `static/` |
-| project documentation | root `*.org` hubs or `docs/*.org` spokes |
+| new thing                         | location                                 |
+| --------------------------------- | ---------------------------------------- |
+| page route                        | `src/routes/[[lang=lang]]/<name>/`       |
+| language-independent endpoint     | `src/routes/<name>/+server.ts`           |
+| reusable Svelte component         | `src/lib/components/`                    |
+| route-only markup                 | keep it in the route                     |
+| content parser/loader logic       | `src/lib/content/`                       |
+| internal link helper              | `src/lib/paths.ts`                       |
+| user-facing app copy              | `src/lib/i18n.ts` in both languages      |
+| site-wide facts/navigation        | `src/lib/data.ts`                        |
+| authored blog/work/resume content | `content/`                               |
+| public static asset               | `static/`                                |
+| project documentation             | root `*.org` hubs or `docs/*.org` spokes |
 
 ## Hard Rules
 
@@ -143,14 +143,14 @@ Use [docs/file-system.org](docs/file-system.org) as the owner. The quick floor:
 
 ## Verification Matrix
 
-| change type | minimum commands |
-| --- | --- |
-| docs only | `git diff --check` |
-| config/process docs | `yarn format:check`, `git diff --check` |
-| app code | `yarn format:check`, `yarn check`, `yarn lint` |
-| shared logic/tests | `yarn test` plus app-code commands |
-| content/parser/routes | `yarn test`, `yarn build` plus app-code commands |
-| deploy/build changes | full gate: install, format, check, lint, test, build |
+| change type           | minimum commands                                     |
+| --------------------- | ---------------------------------------------------- |
+| docs only             | `git diff --check`                                   |
+| config/process docs   | `yarn format:check`, `git diff --check`              |
+| app code              | `yarn format:check`, `yarn check`, `yarn lint`       |
+| shared logic/tests    | `yarn test` plus app-code commands                   |
+| content/parser/routes | `yarn test`, `yarn build` plus app-code commands     |
+| deploy/build changes  | full gate: install, format, check, lint, test, build |
 
 Full gate:
 
