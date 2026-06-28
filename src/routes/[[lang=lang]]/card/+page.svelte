@@ -205,7 +205,7 @@
 		const logoS = (H * 0.52) / LH;
 		const logoCy = H * 0.4;
 		const wordSize = Math.round(Math.min(H * 0.122, W * 0.083));
-		const mottoSize = Math.round(Math.min(H * 0.026, W * 0.017));
+		const mottoSize = Math.round(Math.min(H * 0.04, W * 0.026));
 		const wordY = Math.round(H * 0.84);
 		const mottoY = Math.round(wordY + mottoSize + H * 0.045);
 
