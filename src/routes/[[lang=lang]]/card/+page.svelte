@@ -190,13 +190,13 @@
 
 	$: qrOnly = size.key === 'square';
 	// Everything is derived from the chosen canvas so each size lays out cleanly.
-	$: L = layout(W, H, qrOnly);
+	$: L = layout(W, H, qrOnly, motto);
 
 	function finder(r: number, c: number, n: number) {
 		return (r < 7 && c < 7) || (r < 7 && c >= n - 7) || (r >= n - 7 && c < 7);
 	}
 
-	function layout(W: number, H: number, qrOnly: boolean) {
+	function layout(W: number, H: number, qrOnly: boolean, motto: string) {
 		const m = Math.min(W, H);
 		const pad = Math.round(m * 0.085);
 		const inset = Math.round(m * 0.034);
@@ -205,7 +205,11 @@
 		const logoS = (H * 0.52) / LH;
 		const logoCy = H * 0.4;
 		const wordSize = Math.round(Math.min(H * 0.122, W * 0.083));
-		const mottoSize = Math.round(Math.min(H * 0.04, W * 0.026));
+		// Grow the motto for legibility, but cap it so even the longer Italian line
+		// stays inside the card: JetBrains Mono advances ≈ 0.62em per glyph.
+		const mottoDesired = Math.min(H * 0.04, W * 0.026);
+		const mottoFitsWidth = motto ? (W - 2 * pad) / (motto.length * 0.62) : mottoDesired;
+		const mottoSize = Math.round(Math.min(mottoDesired, mottoFitsWidth));
 		const wordY = Math.round(H * 0.84);
 		const mottoY = Math.round(wordY + mottoSize + H * 0.045);
 
