@@ -3,6 +3,10 @@
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg?v=5" />
+		<!-- Raster fallbacks: Google's favicon crawler and most link unfurlers prefer a
+		     PNG at an explicit size (a multiple of 48px) and ignore SVG-only icons. -->
+		<link rel="icon" type="image/png" sizes="96x96" href="%sveltekit.assets%/favicon-96.png?v=5" />
+		<link rel="icon" type="image/png" sizes="48x48" href="%sveltekit.assets%/favicon-48.png?v=5" />
 		<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
 		<link rel="manifest" href="%sveltekit.assets%/site.webmanifest" />
 		<link rel="author" type="text/plain" href="%sveltekit.assets%/humans.txt" />
