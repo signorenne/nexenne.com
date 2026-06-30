@@ -2316,13 +2316,19 @@ a.chip:hover,
 	height: 100%;
 	object-fit: cover;
 	display: block;
+	/* Keep a 3D transform in the resting state too so the image stays on its own
+	   composited layer across the whole transition. Returning to a bare scale(1)
+	   would tear the layer down and re-rasterize on the last frame, which reads as
+	   a snap when the hover image settles back to its original size. */
+	transform: translateZ(0);
+	backface-visibility: hidden;
 	transition: transform 600ms var(--ease-out);
 }
 .post-row:hover .post-thumb {
 	border-color: var(--accent);
 }
 .post-row:hover .post-thumb img {
-	transform: scale(1.04);
+	transform: translateZ(0) scale(1.04);
 }
 @media (max-width: 780px) {
 	.post-row .post-thumb {
