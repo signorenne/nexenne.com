@@ -4,7 +4,7 @@
 	import { tweaks, theme } from '$lib/tweaks';
 	import { t } from '$lib/i18n';
 
-	// ── Edit the card here (text is localised via i18n) ─────────────────
+	// Edit the card here; text is localised via i18n.
 	const card = {
 		brand: 'nexenne',
 		name: 'Nicolò Plebani'
@@ -213,7 +213,7 @@
 		const wordY = Math.round(H * 0.84);
 		const mottoY = Math.round(wordY + mottoSize + H * 0.045);
 
-		// ── back: identity on the left, one large QR on the right ──
+		// Back: identity on the left, one large QR on the right.
 		const nameSize = Math.round(Math.min(H * 0.088, W * 0.057));
 		const roleSize = Math.round(Math.min(H * 0.037, W * 0.024));
 		const rowSize = Math.round(Math.min(H * 0.044, W * 0.028));
@@ -229,7 +229,7 @@
 		const petCy = H * 1.16;
 		const petRot = 38;
 
-		// ── one styled QR (the vCard contact code; it carries the site URL too) ──
+		// One styled QR: the vCard contact code, which carries the site URL too.
 		const labelGap = Math.round(m * 0.05);
 		const labelH = Math.round(m * 0.028);
 		const unitExtra = labelGap + labelH; // label space under each QR
@@ -367,7 +367,7 @@
 		</div>
 
 		<div class="card-list">
-			<!-- ── FRONT ───────────────────────────────────────────── -->
+			<!-- Front -->
 			<figure class="card-fig">
 				<svg
 					bind:this={frontEl}
@@ -452,7 +452,7 @@
 				</figcaption>
 			</figure>
 
-			<!-- ── BACK ────────────────────────────────────────────── -->
+			<!-- Back -->
 			<figure class="card-fig">
 				<svg
 					bind:this={backEl}

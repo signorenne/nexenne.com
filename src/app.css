@@ -3266,7 +3266,7 @@ a.chip:hover,
 	margin: 0 4px;
 }
 
-/* ── Leader (which-key) menu ───────────────────────────── */
+/* Leader (which-key) menu. */
 .leader-overlay {
 	position: fixed;
 	inset: 0;
