@@ -2,22 +2,22 @@
 title: "non_null in C++"
 lang: it
 date: 2026-06-23
-desc: "Come distinguere un puntatore obbligatorio da un valore opzionale già nella firma di una funzione."
+desc: "Distinguere un puntatore obbligatorio da un valore opzionale già nella firma di una funzione."
 read: "4 min"
 tags: ["C++", "Types"]
 categories: ["Programmazione", "Analisi"]
 image: "/blog/covers/non_null_cpp.webp"
 ---
 ## Introduzione
-In C++ un puntatore grezzo comunica pochissimo.
-Dice che una funzione riceve un indirizzo, ma lascia fuori la parte più importante: il contratto.
+In C++ un puntatore grezzo comunica meno di quanto sembri.
+Dice che una funzione riceve un indirizzo, ma non racconta quasi nulla del contratto che quell'indirizzo dovrebbe rispettare.
 
-Quel puntatore può essere `nullptr`?
-La funzione deve gestire l'assenza dell'oggetto?
-Chi possiede la risorsa?
-Per quanto tempo deve rimanere valido ciò a cui il puntatore fa riferimento?
+Quel valore può essere `nullptr`?
+L'assenza dell'oggetto è un caso previsto?
+La funzione possiede la risorsa o la osserva soltanto?
+Per quanto tempo deve rimanere valido l'oggetto puntato?
 
-Una firma come questa non risponde a nessuna di queste domande.
+Una firma come questa lascia aperte troppe interpretazioni.
 
 ```cpp
 auto render(widget* const target) -> void;
@@ -25,15 +25,15 @@ auto render(widget* const target) -> void;
 
 `target` potrebbe essere obbligatorio.
 Potrebbe essere opzionale.
-Potrebbe accettare `nullptr` come modo legittimo per dire "non renderizzare nulla".
-Oppure la funzione potrebbe assumere semplicemente che il chiamante passi sempre un oggetto valido.
+`nullptr` potrebbe essere un modo esplicito per dire "non renderizzare nulla".
+Oppure `target` potrebbe essere un parametro che l'implementazione assume sempre valido, senza che il tipo lo renda visibile a chi legge.
 
-Il problema è che il tipo scelto non distingue questi casi.
-Chi legge deve aprire l'implementazione, cercare un commento o ricostruire il contesto a mano.
+Il problema è proprio qui: la firma non distingue tra un caso ammesso e un errore del chiamante.
+Per capire il contratto reale bisogna aprire l'implementazione, cercare un commento, oppure ricostruire il contesto da altri punti del codice.
 
 ## Puntatore opzionale o puntatore obbligatorio
 Un puntatore che può essere nullo non è sbagliato di per sé.
-È una scelta corretta quando l'assenza dell'oggetto fa parte del comportamento previsto.
+È una scelta corretta quando l'assenza dell'oggetto fa parte del comportamento dell'API.
 
 ```cpp
 auto render(widget* const target) -> void {
@@ -45,19 +45,19 @@ auto render(widget* const target) -> void {
 }
 ```
 
-Qui `nullptr` non rappresenta un errore: è uno dei casi gestiti dall'API.
-La funzione lo controlla subito e il comportamento è chiaro.
+In questo esempio `nullptr` non è un errore.
+È un input valido, gestito subito, con un comportamento chiaro: se non c'è un target, non viene renderizzato nulla.
 
-Il caso interessante è l'opposto.
-Se una funzione non può lavorare senza quell'oggetto, continuare a usare un semplice `widget*` lascia aperta una possibilità che il contratto non ammette.
-La firma suggerisce che `nullptr` sia accettabile, mentre per l'implementazione sarebbe solo un bug del chiamante.
+Il caso interessante è l'altro.
+Se una funzione non può fare nulla senza quell'oggetto, continuare a usare `widget*` rende il contratto più debole del necessario.
+La firma suggerisce che `nullptr` possa arrivare, mentre per quella funzione sarebbe soltanto una precondizione violata.
 
 ## L'idea di non_null
-Un tipo `non_null<T>` serve a rendere esplicita questa precondizione.
-Non possiede l'oggetto, non ne estende la durata e non decide chi deve distruggerlo.
-Dice una cosa più piccola, ma importante: qui deve arrivare un valore non nullo.
+`non_null<T>` serve a spostare questa precondizione nel tipo.
+Non possiede l'oggetto, non ne prolunga il lifetime e non decide chi deve distruggerlo.
+Fa una cosa più piccola, ma molto utile: comunica che il valore deve essere presente.
 
-Una versione ridotta, sufficiente per mostrare il meccanismo, può essere questa.
+Una versione ridotta, utile per capire il meccanismo, può essere questa.
 
 ```cpp
 #include <cassert>
@@ -109,19 +109,19 @@ public:
 };
 ```
 
-Questo wrapper non pretende di essere una libreria completa.
-È utile però per fissare l'idea di base:
+Questa versione non vuole essere una libreria completa.
+Serve solo a rendere visibile l'idea:
 
-- costruirlo direttamente da `nullptr` è vietato;
+- costruire un `non_null` direttamente da `nullptr` non è permesso;
 - un valore nullo passato tramite una variabile viene intercettato in debug;
-- dentro la funzione chiamata il controllo non deve essere ripetuto a ogni uso.
+- dentro la funzione chiamata non serve ripetere lo stesso controllo a ogni accesso.
 
-In codice di produzione si può scegliere una versione più robusta, con controlli espliciti a runtime o con una libreria già adottata dal progetto.
-Il punto resta lo stesso: l'obbligo di passare un valore non nullo diventa parte della firma, non una nota implicita da ricordare.
+In un progetto reale si può scegliere un'implementazione più robusta, con una strategia di errore esplicita o con una libreria già adottata dal team.
+Il punto rimane lo stesso: se un puntatore non può essere nullo, quella regola dovrebbe stare nella firma, non nella memoria di chi chiama.
 
 ## Un esempio
-Immaginiamo una funzione che deve scrivere su un logger.
-Senza logger non può svolgere il proprio lavoro, quindi modellarlo come parametro opzionale sarebbe fuorviante.
+Un esempio semplice è una funzione che deve scrivere su un logger.
+Senza logger non può fare il proprio lavoro, quindi modellare quel parametro come opzionale sarebbe fuorviante.
 
 ```cpp
 struct logger {
@@ -140,9 +140,9 @@ auto run_job(non_null<logger const*> const log, int const items) -> void {
 ```
 
 La firma ora è più precisa.
-`run_job` richiede un logger valido e non descrive l'assenza come un caso normale.
+`run_job` richiede un logger valido e non presenta l'assenza come un caso normale di esecuzione.
 
-Se chi chiama parte da un puntatore che potrebbe essere nullo, deve risolvere il problema prima della chiamata.
+Se il chiamante dispone di un puntatore che potrebbe essere nullo, deve risolvere quel dubbio prima della chiamata.
 
 ```cpp
 logger const* const maybe_log{find_logger()};
@@ -154,19 +154,19 @@ if (maybe_log == nullptr) {
 run_job(non_null{maybe_log}, 10);
 ```
 
-Il controllo rimane nel punto in cui l'assenza può davvero verificarsi.
-Dopo quel confine, il resto del codice lavora con un contratto più stretto e più leggibile.
+Il controllo resta nel punto in cui l'assenza può davvero verificarsi.
+Superato quel confine, il resto del codice lavora con un contratto più stretto e più leggibile: non si chiede più a ogni funzione di difendersi da un caso che non le appartiene.
 
 ## Cosa non risolve
 `non_null` non rende valido un oggetto già distrutto.
-Un puntatore può essere diverso da `nullptr` e, allo stesso tempo, puntare a memoria non più valida.
-Il wrapper non protegge da dangling pointer, race condition o lifetime gestite male.
+Un puntatore può essere diverso da `nullptr` e puntare comunque a memoria non più valida.
+Il wrapper non protegge da dangling pointer, race condition o gestione scorretta del lifetime.
 
-Questa distinzione è fondamentale.
+Questa distinzione è importante.
 `non_null` esprime una garanzia sulla nullità, non sulla proprietà della risorsa e non sulla sua durata.
 
-Per questo va usato come tipo di confine, soprattutto nei parametri di funzione o nei membri che rappresentano viste non proprietarie.
-Quando invece bisogna esprimere proprietà, trasferimento o condivisione della risorsa, il tipo giusto è un altro: `std::unique_ptr`, `std::shared_ptr`, un riferimento o un oggetto con semantica dedicata.
+Per questo funziona bene come tipo di confine: parametri di funzione, membri non owning, viste verso oggetti che devono esistere.
+Quando invece bisogna descrivere ownership, trasferimento o condivisione, il tipo giusto è un altro: `std::unique_ptr`, `std::shared_ptr`, un riferimento o un owner dedicato.
 
 ## Quando usarlo
 `non_null` è utile quando `nullptr` sarebbe un bug, non una variante del comportamento.
@@ -175,16 +175,16 @@ Esempi tipici:
 
 - una dipendenza obbligatoria passata a una funzione;
 - un oggetto già validato prima di chiamare un algoritmo;
-- una vista non proprietaria conservata da un componente;
-- un puntatore ottenuto da una fase di inizializzazione che deve riuscire.
+- una vista non owning conservata da un componente;
+- un puntatore prodotto da una fase di inizializzazione che deve riuscire.
 
-Non serve wrappare ogni puntatore del codice.
-Serve nei punti in cui chiarire il contratto riduce ambiguità per chi legge e per chi chiama l'API.
+Non serve avvolgere ogni puntatore del codice in un wrapper.
+Serve nei punti in cui il contratto è più importante della comodità di una firma generica, soprattutto quando bisogna separare chiaramente il punto in cui l'assenza viene gestita dal punto in cui il valore viene usato.
 
 ## Conclusione
-`non_null` non è una soluzione generale alla sicurezza dei puntatori.
-È un modo semplice per spostare una regola importante nel punto in cui dovrebbe stare: il tipo.
+`non_null` non risolve tutti i problemi dei puntatori.
+Risolve un problema più preciso: evitare che un parametro obbligatorio sembri opzionale.
 
 Se `nullptr` è un valore significativo, il codice deve trattarlo come un caso normale.
-Se invece l'assenza non è ammessa, conviene dirlo nella firma.
-Il risultato è un'interfaccia migliore, con meno supposizioni nascoste e meno controlli ripetuti nel corpo delle funzioni.
+Se invece l'assenza non è ammessa, conviene dirlo nel tipo.
+L'interfaccia diventa più onesta, perché sposta una supposizione nascosta dentro la firma e lascia al corpo della funzione un contratto più semplice da leggere.
