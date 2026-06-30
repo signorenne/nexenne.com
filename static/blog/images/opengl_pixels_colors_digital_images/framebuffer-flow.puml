@@ -1,0 +1,19 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+title From fragment output to visible pixels
+
+rectangle "Fragment shader" as shader
+rectangle "Fragment output\ncolor value" as output
+rectangle "Tests and blending" as tests
+rectangle "Framebuffer attachment" as fb
+rectangle "Buffer swap" as swap
+rectangle "Screen image" as screen
+
+shader --> output
+output --> tests
+tests --> fb
+fb --> swap
+swap --> screen
+@enduml

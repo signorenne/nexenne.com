@@ -1,0 +1,28 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+title A raster image is a grid of addressable pixels
+
+rectangle "Image 4 x 4" {
+  rectangle "p(0,0)" as p00
+  rectangle "p(1,0)" as p10
+  rectangle "p(2,0)" as p20
+  rectangle "p(3,0)" as p30
+  rectangle "p(0,1)" as p01
+  rectangle "p(1,1)\nRGB" as p11
+  rectangle "p(2,1)" as p21
+  rectangle "p(3,1)" as p31
+}
+
+p00 -[hidden]right- p10
+p10 -[hidden]right- p20
+p20 -[hidden]right- p30
+p01 -[hidden]right- p11
+p11 -[hidden]right- p21
+p21 -[hidden]right- p31
+p00 -[hidden]down- p01
+p10 -[hidden]down- p11
+p20 -[hidden]down- p21
+p30 -[hidden]down- p31
+@enduml

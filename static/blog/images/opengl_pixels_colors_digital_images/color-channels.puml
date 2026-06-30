@@ -1,0 +1,19 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+title Color values are stored as channels
+
+rectangle "Red channel" as r
+rectangle "Green channel" as g
+rectangle "Blue channel" as b
+rectangle "Alpha channel\noptional" as a
+rectangle "RGBA pixel value" as rgba
+rectangle "Framebuffer or texture memory" as memory
+
+r --> rgba
+g --> rgba
+b --> rgba
+a --> rgba
+rgba --> memory
+@enduml

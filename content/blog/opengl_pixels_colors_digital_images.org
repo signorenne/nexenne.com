@@ -1,0 +1,1012 @@
+#+TITLE: Pixel, colori e immagini digitali
+#+LANG: it
+#+DATE: 2026-06-30
+#+LASTMOD: 2026-07-22
+#+DESC: Guida introduttiva a pixel, risoluzione, canali RGB, alpha, profondità in bit, texture e framebuffer in OpenGL.
+#+IMAGE: /blog/covers/opengl_pixels_colors_digital_images.webp
+#+READ: 24 min
+#+TAGS: Computer Graphics, OpenGL, Pixel, RGB, Framebuffer
+#+CATEGORIES: Computer Graphics, Tutorial
+
+** Abstract
+Nel primo articolo abbiamo visto che la computer graphics consiste, in sostanza, nel trasformare dati e calcoli in immagini visibili. Ora dobbiamo capire meglio che cosa sia un'immagine digitale.
+
+Quando guardiamo una fotografia sul computer, una texture applicata a un modello 3D o il risultato di una scena renderizzata con OpenGL, osserviamo una griglia di piccoli elementi colorati: i pixel.
+
+L'idea sembra semplice. Dietro questa semplicità apparente, tuttavia, troviamo concetti molto importanti: dimensioni, risoluzione, canali di colore, profondità in bit, alpha, texture, framebuffer e rappresentazione numerica dei colori.
+
+Senza queste basi diventa più difficile comprendere OpenGL. Alla fine della pipeline, infatti, il lavoro della GPU deve produrre valori che verranno scritti in una destinazione di rendering e, nel caso del framebuffer associato alla finestra, mostrati sullo schermo.
+
+Vediamo dunque che cosa sono pixel, colori e immagini digitali, partendo da un modello mentale semplice e arrivando gradualmente al collegamento con OpenGL.
+
+** Perché questo argomento è importante
+Quando si studia OpenGL, si tende a partire da triangoli, shader e buffer.
+
+È comprensibile. Sono gli elementi più visibili del percorso: scriviamo codice, prepariamo vertici, chiamiamo =glDrawArrays= e speriamo di vedere qualcosa nella finestra.
+
+Tuttavia, il risultato finale di tutto questo lavoro è sempre un'immagine.
+
+Anche una scena 3D molto complessa, con modelli, luci, texture, ombre e materiali, alla fine deve diventare una griglia di colori.
+
+Questo significa che ogni concetto grafico, prima o poi, torna alla domanda:
+
+#+begin_quote
+Che colore deve avere questo punto dello schermo?
+#+end_quote
+
+La computer graphics moderna può sembrare molto lontana da questa domanda, perché lavora con oggetti tridimensionali, matrici, shader, pipeline e memoria GPU. Ma il risultato finale resta sempre un insieme di valori colore.
+
+Per questo motivo è utile fermarsi un momento e capire che cosa sia davvero un'immagine digitale.
+
+** L'idea semplice: un mosaico di tessere colorate
+Immaginiamo un grande mosaico.
+
+Da vicino vediamo tante piccole tessere. Ogni tessera ha un colore. Alcune sono rosse, altre blu, altre verdi, altre nere, altre bianche.
+
+Se guardiamo il mosaico da molto vicino, distinguiamo le singole tessere. Se invece ci allontaniamo, il nostro occhio inizia a unire quei piccoli elementi e vede un'immagine completa.
+
+Uno schermo funziona in modo simile, almeno come modello mentale.
+
+Un'immagine raster può essere immaginata come una grande tabella di piccoli elementi colorati. Ogni elemento prende il nome di *pixel*.
+
+Un pixel non è “l'immagine”. È un singolo punto dell'immagine.
+
+Una singola tessera non è il mosaico, ma il mosaico esiste perché ci sono tante tessere disposte in un certo ordine.
+
+Allo stesso modo, un'immagine raster esiste perché molti pixel sono disposti secondo un ordine preciso.
+
+** Che cos'è un pixel?
+La parola pixel deriva da “picture element”, cioè elemento dell'immagine.
+
+Un pixel è il più piccolo elemento indirizzabile di un'immagine raster.
+
+Detta in modo più semplice: è una casella della griglia dell'immagine.
+
+Nel nostro modello semplificato, ogni pixel è associato ad almeno due informazioni importanti:
+
+- una posizione;
+- uno o più valori, ad esempio quelli che rappresentano il colore.
+
+La posizione dice dove si trova nella griglia.
+
+I valori associati descrivono come deve apparire o quali informazioni deve conservare.
+
+Se abbiamo un'immagine molto piccola, ad esempio =4x4=, possiamo immaginarla così:
+
+#+begin_src txt
+[rosso] [rosso] [rosso] [rosso]
+[rosso] [bianco] [bianco] [rosso]
+[rosso] [bianco] [bianco] [rosso]
+[rosso] [rosso] [rosso] [rosso]
+#+end_src
+
+Questa immagine ha 4 colonne e 4 righe. Quindi contiene:
+
+#+begin_src txt
+4 × 4 = 16 pixel
+#+end_src
+
+Una fotografia reale può contenere milioni di pixel. Il principio però è lo stesso.
+
+La differenza è solo nella quantità.
+
+[[/blog/images/opengl_pixels_colors_digital_images/pixel-grid.svg]]
+
+/Un'immagine raster è una griglia: ogni pixel ha una posizione e conserva valori numerici, spesso usati per rappresentare il colore./
+
+** Dimensioni e risoluzione
+Nel linguaggio comune, con *risoluzione* indichiamo spesso quanti pixel compongono un'immagine. Più precisamente, =1920x1080= descrive le sue dimensioni in pixel:
+
+- 1920 pixel in larghezza;
+- 1080 pixel in altezza.
+
+Il termine risoluzione può indicare anche la densità dei pixel, misurata ad esempio in PPI; nel mondo della stampa si incontrano spesso anche i DPI. In questo articolo, per semplicità, useremo “risoluzione” soprattutto nel primo significato.
+
+Il numero totale di pixel si calcola moltiplicando larghezza e altezza:
+
+#+begin_src txt
+1920 × 1080 = 2.073.600 pixel
+#+end_src
+
+Quindi un'immagine Full HD contiene più di due milioni di pixel.
+
+Un'immagine 4K UHD, nel formato =3840x2160=, contiene:
+
+#+begin_src txt
+3840 × 2160 = 8.294.400 pixel
+#+end_src
+
+Quindi più di otto milioni di pixel. La dicitura 4K può indicare anche altri formati; =3840x2160= identifica più precisamente il 4K UHD.
+
+Questo dato è importante perché ogni pixel richiede memoria e, durante il rendering, può comportare calcoli aggiuntivi.
+
+Aumentare la risoluzione non significa automaticamente “vedere meglio”. Significa prima di tutto aumentare la quantità di dati e il lavoro necessario per produrre l'immagine; il dettaglio effettivamente visibile dipende anche dal contenuto, dalle dimensioni di visualizzazione e dalla densità dei pixel.
+
+** Risoluzione e dettaglio
+Una risoluzione più alta permette di rappresentare più dettagli.
+
+Se disegniamo una linea diagonale su una griglia molto piccola, la linea apparirà a scalini. Se la griglia è molto più fitta, gli scalini saranno meno evidenti.
+
+Questo succede perché l'immagine raster deve approssimare forme continue usando pixel discreti.
+
+Il computer non può colorare “mezzo punto ideale” in una griglia infinitamente precisa. Deve scegliere valori per pixel reali.
+
+Da qui nascono molti problemi tipici della grafica:
+
+- bordi seghettati;
+- aliasing;
+- perdita di dettaglio;
+- immagini sfocate;
+- texture con una risoluzione inadeguata;
+- necessità di filtri e tecniche di anti-aliasing.
+
+Non entreremo subito in questi dettagli, ma è utile sapere che molti argomenti avanzati nascono da una questione molto semplice: stiamo rappresentando forme continue dentro una griglia finita.
+
+** Aspect ratio
+Oltre alle dimensioni in pixel, è importante l'*aspect ratio*, cioè il rapporto tra larghezza e altezza.
+
+Un'immagine =1920x1080= ha rapporto =16:9=.
+
+Infatti:
+
+#+begin_src txt
+1920 / 1080 ≈ 1.777...
+16 / 9 ≈ 1.777...
+#+end_src
+
+Un'immagine =1024x1024= ha rapporto =1:1=, quindi è quadrata.
+
+Perché ci interessa?
+
+Perché, se ignoriamo l'aspect ratio durante il ridimensionamento o la proiezione, un'immagine o una scena può apparire deformata.
+
+Un cerchio può diventare un'ellisse. Un quadrato può sembrare un rettangolo. Una scena 3D può apparire schiacciata o stirata.
+
+In OpenGL questo diventerà importante quando parleremo di viewport, proiezione e camera.
+
+** Il colore come informazione numerica
+Un colore, per noi, è una percezione.
+
+Diciamo “rosso”, “blu”, “verde”, “giallo”, “viola”.
+
+Per il computer, però, un colore deve essere rappresentato con numeri.
+
+Uno dei modelli più comuni è RGB.
+
+RGB significa:
+
+- =R=: red, rosso;
+- =G=: green, verde;
+- =B=: blue, blu.
+
+L'idea è che molti colori possano essere rappresentati combinando quantità diverse di rosso, verde e blu. Il significato preciso di queste combinazioni dipende però dallo spazio colore utilizzato, ad esempio sRGB.
+
+Nel formato classico a 8 bit per canale, ogni componente può assumere un valore da =0= a =255=.
+
+Esempi:
+
+#+begin_src txt
+Nero    = (0,   0,   0)
+Bianco  = (255, 255, 255)
+Rosso   = (255, 0,   0)
+Verde   = (0,   255, 0)
+Blu     = (0,   0,   255)
+Giallo  = (255, 255, 0)
+Ciano   = (0,   255, 255)
+Magenta = (255, 0,   255)
+#+end_src
+
+Il nero ha tutte le componenti a zero.
+
+Il bianco ha tutte le componenti al massimo.
+
+Il giallo nasce combinando rosso e verde.
+
+Il magenta nasce combinando rosso e blu.
+
+Il ciano nasce combinando verde e blu.
+
+[[/blog/images/opengl_pixels_colors_digital_images/color-channels.svg]]
+
+/Un pixel può essere rappresentato come un insieme di canali: rosso, verde, blu e, quando serve, alpha./
+
+** Perché proprio rosso, verde e blu?
+Gli schermi usano normalmente una sintesi additiva del colore.
+
+In modo semplice: partiamo dal buio e aggiungiamo luce.
+
+Se accendiamo rosso, verde e blu con intensità diverse, possiamo ottenere molti colori.
+
+Questo è diverso dalla pittura su carta, dove spesso ragioniamo in modo sottrattivo: mescolando pigmenti, assorbiamo certe componenti della luce e ne riflettiamo altre.
+
+Per gli schermi, il modello RGB è naturale perché ogni pixel può essere composto da componenti luminose rosse, verdi e blu.
+
+Non dobbiamo però confondere il modello RGB con la percezione umana completa del colore. Il colore è un fenomeno più complesso, legato alla fisica della luce, alla biologia dell'occhio e allo spazio colore adottato. Per imparare OpenGL, tuttavia, RGB rimane un ottimo punto di partenza.
+
+** Da 0-255 a 0.0-1.0
+Nei comuni file immagine a 8 bit per canale troviamo spesso valori interi tra =0= e =255=.
+
+In OpenGL e negli shader lavoreremo spesso con componenti in virgola mobile normalizzate tra =0.0= e =1.0=.
+
+Il rosso puro può quindi essere scritto così:
+
+#+begin_src txt
+RGB 8 bit:        (255, 0,   0)
+RGB normalizzato: (1.0, 0.0, 0.0)
+#+end_src
+
+Il bianco:
+
+#+begin_src txt
+RGB 8 bit:        (255, 255, 255)
+RGB normalizzato: (1.0, 1.0, 1.0)
+#+end_src
+
+Il nero:
+
+#+begin_src txt
+RGB 8 bit:        (0, 0, 0)
+RGB normalizzato: (0.0, 0.0, 0.0)
+#+end_src
+
+La conversione è semplice:
+
+#+begin_src txt
+valore_normalizzato = valore_8_bit / 255.0
+#+end_src
+
+Ad esempio:
+
+#+begin_src txt
+128 / 255.0 ≈ 0.502
+#+end_src
+
+Quindi un valore 8 bit pari a =128= corrisponde a circa =0.5=.
+
+Questa normalizzazione è molto comoda negli shader, perché ci permette di trattare i colori come vettori numerici.
+
+Ad esempio, un colore può essere scritto in GLSL così:
+
+#+begin_src glsl
+vec3 color = vec3(1.0, 0.5, 0.2);
+#+end_src
+
+Oppure con alpha:
+
+#+begin_src glsl
+vec4 color = vec4(1.0, 0.5, 0.2, 1.0);
+#+end_src
+
+** Canali di colore
+Un canale è una componente dell'informazione colore.
+
+Un'immagine RGB ha tre canali:
+
+- rosso;
+- verde;
+- blu.
+
+Un'immagine RGBA ha quattro canali:
+
+- rosso;
+- verde;
+- blu;
+- alpha.
+
+Possiamo immaginare ogni canale come un foglio separato.
+
+Il primo foglio dice quanto rosso c'è in ogni pixel.
+
+Il secondo dice quanto verde c'è.
+
+Il terzo dice quanto blu c'è.
+
+Poi il computer combina questi fogli per ottenere l'immagine finale.
+
+Ad esempio, un pixel RGBA può essere rappresentato così:
+
+#+begin_src txt
+R = 255
+G = 128
+B = 0
+A = 255
+#+end_src
+
+In forma normalizzata:
+
+#+begin_src txt
+R = 1.0
+G ≈ 0.5
+B = 0.0
+A = 1.0
+#+end_src
+
+Nel modello semplificato adottato finora, questo pixel rappresenta un arancione completamente opaco.
+
+** Alpha: opacità e trasparenza
+Il canale alpha viene spesso usato per rappresentare l'opacità o la copertura di un colore.
+
+Per convenzione, un valore alpha pari a =1.0= indica solitamente un colore completamente opaco, mentre =0.0= indica un contributo completamente trasparente. Un valore intermedio, come =0.5=, rappresenta un contributo parziale.
+
+Esempio:
+
+#+begin_src glsl
+vec4 transparentRed = vec4(1.0, 0.0, 0.0, 0.5);
+#+end_src
+
+Questo può rappresentare un rosso semitrasparente.
+
+Tuttavia, è doveroso specificare un punto: alpha è soltanto una quarta componente numerica. Il significato concreto dipende da come viene interpretata e avere un valore alpha non significa automaticamente ottenere una trasparenza corretta sullo schermo.
+
+In OpenGL, per combinare il colore sorgente con quello già presente nel framebuffer, bisogna configurare il blending.
+
+Ad esempio, più avanti vedremo funzioni come:
+
+#+begin_src cpp
+glEnable(GL_BLEND);
+glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+#+end_src
+
+Per ora ci basta capire il concetto: alpha è un'informazione aggiuntiva che può essere usata per controllare come un colore si combina con ciò che è già stato disegnato. Esistono diverse rappresentazioni dell'alpha e varie modalità di blending, che analizzeremo più avanti.
+
+** Profondità in bit
+Quando diciamo che un'immagine usa 8 bit per canale, significa che ogni canale può rappresentare 256 valori diversi.
+
+Perché 256?
+
+Perché 8 bit permettono di rappresentare:
+
+#+begin_src txt
+2^8 = 256 valori
+#+end_src
+
+Questi valori vanno da =0= a =255=.
+
+Un'immagine RGB a 8 bit per canale usa quindi:
+
+#+begin_src txt
+8 bit per R
+8 bit per G
+8 bit per B
+#+end_src
+
+In totale:
+
+#+begin_src txt
+8 + 8 + 8 = 24 bit per pixel
+#+end_src
+
+Un'immagine RGBA a 8 bit per canale usa:
+
+#+begin_src txt
+8 + 8 + 8 + 8 = 32 bit per pixel
+#+end_src
+
+Nel caso specifico di questi formati, si parla quindi di immagini RGB a 24 bit e RGBA a 32 bit. L'espressione “immagine a 32 bit”, presa da sola, può però indicare rappresentazioni differenti: è sempre meglio specificare anche il formato e il numero di bit per canale.
+
+** Quanta memoria occupa un'immagine?
+Calcolare la memoria occupata da un'immagine è un esercizio molto utile.
+
+Supponiamo di avere un'immagine =1920x1080= in formato RGBA a 8 bit per canale.
+
+Ogni pixel usa 4 canali:
+
+#+begin_src txt
+R, G, B, A
+#+end_src
+
+Ogni canale usa 1 byte, perché 8 bit equivalgono a 1 byte.
+
+Quindi ogni pixel usa:
+
+#+begin_src txt
+4 byte
+#+end_src
+
+Il numero totale di pixel è:
+
+#+begin_src txt
+1920 × 1080 = 2.073.600 pixel
+#+end_src
+
+La memoria totale dei soli dati colore è:
+
+#+begin_src txt
+2.073.600 × 4 = 8.294.400 byte
+#+end_src
+
+Cioè circa =8,29 MB=, oppure =7,91 MiB= se usiamo la base binaria.
+
+Attenzione: questa è una stima semplice per i dati grezzi dell'immagine. Non considera eventuali mipmap, allineamento delle righe, copie aggiuntive o un formato interno della GPU diverso da RGBA8.
+
+File compressi come PNG o JPEG possono occupare meno spazio su disco, ma quando vengono caricati in memoria per essere usati dalla GPU richiedono spesso una rappresentazione decompressa.
+
+Questo dettaglio è importante.
+
+Un file immagine piccolo su disco non significa necessariamente una texture piccola in memoria GPU.
+
+** Immagine su disco e immagine in memoria
+Un'immagine salvata su disco può essere compressa.
+
+Ad esempio:
+
+- PNG usa una compressione lossless;
+- JPEG usa normalmente una compressione lossy;
+- altri formati adottano strategie differenti.
+
+Quando però carichiamo un'immagine per usarla come texture in OpenGL, spesso la decodifichiamo in una sequenza di valori per pixel.
+
+Per esempio, una PNG di pochi kilobyte può diventare diversi megabyte una volta caricata in memoria.
+
+Questa distinzione è fondamentale:
+
+#+begin_src txt
+file su disco â‰  dati grezzi in memoria
+#+end_src
+
+Il file su disco è un contenitore codificato.
+
+I dati in memoria sono una rappresentazione che il programma può elaborare e trasferire a OpenGL.
+
+Quando useremo una comune immagine 2D come texture, dovremo caricare il file, decodificarlo e poi trasferire i dati a OpenGL, ad esempio con =glTexImage2D=.
+
+Esistono anche formati di texture compressi supportati dalla GPU. “Texture in memoria” non significa quindi sempre “RGBA non compresso”, anche se questo rimane il caso più semplice da studiare all'inizio.
+
+** Immagini raster e immagini vettoriali
+Finora abbiamo parlato di immagini raster.
+
+Un'immagine raster è rappresentata mediante una griglia di pixel.
+
+Esempi:
+
+- fotografie;
+- screenshot;
+- molte texture;
+- immagini PNG;
+- immagini JPEG;
+- risultati letti da un framebuffer.
+
+Un'immagine vettoriale, invece, descrive forme tramite elementi matematici:
+
+- linee;
+- curve;
+- cerchi;
+- poligoni;
+- riempimenti.
+
+Un file SVG, ad esempio, può descrivere un cerchio dicendo:
+
+#+begin_src txt
+centro = (x, y)
+raggio = r
+colore = rosso
+#+end_src
+
+Il vantaggio delle immagini vettoriali è che possono essere scalate senza perdere qualità, perché la forma viene ricalcolata.
+
+Un'immagine raster invece, se ingrandita troppo, mostra i pixel.
+
+In computer graphics useremo entrambe le idee, ma in momenti diversi.
+
+Quando disegniamo triangoli, OpenGL elabora primitive geometriche descritte da vertici. La rasterizzazione trasforma poi queste primitive in frammenti e il risultato visibile è un'immagine raster. È quindi meglio non confondere le primitive di OpenGL con il formato delle immagini vettoriali, anche se entrambe partono da descrizioni geometriche.
+
+** Texture
+Nel caso più intuitivo, una texture è un'immagine usata come dato grafico. Più precisamente, in OpenGL è una risorsa organizzata in una, due o tre dimensioni che gli shader possono campionare.
+
+Una texture può contenere colori, profondità o altri valori numerici. Può essere applicata a una superficie, usata come lookup table, collegata a un framebuffer come destinazione di rendering o impiegata in molti altri modi.
+
+Nel caso più semplice, immaginiamo una texture come un adesivo incollato su un triangolo o su un modello 3D.
+
+Ad esempio, per disegnare un muro realistico, invece di colorare il muro con un semplice marrone uniforme, possiamo usare una texture di mattoni.
+
+La texture contiene i dettagli visivi.
+
+La geometria dice dove si trova il muro.
+
+Lo shader decide come combinare texture, luce e altri dati.
+
+Questo sarà un argomento centrale più avanti.
+
+Per ora ci basta il modello più semplice: una texture 2D può contenere un'immagine digitale che verrà campionata dalla GPU.
+
+** Coordinate immagine e coordinate texture
+Un'immagine raster può essere letta usando coordinate espresse in pixel.
+
+Ad esempio:
+
+#+begin_src txt
+pixel alla colonna 10, riga 20
+#+end_src
+
+Una texture in OpenGL viene spesso campionata usando coordinate normalizzate, chiamate comunemente coordinate UV. Nella terminologia di OpenGL si incontrano anche i nomi =s= e =t=.
+
+Queste coordinate vanno tipicamente da =0.0= a =1.0=.
+
+In una mappatura convenzionale possiamo assegnarle così:
+
+#+begin_src txt
+u = 0.0 â†’ lato sinistro
+u = 1.0 â†’ lato destro
+v = 0.0 â†’ lato inferiore
+v = 1.0 â†’ lato superiore
+#+end_src
+
+Questa orientazione non è però una proprietà universale del file immagine. Dipende da come disponiamo i dati in memoria e da come assegniamo le coordinate ai vertici. Per questo motivo, quando caricheremo le texture, potrà capitare di dover ribaltare verticalmente l'immagine o le coordinate.
+
+Questo è comodo perché possiamo applicare la stessa immagine a superfici di dimensioni diverse.
+
+Invece di dire “prendi il texel alla colonna 123”, diciamo “prendi il punto al 25% della larghezza e al 70% dell'altezza”.
+
+Lo shader usa poi queste coordinate per campionare la texture.
+
+** Filtering: quando un texel non basta
+Supponiamo di avere una texture piccola e di applicarla su un grande quadrato.
+
+Ogni *texel*, cioè ogni elemento della texture, deve contribuire a molti pixel dello schermo.
+
+Che cosa deve fare OpenGL?
+
+Può scegliere il texel più vicino. In questo caso l'immagine appare molto netta, ma anche “a blocchi”.
+
+Oppure può combinare i valori dei texel vicini. In questo caso l'immagine appare più morbida, ma può diventare sfocata.
+
+Questi comportamenti sono controllati dai filtri texture.
+
+Più avanti parleremo di:
+
+- =GL_NEAREST=;
+- =GL_LINEAR=;
+- mipmap;
+- minification;
+- magnification.
+
+Le mipmap riguardano soprattutto il problema opposto, cioè la *minification*: una texture molto dettagliata viene proiettata su un'area piccola dello schermo.
+
+Anche questi argomenti nascono da una domanda semplice:
+
+#+begin_quote
+Che cosa succede quando la griglia della texture non coincide con la griglia dello schermo?
+#+end_quote
+
+** Framebuffer
+Il framebuffer è una delle idee più importanti per collegare le immagini digitali a OpenGL.
+
+Un framebuffer definisce una destinazione di rendering.
+
+Possiamo immaginarlo come un foglio digitale su cui la GPU scrive il risultato del rendering.
+
+Dal punto di vista logico, un framebuffer può mettere a disposizione diversi buffer, ad esempio:
+
+- color buffer;
+- depth buffer;
+- stencil buffer.
+
+Il color buffer contiene i colori finali o intermedi.
+
+Il depth buffer contiene informazioni di profondità, utili per capire quale oggetto sta davanti.
+
+Lo stencil buffer contiene valori usati per maschere e test particolari.
+
+Nel caso di un framebuffer creato da noi, i dati reali risiedono negli oggetti collegati ai suoi attachment, ad esempio texture o renderbuffer. Il framebuffer object conserva soprattutto la configurazione di questi collegamenti.
+
+Quando puliamo lo schermo con OpenGL, in realtà stiamo pulendo uno o più buffer.
+
+Ad esempio:
+
+#+begin_src cpp
+glClear(GL_COLOR_BUFFER_BIT);
+#+end_src
+
+pulisce il color buffer.
+
+Quando aggiungeremo il depth test, useremo anche:
+
+#+begin_src cpp
+glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+#+end_src
+
+Al termine delle operazioni sui frammenti, OpenGL può scrivere i risultati nei buffer associati al framebuffer corrente.
+
+[[/blog/images/opengl_pixels_colors_digital_images/framebuffer-flow.svg]]
+
+/Il fragment shader produce valori di colore; test, blending e framebuffer determinano quali valori diventano parte dell'immagine visibile./
+
+** Default framebuffer e framebuffer personalizzati
+Quando creiamo una finestra e il relativo contesto con una libreria come GLFW, il sistema mette a disposizione un framebuffer predefinito associato alla finestra.
+
+Questo framebuffer viene spesso chiamato default framebuffer.
+
+Quando renderizziamo normalmente nella finestra, usiamo questo framebuffer.
+
+Più avanti potremo però creare framebuffer object personalizzati e collegarvi texture o renderbuffer.
+
+Questo ci permette di disegnare non direttamente sullo schermo, ma dentro una texture.
+
+Per esempio:
+
+#+begin_src txt
+scena 3D â†’ texture â†’ post-processing â†’ schermo
+#+end_src
+
+Questo meccanismo permette di implementare effetti e tecniche come:
+
+- bianco e nero;
+- blur;
+- bloom;
+- edge detection;
+- rendering su specchi o schermi virtuali;
+- shadow mapping.
+
+Quindi il framebuffer non è solo “lo schermo”. È una destinazione di rendering.
+
+Lo schermo è solo una delle possibili destinazioni finali.
+
+** Pulire il colore di sfondo in OpenGL
+Uno dei primi comandi OpenGL che si incontrano è =glClearColor=.
+
+Esempio:
+
+#+begin_src cpp
+glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
+glClear(GL_COLOR_BUFFER_BIT);
+#+end_src
+
+Vediamo cosa significa.
+
+La prima funzione imposta il valore usato da =glClear= per pulire i color buffer del draw framebuffer corrente.
+
+#+begin_src cpp
+glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
+#+end_src
+
+I quattro valori sono:
+
+#+begin_src txt
+R = 0.1
+G = 0.2
+B = 0.3
+A = 1.0
+#+end_src
+
+Nel nostro modello RGB, questi valori descrivono un colore blu-grigiastro con alpha pari a =1.0=.
+
+La seconda funzione richiede la pulizia del color buffer:
+
+#+begin_src cpp
+glClear(GL_COLOR_BUFFER_BIT);
+#+end_src
+
+Qui diciamo a OpenGL di pulire il color buffer usando il valore impostato in precedenza. Nel caso iniziale possiamo immaginare che venga pulita l'intera area di rendering, anche se altro stato di OpenGL può limitarla.
+
+=glClearColor= da solo non pulisce nulla. Imposta soltanto il valore di clear, con componenti limitate all'intervallo =0.0-1.0=.
+
+=glClear= esegue la pulizia.
+
+Questa distinzione è importante, perché OpenGL funziona spesso come macchina a stati: prima configuriamo qualcosa, poi eseguiamo un comando che usa quella configurazione.
+
+** Un piccolo esempio completo
+Immaginiamo di avere già una finestra OpenGL funzionante.
+
+Dentro il render loop potremmo scrivere:
+
+#+begin_src cpp
+while (!glfwWindowShouldClose(window))
+{
+    glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+}
+#+end_src
+
+Questo programma non disegna triangoli. Non usa shader. Non carica texture.
+
+Eppure produce già un'immagine: una finestra riempita con un colore.
+
+Vediamo il percorso:
+
+1. =glClearColor= imposta il colore di pulizia.
+2. =glClear= riempie il color buffer con quel colore.
+3. =glfwSwapBuffers= scambia front buffer e back buffer, presentando il risultato.
+4. =glfwPollEvents= elabora gli eventi in attesa.
+
+Questo comportamento presuppone una finestra con double buffering, che è la configurazione predefinita di GLFW.
+
+Quindi anche una “finestra vuota” non è davvero vuota.
+
+Contiene pixel colorati.
+
+** Colore animato nel tempo
+Possiamo rendere più evidente il fatto che stiamo producendo immagini continue modificando il colore nel tempo.
+
+Esempio:
+
+#+begin_src cpp
+float time = static_cast<float>(glfwGetTime());
+float green = (std::sin(time) + 1.0f) / 2.0f;
+
+glClearColor(0.1f, green, 0.3f, 1.0f);
+glClear(GL_COLOR_BUFFER_BIT);
+#+end_src
+
+Qui =green= cambia nel tempo.
+
+=std::sin(time)= produce un valore tra =-1.0= e =1.0=. Per usarla dobbiamo includere l'header =<cmath>=.
+
+Con questa trasformazione:
+
+#+begin_src cpp
+(std::sin(time) + 1.0f) / 2.0f
+#+end_src
+
+lo portiamo nell'intervallo =0.0-1.0=.
+
+Quindi il canale verde cambia lentamente, e il colore dello sfondo sembra animarsi.
+
+Questo esempio è piccolo, ma utile: dimostra che un colore è solo un insieme di numeri. Se cambiamo quei numeri nel tempo, cambia l'immagine.
+
+** Viewport e dimensione dell'immagine renderizzata
+In OpenGL, la viewport definisce la regione rettangolare del framebuffer nella quale vengono trasformate le coordinate finali della pipeline.
+
+Esempio:
+
+#+begin_src cpp
+glViewport(0, 0, 800, 600);
+#+end_src
+
+Questo significa:
+
+#+begin_src txt
+x iniziale = 0
+y iniziale = 0
+larghezza = 800
+altezza = 600
+#+end_src
+
+Più precisamente, la trasformazione di viewport porta le normalized device coordinates nelle window coordinates, espresse in pixel rispetto al framebuffer.
+
+Se il framebuffer cambia dimensione ma la viewport non viene aggiornata, il rendering può occupare soltanto una parte dell'area disponibile oppure essere tagliato. Per mantenere corrette anche le proporzioni della scena dovremo aggiornare separatamente la proiezione, usando il nuovo aspect ratio.
+
+Per questo spesso si registra una callback:
+
+#+begin_src cpp
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
+#+end_src
+
+In questo modo, quando la dimensione del framebuffer cambia, aggiorniamo anche la viewport. Usare la dimensione del framebuffer, anziché quella logica della finestra, è importante soprattutto sugli schermi ad alta densità, dove i due valori possono non coincidere.
+
+Questo dettaglio ci riporta a risoluzione e aspect ratio: OpenGL deve sapere su quale area di pixel sta disegnando.
+
+** Pixel, frammenti e sample
+Finora abbiamo parlato molto di pixel.
+
+Tuttavia, nella pipeline OpenGL incontreremo anche il concetto di frammento.
+
+Un frammento non è esattamente un pixel.
+
+Un frammento è un insieme di dati prodotto dalla rasterizzazione di una primitiva, ad esempio un triangolo, e rappresenta un possibile contributo al framebuffer.
+
+Il fragment shader lavora sui frammenti, non direttamente sui pixel finali.
+
+Perché questa distinzione è importante?
+
+Perché un frammento può:
+
+- essere scartato dal fragment shader;
+- fallire lo stencil test o il depth test;
+- essere combinato tramite blending;
+- coprire uno o più sample in caso di multisampling;
+- non contribuire al colore finale visibile.
+
+Un *sample* è una posizione di campionamento all'interno del framebuffer. Senza multisampling abbiamo normalmente un sample per pixel; con tecniche come MSAA possiamo averne più di uno. Per questo motivo pixel, frammenti e sample sono concetti collegati, ma non equivalenti.
+
+Quindi possiamo semplificare così:
+
+#+begin_src txt
+pixel     = elemento della griglia dell'immagine
+frammento = dati prodotti dalla rasterizzazione per un possibile contributo
+sample    = posizione di campionamento nel framebuffer
+#+end_src
+
+Quando studieremo il fragment shader, questa distinzione sarà fondamentale.
+
+** Immagine finale e percezione
+Un'immagine digitale è fatta di numeri, ma noi non percepiamo numeri.
+
+Il nostro occhio e il nostro cervello interpretano colori, contrasti, bordi, movimento, profondità e luminosità.
+
+Questo significa che la computer graphics non è solo una questione matematica. È anche una questione percettiva.
+
+Ad esempio:
+
+- un bordo troppo seghettato può sembrare artificiale;
+- una texture sfocata può apparire poco dettagliata;
+- un colore sbagliato può rendere una scena innaturale;
+- un contrasto eccessivo può affaticare la vista;
+- una scena a basso frame rate può sembrare scattosa.
+
+Molte tecniche grafiche cercano di produrre immagini che non siano solo “corrette nei numeri”, ma anche convincenti per l'occhio umano.
+
+** Collegamento con OpenGL
+A questo punto possiamo collegare tutto a OpenGL.
+
+Quando useremo OpenGL, lavoreremo spesso con questi concetti:
+
+- colori normalizzati;
+- framebuffer;
+- color buffer;
+- texture;
+- viewport;
+- fragment shader;
+- blending;
+- formati immagine;
+- canali RGBA.
+
+Anche il primo triangolo colorato richiederà questi concetti.
+
+Il vertex shader calcolerà la posizione finale dei vertici.
+
+La rasterizzazione produrrà frammenti.
+
+Il fragment shader produrrà uno o più valori di output, spesso colori.
+
+I test, il blending e le altre operazioni sui frammenti determineranno quali valori verranno scritti nel framebuffer.
+
+Lo schermo mostrerà i pixel.
+
+La catena, molto semplificata, è questa:
+
+#+begin_src txt
+dati geometrici
+    â†“
+pipeline OpenGL
+    â†“
+frammenti
+    â†“
+colori
+    â†“
+framebuffer
+    â†“
+scambio dei buffer
+    â†“
+pixel visibili
+#+end_src
+
+Quindi, anche se questo articolo parla di pixel e colori, non è un argomento separato da OpenGL. È la base del risultato finale di OpenGL.
+
+** Errori comuni
+*** Pensare che un'immagine sia indipendente dalla risoluzione
+Un'immagine raster ha dimensioni precise in pixel.
+
+Se la ingrandiamo troppo, i pixel diventano visibili o l'immagine viene interpolata.
+
+*** Confondere dimensione su disco e memoria usata
+Un file PNG può essere piccolo su disco, ma occupare molta più memoria una volta decodificato come dati RGBA.
+
+*** Pensare che alpha significhi automaticamente trasparenza
+Alpha è soltanto una componente. Per ottenere il risultato desiderato in OpenGL bisogna interpretarla correttamente e, nel caso comune della trasparenza, configurare il blending.
+
+*** Usare valori 0-255 negli shader
+In GLSL, se stiamo lavorando con colori normalizzati, un colore rosso si scrive:
+
+#+begin_src glsl
+vec3(1.0, 0.0, 0.0)
+#+end_src
+
+Non:
+
+#+begin_src glsl
+vec3(255.0, 0.0, 0.0)
+#+end_src
+
+A meno che non stiamo facendo una conversione esplicita e sappiamo esattamente perché.
+
+*** Dimenticare la viewport
+Se la viewport non viene aggiornata rispetto alla dimensione reale del framebuffer, il rendering può occupare un'area errata o essere tagliato.
+
+*** Confondere texture e framebuffer
+Nel caso più semplice, una texture contiene un'immagine usata come dato.
+
+Un framebuffer definisce una destinazione di rendering.
+
+In alcuni casi possiamo renderizzare dentro una texture tramite un framebuffer personalizzato, ma i concetti restano distinti.
+
+*** Pensare che il fragment shader scriva sempre il pixel finale
+Il fragment shader produce uno o più output per un frammento. Il contributo può ancora essere sottoposto a test, maschere e blending prima di modificare il framebuffer.
+
+** Domande frequenti
+*** Un pixel è sempre quadrato?
+Nel ragionamento comune e nella maggior parte dei casi pratici moderni possiamo trattare i pixel come elementi quadrati della griglia. Storicamente, e in alcuni contesti particolari, esistono immagini con pixel aspect ratio diverso da =1:1=; per iniziare con OpenGL, però, possiamo assumere pixel quadrati.
+
+*** RGB rappresenta tutti i colori possibili?
+No. Una terna RGB acquista un significato preciso soltanto all'interno di uno spazio colore, definito anche dalle sue primarie e dalla funzione di trasferimento. Inoltre, nessun comune dispositivo riesce a riprodurre tutti i colori percepibili dall'occhio umano. Per la computer graphics di base, tuttavia, RGB rimane un modello molto utile.
+
+*** Perché OpenGL usa spesso valori tra 0.0 e 1.0?
+Perché i valori normalizzati sono comodi da interpolare, moltiplicare e combinare. OpenGL e GLSL non impongono però che ogni colore rimanga sempre in questo intervallo: con formati e calcoli in virgola mobile possiamo usare anche valori inferiori a =0.0= o superiori a =1.0=.
+
+*** Alpha è uguale a trasparenza?
+Non esattamente. Alpha è una componente numerica che può essere usata per rappresentare opacità, copertura o altre informazioni. Il risultato dipende da come viene interpretata e, ad esempio, dalla configurazione del blending.
+
+*** Una texture è sempre un'immagine 2D?
+No. Esistono texture 1D, 2D, 3D, cubemap, texture array e altri tipi. Inoltre, una texture può contenere dati che non rappresentano un'immagine visibile. Per iniziare, tuttavia, una texture 2D contenente colori è il caso più intuitivo.
+
+*** Il framebuffer è lo schermo?
+Non necessariamente. Il default framebuffer è associato alla finestra, ma possiamo creare framebuffer object personalizzati e collegarvi texture o renderbuffer.
+
+*** Perché un'immagine 4K pesa così tanto in memoria?
+Perché contiene molti pixel. Un'immagine 4K UHD =3840x2160= in formato RGBA8 richiede:
+
+#+begin_src txt
+3840 × 2160 × 4 = 33.177.600 byte
+#+end_src
+
+Sono circa =33,18 MB=, oppure =31,64 MiB=, per il solo livello base. Eventuali mipmap, copie e formati differenti possono modificare il consumo reale.
+
+** Mini-esercizio
+Prima di proseguire, provate a rispondere a queste domande.
+
+1. Quanti pixel contiene un'immagine =1280x720=?
+2. Quanti byte occupa un'immagine =1280x720= in formato RGBA a 8 bit per canale?
+3. Qual è la differenza tra RGB e RGBA?
+4. Perché in OpenGL spesso usiamo colori tra =0.0= e =1.0=?
+5. Che cosa fa =glClearColor=?
+6. Che cosa fa =glClear(GL_COLOR_BUFFER_BIT)=?
+7. Qual è la differenza tra texture e framebuffer?
+8. Perché un frammento non è sempre un pixel finale?
+
+Soluzioni rapide:
+
+#+begin_src txt
+1. 1280 × 720 = 921.600 pixel
+
+2. 921.600 × 4 = 3.686.400 byte
+   circa 3,69 MB oppure 3,52 MiB
+
+3. RGB contiene rosso, verde e blu.
+   RGBA aggiunge il canale alpha.
+
+4. Perché i valori normalizzati sono comodi nei calcoli grafici.
+
+5. Imposta il colore usato per pulire il color buffer.
+
+6. Pulisce il color buffer usando il colore impostato.
+
+7. Nel caso più semplice, una texture contiene un'immagine usata come dato.
+   Un framebuffer definisce una destinazione di rendering.
+
+8. Perché può essere scartato, fallire dei test o essere combinato prima di contribuire al risultato finale.
+#+end_src
+
+** Conclusione
+Abbiamo visto come un'immagine raster possa essere rappresentata mediante una struttura di dati organizzata in pixel.
+
+Ogni pixel contiene informazioni di colore, spesso rappresentate tramite canali RGB o RGBA. Le dimensioni determinano quanti pixel compongono l'immagine, mentre la profondità in bit stabilisce quanti valori può assumere ogni canale.
+
+Abbiamo anche visto che un'immagine su disco non coincide necessariamente con i dati presenti in memoria, che una texture è una risorsa campionabile e che il framebuffer definisce la destinazione nella quale OpenGL può scrivere il risultato del rendering.
+
+Questo articolo può sembrare lontano dai triangoli, ma è direttamente collegato alla pipeline grafica. Ogni triangolo, ogni shader e ogni draw call contribuiscono, alla fine, a produrre valori che possono diventare colori dentro un framebuffer.
+
+In sostanza:
+
+#+begin_src txt
+OpenGL non disegna "magia".
+Trasforma dati e calcoli in valori che, attraverso il framebuffer, diventano un'immagine visibile.
+#+end_src
+
+Nel prossimo articolo passeremo dalla griglia dei pixel alla geometria: punti, linee, triangoli e mesh. Sarà il primo passo per capire come una scena 3D viene descritta prima ancora di diventare immagine.
+
+** Fonti e riferimenti
+- [[https://registry.khronos.org/OpenGL/specs/gl/glspec33.core.pdf][OpenGL 3.3 Core Profile Specification]], per la specifica di riferimento usata nella serie.
+- [[https://registry.khronos.org/OpenGL/][Khronos OpenGL Registry]], per le specifiche e le reference page ufficiali di OpenGL e GLSL.
+- [[https://wikis.khronos.org/opengl/Rendering_Pipeline_Overview][OpenGL Wiki, =Rendering Pipeline Overview=]], per il percorso generale della pipeline di rendering.
+- [[https://wikis.khronos.org/opengl/Framebuffer_Object][OpenGL Wiki, =Framebuffer Object=]], per framebuffer, attachment e destinazioni di rendering.
+- [[https://registry.khronos.org/OpenGL-Refpages/gl4/html/glClearColor.xhtml][OpenGL Reference, =glClearColor=]], per il valore usato nella pulizia dei color buffer.
+- [[https://registry.khronos.org/OpenGL-Refpages/gl4/html/glClear.xhtml][OpenGL Reference, =glClear=]], per la pulizia dei buffer.
+- [[https://registry.khronos.org/OpenGL-Refpages/gl4/html/glViewport.xhtml][OpenGL Reference, =glViewport=]], per la trasformazione di viewport.
+- [[https://www.glfw.org/docs/latest/window_guide.html][GLFW Window Guide]], per dimensione del framebuffer, callback ed eventi.
+- [[https://www.glfw.org/docs/3.3/quick_guide.html][GLFW Getting Started]], per il double buffering e =glfwSwapBuffers=.
+- Immagine di copertina: [[https://commons.wikimedia.org/wiki/File:XO_screen_01_Pengo.jpg][XO screen 01 Pengo]] di [[https://commons.wikimedia.org/wiki/User:Pengo][Pengo]], Wikimedia Commons, licenza [[https://creativecommons.org/licenses/by-sa/3.0][CC BY-SA 3.0]]. Immagine ritagliata e convertita in WebP per il layout del sito.
