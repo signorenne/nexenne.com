@@ -25,8 +25,6 @@ export const SITE = {
 	focus: 'Embedded · HMI · Libraries · Integrations',
 	tagline:
 		'Embedded software, HMI, custom native and web applications, software libraries and system integrations.',
-	blurb:
-		'I design custom software that connects devices, interfaces and business processes: embedded firmware, HMI, native and web applications, reusable libraries and system integrations.',
 	quote: 'Una cosa deve essere fatta bene, altrimenti è meglio non farla.',
 	quoteEn: 'Do a thing well, or do not do it at all.',
 	location: 'Bergamo, Italy · remote',

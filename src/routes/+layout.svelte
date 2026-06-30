@@ -109,7 +109,9 @@
 			const meta = localizedWorks.find((w) => w.slug === slug);
 			if (meta?.summary) return meta.summary;
 		}
-		return SITE.blurb;
+		// Localized fallback so Italian pages get an Italian description, not the
+		// English blurb (a mixed-language signal that weakens IT search relevance).
+		return $t('meta.description');
 	})();
 
 	$: pageImage = (() => {
@@ -139,6 +141,7 @@
 		'@graph': (() => {
 			const locale = $lang === 'it' ? 'it-IT' : 'en-US';
 			const prefix = $lang === 'it' ? '/it' : '';
+			const blurb = $t('meta.description');
 			const personRef = { '@id': `${SITE_URL}/#person` };
 			const graph: Record<string, unknown>[] = [
 				{
@@ -157,7 +160,7 @@
 					'@id': `${SITE_URL}/#website`,
 					url: SITE_URL,
 					name: 'nexenne',
-					description: SITE.blurb,
+					description: blurb,
 					inLanguage: locale,
 					publisher: personRef
 				}
@@ -180,7 +183,7 @@
 						'@type': 'BlogPosting',
 						'@id': `${canonicalUrl}#article`,
 						headline: m.title,
-						description: m.desc || SITE.blurb,
+						description: m.desc || blurb,
 						datePublished: m.date,
 						dateModified: m.lastmod || m.date,
 						image: absoluteImage,
@@ -206,7 +209,7 @@
 						'@type': 'CreativeWork',
 						'@id': `${canonicalUrl}#work`,
 						name: m.title,
-						description: m.summary || SITE.blurb,
+						description: m.summary || blurb,
 						image: absoluteImage,
 						url: canonicalUrl,
 						inLanguage: locale,
