@@ -11,30 +11,31 @@ categories: ["Programming", "Analysis"]
 image: "/blog/covers/non_null_cpp.webp"
 ---
 ## Introduction
-A raw pointer in C++ is a semantically poor type.
-It says that we can refer to an object, but it says very little about the contract.
+A raw pointer in C++ communicates less than it seems.
+It says that a function receives an address, but it says almost nothing about the contract that address is expected to satisfy.
 
-Can it be null?
-Who owns the object?
-Should the function handle absence?
-Is the pointer only a temporary view?
+Can the value be `nullptr`?
+Is the absence of the object an expected case?
+Does the function own the resource, or does it only observe it?
+How long does the pointed-to object have to remain valid?
 
-When we read a signature like this, all these questions remain open.
+A signature like this leaves too many interpretations open.
 
 ```cpp
 auto render(widget* const target) -> void;
 ```
 
-Maybe `target` is mandatory.
-Maybe `nullptr` means "render nothing".
-Maybe the function checks internally, or maybe it simply assumes that the caller did not make a mistake.
+`target` might be mandatory.
+It might be optional.
+`nullptr` might be an explicit way to say "render nothing".
+Or `target` might be a parameter that the implementation always assumes to be valid, without the type making that visible to the reader.
 
-The compiler cannot help much, because the chosen type does not distinguish those cases.
+That is the problem: the signature does not distinguish between an allowed case and a caller error.
+To understand the real contract, the reader has to open the implementation, look for a comment, or reconstruct the surrounding context from other parts of the code.
 
 ## Optional pointer or mandatory pointer
-Not every pointer that can be null is a design mistake.
-Sometimes absence is part of the domain: there is no object to work on, so `nullptr` is a valid value.
-In those situations an optional pointer is legitimate, as long as the function signature and body make that contract explicit.
+A pointer that can be null is not wrong by itself.
+It is the right choice when the absence of the object is part of the API behavior.
 
 ```cpp
 auto render(widget* const target) -> void {
@@ -46,18 +47,19 @@ auto render(widget* const target) -> void {
 }
 ```
 
-Here `nullptr` is part of the function's behavior.
-The check is necessary and documents a choice.
+In this example, `nullptr` is not an error.
+It is a valid input, handled immediately, with clear behavior: if there is no target, nothing is rendered.
 
-The different case is a pointer that should never be null.
-In that case, writing `widget*` still suggests a possibility that is not actually part of the API contract.
+The interesting case is the other one.
+If a function cannot do anything without that object, continuing to use `widget*` makes the contract weaker than it needs to be.
+The signature suggests that `nullptr` might arrive, while for that function it would only be a violated precondition.
 
 ## The idea of non_null
-A `non_null<T>` type makes that distinction visible.
-It does not change ownership and it does not solve the object's lifetime.
-It says one precise thing: the contained value cannot be null.
+`non_null<T>` moves that precondition into the type.
+It does not own the object, extend its lifetime, or decide who destroys it.
+It does something smaller, but useful: it communicates that the value must be present.
 
-A minimal version can be written like this.
+A reduced version, useful for understanding the mechanism, can look like this.
 
 ```cpp
 #include <cassert>
@@ -109,15 +111,19 @@ public:
 };
 ```
 
-This is not a complete library, but it is enough to show the idea:
+This version is not meant to be a complete library.
+It is only enough to make the idea visible:
 
-- constructing the wrapper from `nullptr` is forbidden;
-- a null value coming from a variable is caught in debug;
-- inside the function, the check does not need to be repeated at every use.
+- constructing a `non_null` directly from `nullptr` is not allowed;
+- a null value passed through a variable is caught in debug;
+- inside the called function, the same check does not have to be repeated at every access.
+
+In a real project, the team may choose a more robust implementation, an explicit error strategy, or a library that is already part of the codebase.
+The point stays the same: if a pointer cannot be null, that rule belongs in the signature, not in the caller's memory.
 
 ## An example
-Suppose a function needs a logger.
-Without a logger it cannot do anything useful, so we do not want to model it as optional.
+A simple example is a function that has to write to a logger.
+Without a logger, it cannot do its job, so modeling that parameter as optional would be misleading.
 
 ```cpp
 struct logger {
@@ -135,9 +141,10 @@ auto run_job(non_null<logger const*> const log, int const items) -> void {
 }
 ```
 
-The signature is more explicit.
-`run_job` requires a valid `logger`.
-If the caller has a pointer that may be null, it must solve that problem before entering the function.
+The signature is now more precise.
+`run_job` requires a valid logger and does not present absence as a normal execution case.
+
+If the caller has a pointer that might be null, that doubt has to be resolved before the call.
 
 ```cpp
 logger const* const maybe_log{find_logger()};
@@ -149,37 +156,37 @@ if (maybe_log == nullptr) {
 run_job(non_null{maybe_log}, 10);
 ```
 
-The absence check stays where absence can actually exist.
-After that boundary, the rest of the code works with a tighter contract.
+The check stays where absence can actually occur.
+Past that boundary, the rest of the code works with a tighter and more readable contract: every function is no longer asked to defend itself from a case that does not belong to it.
 
 ## What it does not solve
 `non_null` does not make a destroyed object valid.
-It does not prevent dangling pointers, race conditions or poorly managed lifetime.
-If the pointer refers to an object that no longer exists, the wrapper cannot save us.
+A pointer can be different from `nullptr` and still point to memory that is no longer valid.
+The wrapper does not protect against dangling pointers, race conditions, or incorrect lifetime management.
 
-This is an important limit.
-The type expresses non-nullness, not ownership and not lifetime.
+That distinction matters.
+`non_null` expresses a guarantee about nullness, not ownership and not lifetime.
 
-For that reason, it works well as a boundary type, especially in function parameters or members that are clearly non-owning views.
-When ownership, transfer or sharing need to be represented, the right type is still something else: `std::unique_ptr`, `std::shared_ptr`, a reference or a domain-specific object.
+For that reason, it works well as a boundary type: function parameters, non-owning members, views toward objects that must exist.
+When ownership, transfer, or sharing have to be represented, the right type is something else: `std::unique_ptr`, `std::shared_ptr`, a reference, or a dedicated owner.
 
 ## When to use it
-`non_null` is useful when absence would be a bug, not a case to handle.
+`non_null` is useful when `nullptr` would be a bug, not a behavior variant.
 
 Typical examples:
 
 - a mandatory dependency passed to a function;
-- a target already validated before calling an algorithm;
+- an object already validated before calling an algorithm;
 - a non-owning view stored by a component;
-- a pointer obtained from an initialization phase that must succeed.
+- a pointer produced by an initialization phase that must succeed.
 
-In these cases, the type moves information from documentation into the signature.
-The reader does not have to look for comments explaining whether `nullptr` is allowed: the type says it.
+There is no need to wrap every pointer in the codebase.
+Use it where the contract matters more than the convenience of a generic signature, especially when the point where absence is handled should be clearly separated from the point where the value is used.
 
 ## Conclusion
-`non_null` is not magic that makes every pointer safe.
-It is a simple way to make an interface more honest.
+`non_null` does not solve every pointer problem.
+It solves a more precise one: preventing a mandatory parameter from looking optional.
 
-If a parameter is truly optional, treat it as optional.
-If it is mandatory, say so in the type.
-The resulting code is easier to read, because it separates the place where absence is validated from the place where the validated contract is used.
+If `nullptr` is a meaningful value, the code should treat it as a normal case.
+If absence is not allowed, it is better to say that in the type.
+The interface becomes more honest, because it moves a hidden assumption into the signature and leaves the function body with a simpler contract to read.
