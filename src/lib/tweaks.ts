@@ -16,7 +16,7 @@ export interface Tweaks {
 }
 
 const DEFAULTS: Tweaks = {
-	theme: 'system',
+	theme: 'dark',
 	accent: 'violet',
 	font: 'mono-sans',
 	hero: 'stack',
