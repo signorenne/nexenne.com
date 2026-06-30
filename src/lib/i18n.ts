@@ -7,6 +7,8 @@ export type Lang = 'en' | 'it';
 
 export const DICT: Record<Lang, Dict> = {
 	en: {
+		'meta.description':
+			'Software architect in Bergamo. I build embedded firmware, HMI, native and web apps, and reusable libraries that connect devices, interfaces, and business processes.',
 		'nav.thread': 'Start a conversation',
 		'nav.search': 'Search',
 		'nav.lang': 'EN',
@@ -514,6 +516,8 @@ export const DICT: Record<Lang, Dict> = {
 		'common.coming_soon': 'coming soon'
 	},
 	it: {
+		'meta.description':
+			'Software architect a Bergamo. Sviluppo firmware embedded, HMI, applicazioni native e web e librerie riutilizzabili che collegano dispositivi, interfacce e processi aziendali.',
 		'nav.thread': 'Parliamo',
 		'nav.search': 'Cerca',
 		'nav.lang': 'IT',
