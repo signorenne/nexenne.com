@@ -2,29 +2,28 @@
 title: "Scope guard in C++"
 lang: it
 date: 2026-06-27
-desc: "Usare RAII per tenere rollback e restore dello stato vicino al codice che devono proteggere."
+desc: "Usare RAII per tenere il rollback vicino allo stato da proteggere."
 read: "4 min"
 tags: ["C++", "RAII"]
 categories: ["Programmazione", "Tutorial"]
 image: "/blog/covers/scope_guard_cpp.webp"
 ---
 ## Introduzione
-Ci sono funzioni che sembrano innocue finché non bisogna gestire il primo errore.
-Modificano uno stato, eseguono qualche controllo e, se qualcosa va storto, devono riportare tutto com'era prima.
+Molte funzioni sembrano semplici finché non si presenta il primo errore.
+Modificano uno stato, fanno qualche controllo e, se qualcosa dovesse andare storto, devono riportare tutto al punto di partenza e lasciare il programma in uno stato coerente.
 
-Il problema nasce quando questa logica di rollback finisce dentro ogni branch di uscita.
-All'inizio il codice resta leggibile.
-Poi arriva un secondo `return`, magari un check in più, oppure un'eccezione.
-A quel punto la garanzia che volevamo mantenere non è più espressa in un posto solo: è sparsa nel corpo della funzione.
+La fragilità nasce quando il rollback deve essere scritto in ogni singolo percorso di uscita.
+All'inizio sembra tutto gestibile: un `return`, un controllo, una chiamata di ripristino.
+Poi arriva un altro `return`, un controllo in più e magari un'eccezione.
+A quel punto la garanzia di cleanup non è più una regola visibile, ma un dettaglio distribuito nella funzione, che chi modifica il codice deve ricordarsi di preservare.
 
-Uno scope guard serve a rendere esplicito questo vincolo.
-Quando entro in uno scope delicato, dichiaro subito cosa deve succedere se l'operazione non arriva al commit.
-Se il codice raggiunge il success path, disattivo il guard.
-Se invece esco prima, il rollback viene eseguito automaticamente.
+Lo scope guard serve a rendere esplicita questa regola.
+Quando si entra in uno scope delicato, si dichiara subito cosa deve succedere se l'operazione non arriva alla conclusione corretta.
+Se il percorso felice viene raggiunto, il guard viene disattivato; se invece la funzione esce prima, il rollback viene eseguito automaticamente.
 
 ## Il problema
-Consideriamo una funzione che aggiunge un batch di valori a un log.
-La regola è semplice: se tutti i valori sono validi, il commit del batch va a buon fine; se ne compare uno non valido, il log deve tornare alla dimensione iniziale.
+Il caso di partenza è una funzione che aggiunge un batch di valori a un log.
+La regola è semplice: se tutti i valori sono validi, il batch viene accettato; se compare un valore non valido, il log deve tornare alla dimensione iniziale.
 
 ```cpp
 auto commit_batch(std::vector<int>& log, std::vector<int> const& batch) -> bool {
@@ -43,22 +42,22 @@ auto commit_batch(std::vector<int>& log, std::vector<int> const& batch) -> bool 
 }
 ```
 
-Così funziona, ma la garanzia è fragile.
-Il rollback è scritto direttamente nell'error branch.
-Se in futuro aggiungiamo un altro check, dobbiamo ricordarci di ripetere lo stesso `resize`.
+Il codice funziona, ma il contratto è fragile.
+Il rollback è scritto direttamente nel ramo di errore, quindi la garanzia dipende dal fatto che ogni nuovo percorso di uscita ripeta lo stesso gesto.
+Se in futuro si aggiungesse un altro controllo, bisognerebbe ricordarsi di chiamare di nuovo `resize`.
 
-Il punto non è che `resize` sia difficile.
-Il punto è che la funzione promette una cosa precisa, "o completo tutto, oppure torno allo stato iniziale", ma questa promessa non ha un punto stabile nel codice.
+Il punto è che la funzione promette una cosa precisa: o completa tutto correttamente, oppure torna allo stato iniziale.
+Quella promessa dovrebbe avere un posto stabile nel codice, vicino allo stato che il rollback deve proteggere.
 
 ## Portare la garanzia nello scope
-RAII nasce per legare una risorsa alla durata di un oggetto.
-Quando l'oggetto esce dallo scope, il distruttore fa il lavoro necessario: chiude un file, libera una risorsa, ripristina uno stato.
+Il pattern RAII lega una risorsa alla durata di un oggetto.
+Quando l'oggetto esce dallo scope, il distruttore esegue il cleanup necessario: chiude un file, libera memoria, ripristina uno stato.
 
-Uno scope guard usa la stessa idea per una singola azione.
-Invece di scrivere il rollback in ogni possibile exit path, creo un oggetto locale che conosce l'azione da eseguire.
-Finché il guard resta attivo, uscire dallo scope significa eseguire quell'azione.
+Uno scope guard applica la stessa idea a una singola azione.
+Invece di copiare il rollback in ogni percorso di uscita, si crea un oggetto locale che sa cosa fare quando lo scope termina.
+Finché il guard è attivo, uscire dallo scope significa eseguire quell'azione.
 
-Una versione ridotta può essere questa.
+Una possibile implementazione può essere questa.
 
 ```cpp
 #include <concepts>
@@ -97,12 +96,13 @@ template <typename Fn>
 scope_guard(Fn) -> scope_guard<Fn>;
 ```
 
-Il tipo contiene solo due informazioni: la callable da eseguire e un flag che indica se il guard è ancora armato.
-Alla distruzione, se il flag è attivo, la callable viene invocata.
-`dismiss()` comunica il commit: l'operazione è riuscita e il rollback non deve più partire.
+Il tipo contiene due informazioni: la callable da eseguire e un flag che dice se il guard è ancora armato.
+Al momento della distruzione, se il flag è attivo, la callable viene invocata.
+`dismiss()` rappresenta il commit: l'operazione è riuscita, quindi il rollback non deve più essere eseguito.
 
 ## L'esempio riscritto
-Con uno scope guard, la funzione cambia poco, ma la responsabilità del rollback si sposta nel punto giusto.
+Con uno scope guard, la logica della funzione cambia poco.
+Cambia però il punto in cui vive la responsabilità del rollback.
 
 ```cpp
 auto commit_batch(std::vector<int>& log, std::vector<int> const& batch) -> bool {
@@ -125,17 +125,16 @@ auto commit_batch(std::vector<int>& log, std::vector<int> const& batch) -> bool 
 }
 ```
 
-Ora il codice rende più chiaro il contratto.
-Subito dopo aver salvato `mark`, dichiariamo il rollback.
-Da quel momento, ogni early return passa dallo stesso meccanismo.
+Subito dopo aver salvato `mark`, si dichiara anche come tornare indietro.
+Da quel momento ogni uscita anticipata passa dallo stesso meccanismo.
 
-L'error branch non deve più conoscere i dettagli del restore dello stato.
+Il ramo di errore non deve più conoscere i dettagli del ripristino.
 Si limita a interrompere l'operazione.
-Il rollback resta vicino allo stato che protegge, e la funzione diventa più semplice da modificare senza introdurre dimenticanze.
+Il rollback resta legato allo stato che protegge, e la funzione diventa più facile da modificare senza introdurre dimenticanze.
 
 ## Quando è utile
-Uno scope guard è utile quando il restore è locale e la condizione di successo è chiara.
-Prima del commit il guard deve restare attivo; dopo il commit può essere disattivato.
+Uno scope guard funziona bene quando il ripristino è locale e la condizione di successo è chiara.
+Prima del commit il guard resta attivo; dopo il commit viene disattivato.
 
 Esempi tipici:
 
@@ -143,25 +142,22 @@ Esempi tipici:
 - ripristinare il valore originale di una variabile;
 - annullare una registrazione se l'inizializzazione fallisce;
 - rilasciare una risorsa solo se non viene trasferita altrove;
-- mantenere compatta una funzione con più early return.
+- mantenere leggibile una funzione con più uscite anticipate.
 
-Il vantaggio principale non è scrivere meno righe.
-Il vantaggio è mettere la garanzia vicino al punto in cui nasce.
-Chi legge non deve controllare ogni branch per capire se il rollback è stato eseguito.
+Il vantaggio principale non è ridurre il numero di righe, ma mettere la garanzia vicino al punto in cui nasce.
+Chi legge il codice non deve controllare ogni percorso di uscita per capire se il rollback è stato eseguito o meno: vede subito quale stato viene protetto e quale azione lo ripristina.
 
 ## Quando evitarlo
-Uno scope guard non deve sostituire ogni forma di gestione delle risorse.
-Se un'azione deve essere eseguita sempre, senza una condizione di commit, spesso è più chiaro usare un tipo RAII dedicato o un semplice `defer`.
+Uno scope guard non deve sostituire ogni altra forma di gestione dello stato o delle risorse.
+Se un'azione deve essere eseguita sempre, senza una condizione di commit, spesso è meglio usare un tipo RAII dedicato o un semplice `defer`.
 
-Se invece l'operazione è una transazione vera, con molte risorse coinvolte e più fasi di commit, una lambda nascosta in uno scope guard può diventare troppo opaca.
+Se invece l'operazione è una transazione, con più risorse e più fasi di commit, una lambda dentro uno scope guard può diventare troppo generica.
 In quel caso conviene modellare la transazione con un tipo esplicito, con nomi e stati propri.
 
-C'è anche un vincolo pratico da non ignorare: l'azione eseguita nel distruttore non dovrebbe lanciare eccezioni.
+C'è anche un vincolo pratico: l'azione eseguita nel distruttore non dovrebbe lanciare eccezioni.
 Se un distruttore lancia durante lo stack unwinding, il programma può terminare con `std::terminate`.
-Per questo uno scope guard funziona meglio con azioni brevi, prevedibili e preferibilmente `noexcept`.
+Per questo uno scope guard dà il meglio con azioni brevi, prevedibili e preferibilmente `noexcept`.
 
 ## Conclusione
-Uno scope guard è un piccolo strumento, ma risolve un problema molto concreto: evitare che il rollback venga copiato nei branch di errore.
-
-La funzione dichiara subito come tornare indietro, poi disattiva il guard solo quando il lavoro è stato completato.
-Il codice risultante è più onesto: la garanzia non vive nei commenti e non dipende dalla memoria di chi aggiungerà il prossimo branch.
+Uno scope guard risolve un problema molto concreto: garantire che all'uscita dallo scope un'operazione venga eseguita.
+È un pattern piccolo, ma sposta il rollback fuori dalla memoria di chi modifica la funzione e lo porta nel punto in cui il codice dichiara la propria promessa.
