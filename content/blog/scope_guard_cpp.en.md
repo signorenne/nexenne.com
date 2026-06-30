@@ -4,26 +4,28 @@ lang: en
 translated_from: it
 auto_translated: false
 date: 2026-06-27
-desc: "How to use RAII for local rollback, early exits and conditional cleanup."
+desc: "How to use RAII to keep rollback close to the state it protects."
 read: "4 min"
 tags: ["C++", "RAII"]
 categories: ["Programming", "Tutorial"]
 image: "/blog/covers/scope_guard_cpp.webp"
 ---
 ## Introduction
-In C++, fragile code is not always complex code.
-Sometimes it is a plain function that changes some state, hits an error, and has to remember how to put everything back.
+Many functions look simple until the first error appears.
+They change some state, perform a few checks, and, if something goes wrong, they have to bring everything back to the starting point while leaving the program in a coherent state.
 
-The common case is a temporary change, or a small operation with commit/rollback semantics.
-As long as the function has one exit point, manual cleanup can look acceptable.
-Once there are several `return` statements, validation checks or exceptions, the restore logic starts spreading through the function body.
+The fragility appears when rollback has to be written in every single exit path.
+At first it looks manageable: one `return`, one check, one restore call.
+Then another `return` appears, then another check, and perhaps an exception.
+At that point, the cleanup guarantee is no longer a visible rule, but a detail spread through the function, something the next person editing the code has to remember to preserve.
 
-A scope guard exists to avoid that.
-It is a local object that runs a function when the scope exits, unless it is dismissed first.
+A scope guard makes that rule explicit.
+When a delicate scope begins, the code immediately declares what must happen if the operation does not reach its successful end.
+If the happy path is reached, the guard is dismissed; if the function exits earlier, rollback runs automatically.
 
 ## The problem
-Take a small example.
-We want to append a batch of values to a log, but if the batch contains an invalid value the log must return to its original size.
+The starting point is a function that appends a batch of values to a log.
+The rule is simple: if every value is valid, the batch is accepted; if an invalid value appears, the log must return to its original size.
 
 ```cpp
 auto commit_batch(std::vector<int>& log, std::vector<int> const& batch) -> bool {
@@ -42,20 +44,22 @@ auto commit_batch(std::vector<int>& log, std::vector<int> const& batch) -> bool 
 }
 ```
 
-This code is not wrong, but it has an obvious weakness: rollback lives inside the error branch.
-If another check is added later, the same cleanup has to be remembered there too.
+The code works, but the contract is fragile.
+Rollback is written directly in the error branch, so the guarantee depends on every new exit path repeating the same gesture.
+If another check were added in the future, the code would have to remember to call `resize` again.
 
-The problem is not `resize`.
-The problem is that the function's guarantee is not declared in one place.
+The point is that the function promises something precise: either it completes everything correctly, or it returns to the initial state.
+That promise should have a stable place in the code, close to the state that rollback has to protect.
 
-## RAII applied to a scope
-RAII is usually used to tie a resource to an object's lifetime.
-When the object leaves scope, the destructor releases the resource.
+## Bringing the guarantee into the scope
+RAII ties a resource to an object's lifetime.
+When the object leaves scope, the destructor performs the required cleanup: closing a file, releasing memory, restoring state.
 
-A scope guard applies the same idea to any function.
-At the start of the scope, declare what must happen if the operation is not committed; at the end, if everything succeeded, dismiss the guard.
+A scope guard applies the same idea to a single action.
+Instead of copying rollback into every exit path, the code creates a local object that knows what to do when the scope ends.
+As long as the guard is active, leaving the scope means running that action.
 
-A minimal implementation can look like this.
+A possible implementation can look like this.
 
 ```cpp
 #include <concepts>
@@ -94,12 +98,13 @@ template <typename Fn>
 scope_guard(Fn) -> scope_guard<Fn>;
 ```
 
-The type is not complicated.
-It stores a callable and a flag.
-The destructor runs the callable only while the flag is still active.
+The type contains two pieces of information: the callable to run and a flag that says whether the guard is still armed.
+On destruction, if the flag is active, the callable is invoked.
+`dismiss()` represents the commit: the operation succeeded, so rollback no longer has to run.
 
 ## Rewriting the example
-With a scope guard, rollback is declared next to the state it protects.
+With a scope guard, the function's logic changes very little.
+What changes is where the responsibility for rollback lives.
 
 ```cpp
 auto commit_batch(std::vector<int>& log, std::vector<int> const& batch) -> bool {
@@ -122,36 +127,39 @@ auto commit_batch(std::vector<int>& log, std::vector<int> const& batch) -> bool 
 }
 ```
 
-Now the function says something important immediately: if we leave before confirmation, the log returns to its initial size.
-The error branch does not need to know the rollback.
-It only needs to stop the operation.
+Immediately after saving `mark`, the code also declares how to go back.
+From that moment on, every early exit goes through the same mechanism.
 
-This is what makes a scope guard useful.
-It is not about making the code clever; it is about placing the guarantee where it begins.
+The error branch no longer needs to know the details of the restore.
+It only stops the operation.
+Rollback remains tied to the state it protects, and the function becomes easier to modify without introducing omissions.
 
-## When it works well
-A scope guard fits small, local and easy-to-understand cleanup.
-For example:
+## When it is useful
+A scope guard works well when the restore is local and the success condition is clear.
+Before the commit, the guard stays active; after the commit, it is dismissed.
 
-- restoring a variable's previous value;
-- returning a container to its initial size;
+Typical examples:
+
+- returning a container to its previous size;
+- restoring the original value of a variable;
 - undoing a registration if initialization fails;
-- closing or releasing a resource only if it was not transferred elsewhere.
+- releasing a resource only if it is not transferred elsewhere;
+- keeping a function with several early exits readable.
 
-It works best when there is a clear success condition.
-Before that condition, rollback remains armed; after that condition, it can be dismissed.
+The main advantage is not reducing the number of lines, but placing the guarantee next to the point where it begins.
+The reader does not have to inspect every exit path to understand whether rollback ran or not: the protected state and the restoring action are visible immediately.
 
 ## When to avoid it
-Not everything should become a scope guard.
-If cleanup must always happen, a dedicated RAII object or a simple `defer` is clearer.
-If the operation involves several resources, multiple commit phases or detailed error propagation, model the transaction with an explicit type.
+A scope guard should not replace every other form of state or resource management.
+If an action must always run, without a commit condition, a dedicated RAII type or a simple `defer` is often clearer.
 
-There is also an important detail: the function run by the destructor should not throw.
-An exception during stack unwinding can lead to `std::terminate`, so scope guard cleanup should stay simple and predictable.
+If the operation is a transaction with several resources and several commit phases, a lambda inside a scope guard can become too generic.
+In that case, it is better to model the transaction with an explicit type, with its own names and states.
+
+There is also a practical constraint: the action run by the destructor should not throw.
+If a destructor throws during stack unwinding, the program can terminate with `std::terminate`.
+For that reason, a scope guard works best with short, predictable, preferably `noexcept` actions.
 
 ## Conclusion
-A scope guard is a small application of RAII, but it solves a concrete problem: it prevents rollback from being duplicated across error branches.
-
-When a function enters a protected section, declare immediately how to roll back.
-When the section completes successfully, call `dismiss()`.
-The result is less scattered code, with a local guarantee that is easier to read and maintain.
+A scope guard solves a concrete problem: guaranteeing that an operation runs when a scope exits.
+It is a small pattern, but it moves rollback out of the memory of whoever edits the function and into the point where the code declares its promise.
