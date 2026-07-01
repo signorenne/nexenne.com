@@ -72,7 +72,7 @@ function normalizeMetrics(value: unknown): { k: string; v: string }[] {
 let cached: WorkBundle[] | null = null;
 
 function resolveLang(path: string, declared: ContentLang | undefined): ContentLang {
-	return langFromPath(path) ?? declared ?? 'en';
+	return langFromPath(path) ?? declared ?? 'it';
 }
 
 function loadAll(): WorkBundle[] {
@@ -88,8 +88,8 @@ function loadAll(): WorkBundle[] {
 		};
 		const parsed = FrontmatterSchema.safeParse(normalised);
 		if (!parsed.success) {
-			console.warn(`[work] ${path} - invalid frontmatter:`, parsed.error.message);
-			continue;
+			console.error(`[work] Invalid frontmatter in ${path}:`, parsed.error.message);
+			throw parsed.error;
 		}
 		if (parsed.data.draft && !import.meta.env.DEV) continue;
 
@@ -158,8 +158,5 @@ export function pickWork(bundle: WorkBundle, lang: ContentLang): Work {
 
 function stripBody(work: Work): WorkMeta {
 	const { html: _html, metrics: _metrics, toc: _toc, ...meta } = work;
-	void _html;
-	void _metrics;
-	void _toc;
 	return meta;
 }

@@ -55,8 +55,8 @@ function loadAll(): PostBundle[] {
 		const slug = String((data as Record<string, unknown>).slug ?? slugFromPath(path));
 		const parsed = FrontmatterSchema.safeParse(data);
 		if (!parsed.success) {
-			console.warn(`[blog] ${path} - invalid frontmatter:`, parsed.error.message);
-			continue;
+			console.error(`[blog] Invalid frontmatter in ${path}:`, parsed.error.message);
+			throw parsed.error;
 		}
 		if (parsed.data.draft && !import.meta.env.DEV) continue;
 
@@ -122,7 +122,5 @@ export function pickPost(bundle: PostBundle, lang: ContentLang): Post {
 
 function stripHtml(post: Post): PostMeta {
 	const { html: _html, toc: _toc, ...meta } = post;
-	void _html;
-	void _toc;
 	return meta;
 }
