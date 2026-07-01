@@ -90,7 +90,7 @@
 		padding: 10px 12px 10px 14px;
 		border: 1px solid var(--line);
 		border-left: 3px solid var(--accent);
-		background: color-mix(in oklab, var(--bg, #0a0a0f) 88%, transparent);
+		background: color-mix(in oklab, var(--bg, #0a0b0f) 88%, transparent);
 		backdrop-filter: blur(8px);
 		border-radius: 3px;
 		box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
