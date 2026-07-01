@@ -179,7 +179,7 @@
 	const LCX = 132.29;
 	const LCY = 132.29;
 	const LH = 230.88;
-	const QR_DARK = '#0a0a0f';
+	const QR_DARK = '#0a0b0f';
 
 	// Labels under each QR + motto (editable via i18n).
 	$: motto = $t('card.motto');
@@ -393,7 +393,7 @@
 							<feColorMatrix in="n" type="saturate" values="0" />
 						</filter>
 					</defs>
-					<rect width={W} height={H} fill="#0a0a0f" />
+					<rect width={W} height={H} fill="#0a0b0f" />
 					<rect width={W} height={H} fill="url(#glowF)" />
 					<rect width={W} height={H} filter="url(#grainF)" opacity="0.05" />
 					<rect
@@ -478,7 +478,7 @@
 							<feColorMatrix in="n" type="saturate" values="0" />
 						</filter>
 					</defs>
-					<rect width={W} height={H} fill="#0a0a0f" />
+					<rect width={W} height={H} fill="#0a0b0f" />
 					<rect width={W} height={H} fill="url(#glowB)" />
 					<rect width={W} height={H} filter="url(#grainB)" opacity="0.05" />
 					<rect

@@ -18,7 +18,7 @@ function ensureWasm(): Promise<unknown> {
 	return wasmReady;
 }
 
-const BG = '#0a0a0f';
+const BG = '#0a0b0f';
 const INK = '#f4f4f6';
 const MUTED = '#8b8b96';
 const ACCENT = '#8a73ff'; // brand violet (the default accent), as hex for satori
