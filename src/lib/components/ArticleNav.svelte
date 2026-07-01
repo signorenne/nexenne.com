@@ -9,7 +9,7 @@
 	 * those states. The reading-progress indicator and the active heading are
 	 * recomputed on scroll, coalesced into one run per frame.
 	 */
-	import { onMount, onDestroy, tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
 	import { t } from '$lib/i18n';
 	import { sharePage } from '$lib/share';
@@ -176,8 +176,6 @@
 			});
 		}
 	}
-
-	onDestroy(() => {});
 </script>
 
 {#if items.length || title}
