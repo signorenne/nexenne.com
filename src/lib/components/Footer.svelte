@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { SITE } from '$lib/data';
 	import { t } from '$lib/i18n';
-	import { lhref, lgoto, lpath } from '$lib/paths';
+	import { lhref, lgoto } from '$lib/paths';
 	import LogoMark from './LogoMark.svelte';
 
 	const year = new Date().getFullYear();
@@ -59,12 +59,6 @@
 				<a href={$lhref('/now/')} on:click|preventDefault={() => go('/now/')} data-hover>/now</a>
 				<a href={$lhref('/uses/')} on:click|preventDefault={() => go('/uses/')} data-hover>/uses</a>
 				<a href={$lhref('/card/')} on:click|preventDefault={() => go('/card/')} data-hover>/card</a>
-				<!-- href stays the real /404/ route (so the prerender crawler and no-JS
-				     users get a valid page); the click navigates language-aware, so on
-				     Italian it goes to /it/404/ and renders the localized error page. -->
-				<a href={lpath('/404/', 'en')} on:click|preventDefault={() => go('/404/')} data-hover
-					>/404</a
-				>
 				<a href={$lhref('/feed.xml')} target="_blank" rel="noopener" data-hover>RSS · /feed.xml ↗</a
 				>
 				<a href={$lhref('/colophon/')} on:click|preventDefault={() => go('/colophon/')} data-hover
