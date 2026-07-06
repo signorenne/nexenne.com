@@ -10,7 +10,7 @@
 	 * recomputed on scroll, coalesced into one run per frame.
 	 */
 	import { onMount, tick } from 'svelte';
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, replaceState } from '$app/navigation';
 	import { t } from '$lib/i18n';
 	import { sharePage } from '$lib/share';
 	import type { TocItem } from '$lib/content/types';
@@ -47,7 +47,10 @@
 		if (!el) return;
 		const top = el.getBoundingClientRect().top + window.scrollY - 96;
 		window.scrollTo({ top, behavior: 'smooth' });
-		history.replaceState(null, '', `#${id}`);
+		// Update the hash through SvelteKit so its router/scroll-restoration state
+		// survives. A raw history.replaceState(null, ...) wipes that state, which
+		// left the reader stranded after navigating away and back.
+		replaceState(`#${id}`, {});
 	}
 
 	function onPointerEnter() {
