@@ -79,7 +79,10 @@
 		}
 		activeId = heads[nextActiveIdx].id;
 
-		const bodyTop = bodyEl.getBoundingClientRect().top;
+		// Station centers are measured relative to the rail's scrollable content
+		// origin (not its viewport), so adding scrollTop keeps them stable while
+		// the rail scrolls internally. This matches how .an-progress is drawn.
+		const bodyTop = bodyEl.getBoundingClientRect().top - bodyEl.scrollTop;
 		const stationCenters: number[] = [];
 		for (const s of stations) {
 			const r = s.getBoundingClientRect();
@@ -99,6 +102,30 @@
 			target = cA + (cB - cA) * t;
 		}
 		progressPx = Math.max(0, target);
+
+		followProgress();
+	}
+
+	/**
+	 * Scroll the rail's own scroll area so the reading tip stays visible.
+	 *
+	 * When the outline is taller than the rail box it must scroll internally;
+	 * otherwise the active heading and progress tip run off the bottom and the
+	 * reader loses their place. The tip is kept inside a comfortable band rather
+	 * than snapped to an edge, so short outlines never scroll.
+	 */
+	function followProgress() {
+		if (!bodyEl) return;
+		const view = bodyEl.clientHeight;
+		const overflow = bodyEl.scrollHeight - view;
+		if (overflow <= 0) return;
+		const tip = 4 + progressPx;
+		const margin = Math.min(64, view * 0.3);
+		let next = bodyEl.scrollTop;
+		if (tip < next + margin) next = tip - margin;
+		else if (tip > next + view - margin) next = tip - view + margin;
+		next = Math.max(0, Math.min(overflow, next));
+		if (Math.abs(next - bodyEl.scrollTop) > 0.5) bodyEl.scrollTop = next;
 	}
 
 	/**
