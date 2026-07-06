@@ -2435,16 +2435,26 @@ a.chip:hover,
 	transform: translate(-50%, -50%);
 	width: 26px;
 	height: 26px;
+	padding: 0;
 	display: grid;
 	place-items: center;
 	overflow: hidden;
 	background: var(--accent);
 	color: var(--accent-ink);
+	border: 0;
 	border-radius: 6px;
 	font-family: var(--font-mono);
 	font-weight: 700;
 	font-size: 14px;
 	line-height: 1;
+	cursor: pointer;
+	transition: box-shadow var(--t-fast) var(--ease);
+}
+/* Locked-open state: a ring flags that the reader pinned the outline open. */
+.an-mark.is-locked {
+	box-shadow:
+		0 0 0 2px var(--bg),
+		0 0 0 3px var(--accent);
 }
 /* Reading progress fills the mark box from the bottom: a scrim dims the unread
    top (100 - --an-p)%, so the accent square visibly fills as the reader

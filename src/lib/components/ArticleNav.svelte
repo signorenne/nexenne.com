@@ -20,7 +20,11 @@
 	export let title = '';
 
 	let activeId = items[0]?.id ?? '';
-	let open = false;
+	// The rail expands on hover, or stays expanded when the reader locks it open
+	// with the mark toggle. open is derived from both.
+	let hovering = false;
+	let lockedOpen = false;
+	$: open = hovering || lockedOpen;
 	let progressPx = 0;
 	// Whole-article completion (0-100), independent of station spacing: answers
 	// "how far to the end", which the section-to-section line alone cannot.
@@ -47,10 +51,13 @@
 	}
 
 	function onPointerEnter() {
-		open = true;
+		hovering = true;
 	}
 	function onPointerLeave() {
-		open = false;
+		hovering = false;
+	}
+	function toggleLock() {
+		lockedOpen = !lockedOpen;
 	}
 
 	function recomputeProgress() {
@@ -244,9 +251,18 @@
 			>
 				{#if items.length}
 					<div class="an-head">
-						<span class="an-mark" style="--an-p: {pct}" aria-hidden="true">
-							<span class="an-mark-glyph">¶</span>
-						</span>
+						<button
+							type="button"
+							class="an-mark"
+							class:is-locked={lockedOpen}
+							style="--an-p: {pct}"
+							on:click={toggleLock}
+							aria-pressed={lockedOpen}
+							aria-label={$t('article.outline.toggle')}
+							data-hover
+						>
+							<span class="an-mark-glyph" aria-hidden="true">¶</span>
+						</button>
 						<span class="an-title">{$t('article.outline.title')}</span>
 						<span
 							class="an-pct"
