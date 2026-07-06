@@ -291,7 +291,6 @@
 								aria-current={activeId === it.id ? 'true' : undefined}
 							>
 								<span class="an-node" aria-hidden="true"><span class="an-node-inner"></span></span>
-								<span class="an-num">{String(i + 1).padStart(2, '0')}</span>
 								<span class="an-label">{it.text}</span>
 							</a>
 						{/each}

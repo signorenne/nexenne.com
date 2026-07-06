@@ -2553,7 +2553,7 @@ a.chip:hover,
 	position: relative;
 	display: grid;
 
-	grid-template-columns: var(--an-slot-w) 32px 1fr;
+	grid-template-columns: var(--an-slot-w) 1fr;
 	align-items: center;
 	min-height: var(--an-station-h);
 	padding: 0 12px 0 0;
@@ -2615,23 +2615,6 @@ a.chip:hover,
 }
 .an-station.is-active .an-node-inner {
 	background: var(--accent);
-}
-.an-station.is-active .an-num {
-	color: var(--accent);
-}
-
-.an-num {
-	font-size: 10.5px;
-	color: var(--muted);
-	font-variant-numeric: tabular-nums;
-	opacity: 0;
-	transition: opacity var(--t-med) var(--ease);
-}
-.article-nav.is-open .an-num {
-	opacity: 1;
-}
-.an-station.is-l3 .an-num {
-	visibility: hidden;
 }
 
 .an-label {
