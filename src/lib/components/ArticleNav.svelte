@@ -22,6 +22,9 @@
 	let activeId = items[0]?.id ?? '';
 	let open = false;
 	let progressPx = 0;
+	// Whole-article completion (0-100), independent of station spacing: answers
+	// "how far to the end", which the section-to-section line alone cannot.
+	let pct = 0;
 	let bodyEl: HTMLElement;
 	let slotEl: HTMLDivElement;
 	let asideEl: HTMLElement;
@@ -53,11 +56,13 @@
 	function recomputeProgress() {
 		if (!bodyEl || !items.length) {
 			progressPx = 0;
+			pct = 0;
 			return;
 		}
 		const stations = bodyEl.querySelectorAll<HTMLElement>('.an-station');
 		if (!stations.length) {
 			progressPx = 0;
+			pct = 0;
 			return;
 		}
 
@@ -68,6 +73,7 @@
 		});
 		if (!isFinite(heads[0].y) || !isFinite(heads[heads.length - 1].y)) {
 			progressPx = 0;
+			pct = 0;
 			return;
 		}
 
@@ -78,6 +84,17 @@
 			else break;
 		}
 		activeId = heads[nextActiveIdx].id;
+
+		// Whole-article completion: how far the reading line has travelled from the
+		// first heading to the end of the article body. Falls back to the heading
+		// span when the .prose container is not found.
+		const prose = document.querySelector<HTMLElement>('.prose');
+		const articleTop = heads[0].y;
+		const articleBottom = prose
+			? prose.getBoundingClientRect().top + window.scrollY + prose.offsetHeight
+			: heads[heads.length - 1].y;
+		const articleSpan = Math.max(1, articleBottom - articleTop);
+		pct = Math.round(Math.min(1, Math.max(0, (scrollLine - articleTop) / articleSpan)) * 100);
 
 		// Station centers are measured relative to the rail's scrollable content
 		// origin (not its viewport), so adding scrollTop keeps them stable while
@@ -227,8 +244,18 @@
 			>
 				{#if items.length}
 					<div class="an-head">
-						<span class="an-mark" aria-hidden="true">¶</span>
+						<span class="an-mark" style="--an-p: {pct}" aria-hidden="true">
+							<span class="an-mark-glyph">¶</span>
+						</span>
 						<span class="an-title">{$t('article.outline.title')}</span>
+						<span
+							class="an-pct"
+							role="progressbar"
+							aria-valuemin="0"
+							aria-valuemax="100"
+							aria-valuenow={pct}
+							aria-label={$t('article.progress')}>{pct}%</span
+						>
 					</div>
 					<div class="an-body" bind:this={bodyEl}>
 						<span class="an-line" aria-hidden="true"></span>

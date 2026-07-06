@@ -2430,7 +2430,6 @@ a.chip:hover,
 }
 .an-mark {
 	position: absolute;
-
 	left: var(--an-rail-x);
 	top: 50%;
 	transform: translate(-50%, -50%);
@@ -2438,6 +2437,7 @@ a.chip:hover,
 	height: 26px;
 	display: grid;
 	place-items: center;
+	overflow: hidden;
 	background: var(--accent);
 	color: var(--accent-ink);
 	border-radius: 6px;
@@ -2445,7 +2445,41 @@ a.chip:hover,
 	font-weight: 700;
 	font-size: 14px;
 	line-height: 1;
-	box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent), transparent 88%);
+}
+/* Reading progress fills the mark box from the bottom: a scrim dims the unread
+   top (100 - --an-p)%, so the accent square visibly fills as the reader
+   advances while the glyph stays legible through the translucent overlay. */
+.an-mark::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	height: calc((100 - var(--an-p, 0)) * 1%);
+	background: color-mix(in oklab, var(--bg), transparent 12%);
+	transition: height 60ms linear;
+	pointer-events: none;
+}
+.an-mark-glyph {
+	position: relative;
+}
+.an-pct {
+	position: absolute;
+	right: 14px;
+	top: 50%;
+	transform: translateY(-50%);
+	font-family: var(--font-mono);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	color: var(--accent);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	opacity: 0;
+	transition: opacity var(--t-med) var(--ease);
+}
+.article-nav.is-open .an-pct {
+	opacity: 1;
 }
 .an-title {
 	position: absolute;
