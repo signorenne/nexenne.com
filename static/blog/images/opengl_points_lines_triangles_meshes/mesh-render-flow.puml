@@ -1,0 +1,21 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+title Mesh data through the OpenGL pipeline
+
+rectangle "Vertex data: positions and attributes" as vertexData
+rectangle "Index data: optional reuse order" as indexData
+rectangle "Vertex shader" as vertexShader
+rectangle "Primitive assembly: points, lines, triangles" as assembly
+rectangle "Rasterization" as rasterization
+rectangle "Fragments" as fragments
+rectangle "Framebuffer" as framebuffer
+
+vertexData --> vertexShader
+indexData --> assembly
+vertexShader --> assembly
+assembly --> rasterization
+rasterization --> fragments
+fragments --> framebuffer
+@enduml

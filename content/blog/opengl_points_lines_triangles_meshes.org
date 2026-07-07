@@ -1,0 +1,1122 @@
+#+TITLE: Punti, linee, triangoli e mesh
+#+LANG: it
+#+DATE: 2026-07-07
+#+LASTMOD: 2026-07-23
+#+DESC: Introduzione a punti, linee, triangoli, vertici, indici, mesh, winding order e primitive OpenGL nella grafica rasterizzata.
+#+IMAGE: /blog/covers/opengl_points_lines_triangles_meshes.webp
+#+READ: 29 min
+#+TAGS: Computer Graphics, OpenGL, Mesh, Triangoli, Vertici
+#+CATEGORIES: Computer Graphics, Tutorial
+
+** Abstract
+Nel precedente articolo abbiamo visto che un'immagine digitale è composta da pixel e che un percorso di rendering destinato a produrre un'immagine visibile termina con valori scritti in un framebuffer.
+
+Ora facciamo un passo indietro.
+
+Prima che esistano i pixel finali, prima che il fragment shader produca i valori di uscita e prima che il framebuffer venga aggiornato, dobbiamo descrivere che cosa vogliamo disegnare.
+
+In computer graphics, soprattutto nella grafica 3D rasterizzata, questa descrizione parte spesso da elementi molto semplici: punti, linee e triangoli.
+
+Un personaggio, una casa, una macchina, una montagna o un cubo non vengono inviati alla GPU come “oggetti” nel senso umano del termine. Vengono rappresentati tramite dati geometrici. Questi dati descrivono posizioni, collegamenti, superfici e attributi.
+
+Il triangolo è una delle primitive fondamentali di questo processo. Non perché sia particolarmente bello da solo, ma perché è semplice, stabile e molto adatto alla pipeline grafica.
+
+Vediamo dunque come si passa da punti isolati a modelli 3D composti da mesh, e perché OpenGL lavora così spesso con triangoli.
+
+[[/blog/images/opengl_points_lines_triangles_meshes/geometry-building-blocks.svg]]
+
+/Dal punto alla mesh: la geometria rasterizzata organizza posizioni, collegamenti e superfici in primitive semplici./
+
+
+** Perché questo argomento è importante
+Quando vediamo un modello 3D sullo schermo, tendiamo a pensarlo come un oggetto unico.
+
+Una sedia è una sedia. Un personaggio è un personaggio. Una casa è una casa.
+
+Per la GPU, però, questa visione è troppo astratta.
+
+La GPU non riceve il concetto di “sedia”. Riceve numeri.
+
+Più precisamente, riceve dati che descrivono la geometria e il modo in cui deve essere elaborata:
+
+- posizioni nello spazio;
+- attributi dei vertici;
+- indici;
+- primitive.
+
+Texture, parametri dei materiali e shader partecipano al rendering, ma non sono geometria. Insieme ai dati precedenti contribuiscono a costruire il modello visivo che noi riconosciamo come una sedia.
+
+Per questo è fondamentale capire che un oggetto 3D, nella grafica rasterizzata, è spesso una costruzione composta da molte piccole superfici.
+
+Queste superfici, nella maggior parte dei casi, vengono ridotte a triangoli.
+
+L'OpenGL Wiki indica che le primitive di base prodotte dalla pipeline sono punti, linee o triangoli, e che lo stream di vertici viene suddiviso in una sequenza ordinata di primitive di questo tipo.
+
+Quindi, se vogliamo capire OpenGL, dobbiamo capire prima la geometria elementare che OpenGL usa per costruire ciò che vediamo.
+
+** L'idea semplice: costruire con bastoncini e cartoncini
+Immaginiamo di voler costruire una casetta giocattolo.
+
+Potremmo partire da alcuni puntini disegnati su un foglio. Ogni puntino indica una posizione importante: un angolo del tetto, un angolo del muro, un angolo della porta.
+
+Se colleghiamo due puntini, otteniamo una linea.
+
+Se colleghiamo tre puntini, possiamo ottenere un triangolo.
+
+Se uniamo tanti triangoli, possiamo costruire superfici più grandi: muri, tetti, pavimenti, finestre.
+
+Questa è una buona immagine mentale per capire la grafica 3D.
+
+Un modello complesso non nasce come oggetto magico. Nasce da molte posizioni nello spazio collegate tra loro secondo certe regole.
+
+I punti definiscono dove sono le cose.
+
+Le linee possono mostrare collegamenti o contorni.
+
+I triangoli definiscono superfici.
+
+Le mesh organizzano tutto questo in una struttura più grande.
+
+** Coordinate: dire dove si trova qualcosa
+Per descrivere un punto, dobbiamo dire dove si trova.
+
+In matematica e in computer graphics usiamo le coordinate.
+
+In 2D bastano due valori:
+
+#+begin_src txt
+x, y
+#+end_src
+
+=x= indica di solito la posizione orizzontale.
+
+=y= indica di solito la posizione verticale.
+
+Un punto 2D può essere scritto così:
+
+#+begin_src txt
+(3, 2)
+#+end_src
+
+Questo significa: spostati di 3 unità sull'asse =x= e di 2 unità sull'asse =y=.
+
+In 3D aggiungiamo una terza coordinata:
+
+#+begin_src txt
+x, y, z
+#+end_src
+
+=z= rappresenta il terzo asse. A seconda della convenzione scelta, può essere interpretato come profondità oppure come asse verticale.
+
+Un punto 3D può quindi essere scritto così:
+
+#+begin_src txt
+(3, 2, 5)
+#+end_src
+
+Questo punto ha:
+
+- =x = 3=;
+- =y = 2=;
+- =z = 5=.
+
+Naturalmente, questi numeri non hanno un significato assoluto da soli. Dipendono dal sistema di coordinate che abbiamo scelto.
+
+Un'unità può rappresentare un metro, un centimetro, un chilometro o semplicemente una misura astratta del nostro mondo virtuale.
+
+** Assi e orientamento
+Un sistema di coordinate 3D ha tre assi. Per comodità possiamo immaginarli così:
+
+#+begin_src txt
+x → orizzontale
+y → verticale
+z → profondità
+#+end_src
+
+Non tutti i sistemi, però, usano lo stesso orientamento.
+
+In alcuni contesti, =y= è l'asse verticale. In altri, l'asse verticale è =z=.
+
+OpenGL non impone quale direzione debba rappresentare l'alto nel nostro mondo virtuale: siamo noi, insieme alle trasformazioni e agli shader, a scegliere la convenzione. Negli stadi finali della pipeline, dopo la divisione prospettica, le coordinate normalizzate del volume visibile in OpenGL desktop si trovano invece nell'intervallo da =-1= a =1= sui tre assi.
+
+In quello spazio possiamo ragionare, in modo semplificato, con:
+
+#+begin_src txt
+x positivo → destra
+y positivo → alto
+z → profondità
+#+end_src
+
+Tuttavia, quando importeremo modelli da altri software o useremo librerie diverse, dovremo fare attenzione alle convenzioni.
+
+Questo è un punto importante: la geometria non è fatta solo di numeri, ma anche di interpretazione dei numeri.
+
+Se due sistemi usano assi diversi, lo stesso modello può apparire ruotato, capovolto o orientato in modo sbagliato.
+
+** Punti
+Un punto è una posizione.
+
+Da solo, un punto non ha dimensione. Non ha larghezza, altezza o profondità. È soltanto un luogo nello spazio.
+
+Questa è la definizione matematica. Quando rasterizziamo una primitiva =GL_POINTS=, OpenGL deve comunque coprire un'area finita dello schermo per poter generare frammenti.
+
+Possiamo disegnare punti usando primitive di tipo =GL_POINTS=.
+
+Ad esempio, se abbiamo tre vertici, possiamo dire a OpenGL di interpretarli come punti.
+
+#+begin_src cpp
+glDrawArrays(GL_POINTS, 0, 3);
+#+end_src
+
+La funzione =glDrawArrays= costruisce primitive usando dati provenienti dagli array di attributi abilitati; il parametro =mode= indica il tipo di primitive da costruire, ad esempio punti, linee o triangoli.
+
+Disegnare punti può essere utile in alcuni casi:
+
+- visualizzazione di dati;
+- debug di posizioni;
+- sistemi particellari;
+- rappresentazioni scientifiche;
+- punti di controllo.
+
+Tuttavia, per costruire superfici, i punti da soli non bastano.
+
+Un punto può indicare dove si trova un angolo di un oggetto, ma non descrive ancora una faccia.
+
+** Vertici
+In computer graphics sentiremo molto spesso la parola *vertice*.
+
+Un vertice è spesso associato a una posizione, ma non è necessariamente solo una posizione.
+
+Questa distinzione è importante.
+
+Un punto geometrico può essere pensato come:
+
+#+begin_src txt
+posizione = (x, y, z)
+#+end_src
+
+Un vertice, invece, può contenere anche altri attributi:
+
+#+begin_src txt
+posizione
+colore
+normale
+coordinate texture
+tangente
+dati personalizzati
+#+end_src
+
+Quindi un vertice può essere visto come una piccola scheda informativa.
+
+Ad esempio:
+
+#+begin_src txt
+Vertice 0
+posizione = (-0.5, -0.5, 0.0)
+colore = (1.0, 0.0, 0.0)
+uv = (0.0, 0.0)
+#+end_src
+
+La posizione dice dove si trova.
+
+Il colore può essere usato per colorare la superficie.
+
+Le coordinate =uv= possono indicare quale punto di una texture applicare.
+
+La normale può essere usata per calcolare la luce.
+
+Questo spiega perché, più avanti, quando parleremo di VBO e attributi, non diremo semplicemente “mandiamo punti alla GPU”. Diremo invece che mandiamo vertici, cioè insiemi strutturati di dati.
+
+** Linee
+Nel linguaggio comune diciamo che una linea collega due punti. Più precisamente, la primitiva che disegniamo è un segmento delimitato dai due vertici.
+
+Se abbiamo due punti:
+
+#+begin_src txt
+A = (0, 0, 0)
+B = (1, 0, 0)
+#+end_src
+
+possiamo disegnare una linea da =A= a =B=.
+
+In OpenGL possiamo usare primitive come =GL_LINES=.
+
+#+begin_src cpp
+glDrawArrays(GL_LINES, 0, 2);
+#+end_src
+
+Con =GL_LINES=, ogni coppia di vertici forma una linea indipendente.
+
+Ad esempio, con questi vertici:
+
+#+begin_src txt
+0, 1, 2, 3
+#+end_src
+
+OpenGL può costruire:
+
+#+begin_src txt
+linea 0 → vertici 0 e 1
+linea 1 → vertici 2 e 3
+#+end_src
+
+Le linee sono utili per:
+
+- debug;
+- griglie;
+- wireframe;
+- assi cartesiani;
+- contorni;
+- strumenti di modellazione;
+- visualizzazioni tecniche.
+
+Tuttavia una linea non descrive una superficie piena.
+
+Se vogliamo disegnare un muro, un pavimento o la faccia di un cubo, abbiamo bisogno di primitive che coprano un'area.
+
+Qui entrano in gioco i triangoli.
+
+** Triangoli
+Un triangolo è una superficie delimitata da tre vertici non allineati.
+
+Tre punti non allineati definiscono un piano e delimitano una faccia triangolare. Se sono allineati, o se due coincidono, il triangolo è degenere e non copre alcuna area.
+
+Questo rende il triangolo estremamente utile nella grafica 3D.
+
+Con tre punti possiamo descrivere una piccola faccia piana. Unendo tante facce piane, possiamo approssimare forme molto complesse.
+
+Un triangolo semplice può essere descritto così:
+
+#+begin_src txt
+A = (-0.5, -0.5, 0.0)
+B = ( 0.5, -0.5, 0.0)
+C = ( 0.0,  0.5, 0.0)
+#+end_src
+
+In C++:
+
+#+begin_src cpp
+float vertices[] = {
+    -0.5f, -0.5f, 0.0f,
+     0.5f, -0.5f, 0.0f,
+     0.0f,  0.5f, 0.0f
+};
+#+end_src
+
+Per disegnarlo come triangolo:
+
+#+begin_src cpp
+glDrawArrays(GL_TRIANGLES, 0, 3);
+#+end_src
+
+Con =GL_TRIANGLES=, ogni gruppo completo di tre vertici forma un triangolo indipendente. Eventuali vertici rimasti, insufficienti a completare la primitiva, vengono ignorati.
+
+** Perché proprio triangoli?
+La domanda è legittima.
+
+Perché non quadrati? Perché non cerchi? Perché non poligoni con tanti lati?
+
+Il motivo principale è che il triangolo è semplice e non ambiguo.
+
+Tre punti non allineati definiscono sempre un piano.
+
+Con quattro punti, invece, possiamo avere problemi.
+
+Immaginiamo un quadrilatero con quattro vertici. Se tutti e quattro i vertici stanno sullo stesso piano, va tutto bene. Ma se uno dei quattro punti è leggermente fuori piano, la superficie non è più perfettamente piatta.
+
+A quel punto, come dovrebbe essere disegnata?
+
+Il triangolo evita questo problema.
+
+Ogni triangolo non degenere è planare.
+
+Inoltre il triangolo è facile da interpolare. Quando la GPU rasterizza un triangolo, può calcolare valori intermedi al suo interno: colori, coordinate texture, normali e altri attributi.
+
+Questa proprietà è fondamentale per il rendering.
+
+** Dal quadrato ai triangoli
+Un quadrato può essere diviso in due triangoli.
+
+[[/blog/images/opengl_points_lines_triangles_meshes/square-to-triangles.svg]]
+
+/Un quadrato viene spesso diviso lungo una diagonale: due triangoli semplici rappresentano la stessa superficie./
+
+
+Supponiamo di avere questi quattro vertici:
+
+#+begin_src txt
+A ----- B
+|       |
+|       |
+D ----- C
+#+end_src
+
+Possiamo dividerlo lungo una diagonale:
+
+#+begin_src txt
+A ----- B
+|     / |
+|   /   |
+| /     |
+D ----- C
+#+end_src
+
+Otteniamo due triangoli:
+
+#+begin_src txt
+triangolo 1: A, D, B
+triangolo 2: B, D, C
+#+end_src
+
+In codice, senza indici, potremmo scrivere:
+
+#+begin_src cpp
+float vertices[] = {
+    // primo triangolo
+    -0.5f,  0.5f, 0.0f, // A
+    -0.5f, -0.5f, 0.0f, // D
+     0.5f,  0.5f, 0.0f, // B
+
+    // secondo triangolo
+     0.5f,  0.5f, 0.0f, // B
+    -0.5f, -0.5f, 0.0f, // D
+     0.5f, -0.5f, 0.0f  // C
+};
+#+end_src
+
+Poi:
+
+#+begin_src cpp
+glDrawArrays(GL_TRIANGLES, 0, 6);
+#+end_src
+
+Qui usiamo 6 vertici perché ogni triangolo richiede 3 vertici.
+
+Tuttavia alcuni vertici sono duplicati. Il vertice =B= appare due volte. Anche il vertice =D= appare due volte.
+
+Per un singolo quadrato non è un grosso problema. Per un modello complesso, però, duplicare inutilmente vertici può diventare costoso.
+
+Per questo esistono gli indici e gli EBO, che vedremo nel dettaglio più avanti.
+
+** Vertici condivisi e indici
+Invece di ripetere i vertici, possiamo scrivere una lista di vertici e poi una lista di indici.
+
+[[/blog/images/opengl_points_lines_triangles_meshes/indexed-mesh.svg]]
+
+/Con un buffer di indici, più triangoli possono riusare gli stessi vertici quando posizione e attributi coincidono./
+
+
+Vertici:
+
+#+begin_src cpp
+float vertices[] = {
+    -0.5f,  0.5f, 0.0f, // 0: A
+     0.5f,  0.5f, 0.0f, // 1: B
+     0.5f, -0.5f, 0.0f, // 2: C
+    -0.5f, -0.5f, 0.0f  // 3: D
+};
+#+end_src
+
+Indici:
+
+#+begin_src cpp
+unsigned int indices[] = {
+    0, 3, 1,
+    1, 3, 2
+};
+#+end_src
+
+Ora i triangoli sono:
+
+#+begin_src txt
+triangolo 1: vertici 0, 3, 1
+triangolo 2: vertici 1, 3, 2
+#+end_src
+
+Per disegnare useremo =glDrawElements=:
+
+#+begin_src cpp
+glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+#+end_src
+
+La documentazione di =glDrawElements= specifica che la funzione usa una sequenza di elementi da un array di indici per costruire primitive geometriche, e che il parametro =mode= stabilisce il tipo di primitive da costruire.
+
+In questo esempio presupponiamo che un EBO sia associato al VAO corrente. L'ultimo argomento, =0=, non è un indice: indica un offset di zero byte all'interno del buffer degli indici.
+
+Questo approccio permette di riutilizzare gli stessi vertici in più triangoli. Va però ricordato che un indice seleziona l'intero insieme degli attributi di un vertice, non soltanto la sua posizione.
+
+È fondamentale per le mesh reali.
+
+** Mesh
+Una mesh è una struttura che descrive la forma di un oggetto tramite vertici, collegamenti e facce.
+
+In modo semplice, possiamo dire:
+
+#+begin_quote
+nel rendering rasterizzato, una mesh è spesso una rete di triangoli che approssima una forma.
+#+end_quote
+
+Nel suo significato più essenziale, una mesh contiene o descrive:
+
+- vertici;
+- indici o altri dati di connettività;
+- facce;
+- attributi come normali, colori e coordinate texture.
+
+Un modello o un formato di file può poi associare alla mesh materiali, submesh, dati per l'animazione e altre informazioni. Questa distinzione diventerà più chiara tra poco.
+
+Un cubo può essere rappresentato come mesh.
+
+Una sfera può essere rappresentata come mesh.
+
+Un personaggio può essere rappresentato come mesh.
+
+Naturalmente, il livello di dettaglio cambia.
+
+Un cubo può richiedere pochi triangoli.
+
+Un personaggio realistico può richiederne decine o centinaia di migliaia.
+
+** Una mesh non è sempre “liscia”
+Una cosa interessante è che una mesh è fatta da facce piane, ma può sembrare liscia.
+
+Prendiamo una sfera.
+
+Una sfera matematica è perfettamente continua. Una mesh, invece, può solo approssimarla con tanti triangoli.
+
+Se usiamo pochi triangoli, la sfera sembrerà sfaccettata.
+
+Se usiamo molti triangoli, sembrerà più liscia.
+
+Tuttavia la sensazione di morbidezza non dipende solo dal numero di triangoli. Dipende anche dalle normali e dallo shading.
+
+Due sfere con la stessa geometria possono apparire diverse se cambiamo il modo in cui la luce viene calcolata.
+
+Questo è un punto importante: la forma percepita non dipende solo dalla geometria, ma anche dal rendering.
+
+** Facce
+Una faccia è una superficie della mesh.
+
+In molti casi, quando lavoriamo a basso livello con OpenGL, penseremo alle facce come triangoli.
+
+Nei software di modellazione, però, possiamo vedere anche facce quadrangolari o poligoni con più lati.
+
+Questi elementi possono essere comodi per modellare, ma per il rendering con il core profile di OpenGL moderno devono essere triangolati prima della draw call: le vecchie primitive dedicate ai quadrilateri e ai poligoni non fanno più parte del core profile.
+
+Triangolare significa dividere una superficie più complessa in triangoli.
+
+Ad esempio, una faccia quadrata diventa due triangoli.
+
+Un poligono più complesso può diventare molti triangoli.
+
+Questo passaggio è importante perché la GPU lavora molto bene con primitive semplici.
+
+** Primitive OpenGL
+In OpenGL, quando chiamiamo una draw call, dobbiamo dire come interpretare i vertici.
+
+Alcuni valori comuni del parametro =mode= sono:
+
+#+begin_src txt
+GL_POINTS
+GL_LINES
+GL_LINE_STRIP
+GL_TRIANGLES
+GL_TRIANGLE_STRIP
+GL_TRIANGLE_FAN
+#+end_src
+
+Non tutti sono usati con la stessa frequenza nell'OpenGL moderno, ma servono a capire l'idea.
+
+Con =GL_POINTS=, ogni vertice è un punto.
+
+Con =GL_LINES=, ogni coppia di vertici è una linea.
+
+Con =GL_TRIANGLES=, ogni gruppo di tre vertici è un triangolo.
+
+Con =GL_TRIANGLE_STRIP=, dopo i primi tre vertici, ogni nuovo vertice produce un nuovo triangolo condividendo vertici precedenti.
+
+In altre parole, la modalità scelta stabilisce come il flusso ordinato dei vertici viene suddiviso in primitive di base.
+
+** GL_TRIANGLES
+=GL_TRIANGLES= è il modo più semplice da capire.
+
+Ogni tre vertici formano un triangolo indipendente.
+
+Se abbiamo 6 vertici:
+
+#+begin_src txt
+0, 1, 2, 3, 4, 5
+#+end_src
+
+OpenGL costruisce:
+
+#+begin_src txt
+triangolo 1: 0, 1, 2
+triangolo 2: 3, 4, 5
+#+end_src
+
+Questo è facile da ragionare e molto chiaro.
+
+Lo svantaggio è che può portare a duplicare vertici, se non usiamo indici.
+
+Per questo spesso si combinano:
+
+#+begin_src txt
+GL_TRIANGLES + EBO
+#+end_src
+
+Cioè triangoli indipendenti, ma con vertici riutilizzabili tramite indici.
+
+** GL_TRIANGLE_STRIP
+=GL_TRIANGLE_STRIP= è un modo più compatto per descrivere una sequenza di triangoli collegati.
+
+I primi tre vertici formano il primo triangolo.
+
+Poi ogni vertice successivo aggiunge un nuovo triangolo.
+
+Con cinque vertici:
+
+#+begin_src txt
+0, 1, 2, 3, 4
+#+end_src
+
+otteniamo tre triangoli:
+
+#+begin_src txt
+triangolo 1: 0, 1, 2
+triangolo 2: 2, 1, 3
+triangolo 3: 2, 3, 4
+#+end_src
+
+L'ordine effettivo dei primi due vertici si alterna a ogni nuovo triangolo. OpenGL mantiene così coerente il verso delle facce lungo la striscia. In generale, con =n= vertici possiamo costruire =n - 2= triangoli, purché =n= sia almeno =3=.
+
+Questo può ridurre il numero di vertici necessari, ma rende il ragionamento un po' meno immediato.
+
+Per iniziare, è più semplice usare =GL_TRIANGLES=.
+
+Più avanti, quando avremo confidenza con la pipeline, sarà più facile capire anche le altre modalità.
+
+** Winding order: il verso dei vertici
+L'ordine dei vertici di un triangolo è importante.
+
+Un triangolo può essere specificato in senso orario o antiorario.
+
+Immaginiamo tre vertici:
+
+#+begin_src txt
+A, B, C
+#+end_src
+
+Se li guardiamo dallo schermo, l'ordine può girare in senso antiorario:
+
+#+begin_src txt
+A → B → C
+#+end_src
+
+Oppure in senso orario.
+
+Questo prende il nome di winding order.
+
+Perché è importante?
+
+Perché OpenGL usa l'ordine dei vertici, valutato dopo le trasformazioni nella proiezione sullo spazio finestra, per stabilire quale lato sia front-facing e quale back-facing.
+
+Questo diventerà importante con il face culling, cioè la possibilità di non disegnare le facce rivolte dalla parte opposta alla camera.
+
+Per ora basta ricordare questo:
+
+#+begin_quote
+lo stesso triangolo, con gli stessi punti, cambia orientamento se invertiamo l'ordine dei vertici.
+#+end_quote
+
+** Front face e back face
+Ogni triangolo ha due lati.
+
+Uno può essere considerato lato frontale.
+
+L'altro lato posteriore.
+
+Per impostazione predefinita OpenGL considera frontali i triangoli che, visti nello spazio finestra, hanno i vertici in senso antiorario. Possiamo cambiare questa convenzione con =glFrontFace=.
+
+In una mesh chiusa, come un cubo, normalmente vogliamo che le facce esterne siano front-facing.
+
+Le facce rivolte dalla parte opposta possono essere scartate per evitare lavoro inutile. Il face culling, tuttavia, è disabilitato per impostazione predefinita: dobbiamo abilitarlo con =glEnable(GL_CULL_FACE)=. Se non cambiamo altre impostazioni, vengono selezionate per lo scarto le facce posteriori.
+
+Questo approccio è comune per oggetti chiusi e opachi, ma non è sempre corretto. Superfici a due lati, trasparenze o viste dall'interno possono richiedere scelte diverse. In ogni caso, il culling funziona come previsto soltanto se l'ordine dei vertici è coerente.
+
+Se alcuni triangoli hanno winding order invertito, potrebbero sparire quando abilitiamo il culling, oppure apparire illuminati in modo strano.
+
+È uno di quei dettagli che all'inizio sembrano secondari, ma diventano molto importanti quando i modelli diventano complessi.
+
+** Normali: dove guarda una superficie
+Una normale è un vettore perpendicolare a una superficie.
+
+In modo intuitivo, indica “dove guarda” quella superficie.
+
+Per un triangolo, la normale può essere calcolata a partire dalle posizioni dei vertici. In questo caso il suo verso dipende anche dall'ordine scelto per eseguire il prodotto vettoriale, quindi dal winding order.
+
+Le normali sono fondamentali in molti modelli di illuminazione.
+
+In un modello diffuso semplice, una superficie orientata verso la luce riceve un contributo maggiore.
+
+Se è orientata dalla parte opposta, il contributo diffuso si riduce fino ad annullarsi.
+
+Una normale può essere associata a una faccia o a un vertice.
+
+Normali per faccia producono un aspetto più sfaccettato.
+
+Normali per vertice, interpolate, possono dare un aspetto più morbido.
+
+Non approfondiremo ora i calcoli, ma è utile introdurre il concetto perché una mesh non contiene solo posizioni. Può contenere anche informazioni necessarie per far apparire correttamente la superficie.
+
+** Coordinate texture
+Un altro attributo importante è la coordinata texture.
+
+Se vogliamo applicare un'immagine a un triangolo, dobbiamo dire quale parte dell'immagine corrisponde a ogni vertice.
+
+Queste coordinate vengono spesso chiamate UV.
+
+Esempio:
+
+#+begin_src txt
+posizione vertice = (-0.5, -0.5, 0.0)
+coord texture = (0.0, 0.0)
+#+end_src
+
+La posizione dice dove si trova il vertice nello spazio.
+
+La coordinata texture dice quale punto della texture usare.
+
+Se il vertex shader passa le coordinate texture allo stadio successivo, durante la rasterizzazione OpenGL ne genera valori interpolati all'interno del triangolo. Il fragment shader può poi usarli per campionare l'immagine.
+
+Quindi, ancora una volta, il triangolo non porta solo forma. Porta anche dati che verranno interpolati.
+
+** Colori per vertice
+Possiamo assegnare un colore diverso a ogni vertice.
+
+Esempio:
+
+#+begin_src cpp
+float vertices[] = {
+    // posizione          // colore
+    -0.5f, -0.5f, 0.0f,   1.0f, 0.0f, 0.0f,
+     0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,
+     0.0f,  0.5f, 0.0f,   0.0f, 0.0f, 1.0f
+};
+#+end_src
+
+Qui il primo vertice è rosso, il secondo verde, il terzo blu.
+
+Affinché accada, il vertex shader deve leggere il colore e passarlo in uscita; il fragment shader deve riceverlo tramite una variabile corrispondente. Con l'interpolazione =smooth= predefinita, durante la rasterizzazione vengono generati colori intermedi.
+
+Il risultato è una sfumatura.
+
+Questo è uno dei motivi per cui i triangoli sono così potenti: non servono solo a descrivere contorni, ma anche a trasportare valori che cambiano gradualmente sulla superficie.
+
+** Una casetta fatta di triangoli
+Torniamo alla metafora della casetta.
+
+Una casetta 2D molto semplice può essere descritta con alcuni punti:
+
+#+begin_src txt
+      A
+     / \
+    B---C
+    |   |
+    D---E
+#+end_src
+
+Il tetto è un triangolo:
+
+#+begin_src txt
+A, B, C
+#+end_src
+
+Il muro è un quadrato, che possiamo dividere in due triangoli:
+
+#+begin_src txt
+B, D, C
+C, D, E
+#+end_src
+
+Quindi tutta la casa può essere rappresentata con tre triangoli:
+
+#+begin_src txt
+tetto:       A, B, C
+muro 1:      B, D, C
+muro 2:      C, D, E
+#+end_src
+
+Se vogliamo una casa 3D, aggiungiamo profondità.
+
+Avremo altri vertici dietro e altre facce laterali.
+
+Ogni faccia verrà comunque divisa in triangoli.
+
+Questo esempio è semplice, ma mostra l'idea principale: un oggetto complesso può nascere da triangoli organizzati.
+
+** Un cubo fatto di triangoli
+Un cubo ha 6 facce.
+
+Ogni faccia quadrata può essere divisa in 2 triangoli.
+
+Quindi un cubo può essere rappresentato con:
+
+#+begin_src txt
+6 facce × 2 triangoli = 12 triangoli
+#+end_src
+
+Sembra poco, ma già qui incontriamo una questione interessante.
+
+Un cubo geometrico ha 8 angoli.
+
+Tuttavia, per il rendering, potremmo usare più di 8 vertici. Una rappresentazione comune ne usa 24: quattro per ciascuna faccia.
+
+Perché?
+
+Perché ogni faccia del cubo ha una normale diversa e spesso occupa una regione diversa della texture.
+
+Se lo stesso angolo appartiene a tre facce diverse, ma ogni faccia deve avere una normale diversa, potremmo dover duplicare il vertice per associare attributi diversi.
+
+Questo ci porta a un punto importante:
+
+#+begin_quote
+condividere una posizione non significa sempre condividere un vertice.
+#+end_quote
+
+Due vertici possono avere la stessa posizione, ma attributi diversi.
+
+Ad esempio:
+
+#+begin_src txt
+stessa posizione
+normale diversa
+coordinate texture diverse
+#+end_src
+
+Dal punto di vista della mesh, questi possono essere vertici distinti.
+
+** Topologia della mesh
+La topologia descrive come i vertici sono collegati tra loro.
+
+Due mesh possono avere una forma visiva simile ma topologia diversa.
+
+La topologia è importante per:
+
+- animazione;
+- deformazioni;
+- suddivisione delle superfici;
+- calcolo delle normali;
+- disposizione delle coordinate UV;
+- simulazioni;
+- qualità del rendering.
+
+Per un primo approccio a OpenGL non serve diventare esperti di modellazione 3D, ma è utile sapere che una mesh non è solo “una lista di triangoli”. È anche un modo di collegare dati.
+
+Se la topologia è disordinata, possono nascere problemi:
+
+- facce invertite;
+- buchi;
+- normali incoerenti;
+- texture deformate;
+- artefatti di illuminazione;
+- difficoltà nelle animazioni.
+
+** Modello 3D e mesh non sono sempre sinonimi
+Spesso usiamo “modello 3D” e “mesh” come se fossero la stessa cosa.
+
+In molti contesti pratici va bene, ma tecnicamente conviene distinguerli.
+
+Una mesh descrive la geometria e la topologia, cioè i vertici, i loro attributi e il modo in cui formano le facce.
+
+Un modello 3D completo può contenere anche:
+
+- una o più mesh;
+- materiali;
+- texture;
+- scheletro;
+- animazioni;
+- metadati;
+- gerarchie di nodi;
+- trasformazioni;
+- collisioni;
+- livelli di dettaglio.
+
+Quindi una mesh è una parte del modello.
+
+Quando importeremo modelli complessi, questa distinzione diventerà importante.
+
+Per il primo triangolo, però, ci basta una mini-mesh composta da tre vertici.
+
+** Wireframe e superficie piena
+Una stessa mesh può essere visualizzata in modi diversi.
+
+In modalità wireframe vediamo solo gli spigoli dei triangoli.
+
+In modalità solida vediamo le superfici riempite.
+
+Il wireframe è utile per capire la struttura della mesh.
+
+La visualizzazione solida è quella normalmente usata nel rendering finale.
+
+In OpenGL possiamo controllare il modo di rasterizzazione dei poligoni con funzioni come =glPolygonMode=, anche se per ora non è necessario usarla.
+
+Il punto concettuale è questo: la mesh esiste come struttura geometrica. Il modo in cui la vediamo dipende dal rendering.
+
+** Livello di dettaglio
+Più triangoli abbiamo, più una forma può essere precisa.
+
+Tuttavia, più triangoli possono significare:
+
+- più memoria occupata;
+- più dati da caricare nei buffer;
+- più vertici da elaborare;
+- più primitive da assemblare e rasterizzare;
+- più lavoro nella pipeline.
+
+Non significano invece, in modo automatico, più frammenti. Il loro numero dipende soprattutto dall'area coperta sullo schermo, dall'overdraw e dal campionamento. Un oggetto può avere molti piccoli triangoli e occupare pochi pixel; un solo triangolo può coprire quasi tutto il framebuffer.
+
+Non sempre più triangoli sono la scelta migliore.
+
+In tempo reale, bisogna trovare un equilibrio tra qualità e prestazioni.
+
+Per oggetti lontani dalla camera, può non servire una mesh molto dettagliata. Per oggetti vicini, invece, il dettaglio può essere più importante.
+
+Da qui nascono tecniche come il livello di dettaglio, o LOD.
+
+Non lo analizzeremo ora, ma l'idea nasce ancora una volta dalla struttura della mesh.
+
+** Cosa succede nella pipeline
+Vediamo ora dove si inseriscono punti, linee, triangoli e mesh nella pipeline OpenGL.
+
+[[/blog/images/opengl_points_lines_triangles_meshes/mesh-render-flow.svg]]
+
+/OpenGL legge vertici e indici, assembla primitive, rasterizza triangoli e produce frammenti diretti al framebuffer./
+
+
+Il percorso semplificato è:
+
+#+begin_src txt
+dati dei vertici
+    ↓
+vertex shader
+    ↓
+assemblaggio delle primitive
+    ↓
+clipping, divisione prospettica e viewport
+    ↓
+rasterizzazione
+    ↓
+fragment shader
+    ↓
+operazioni per-sample
+    ↓
+framebuffer
+#+end_src
+
+I vertici vengono letti dai buffer.
+
+Il vertex shader elabora ogni vertice.
+
+Poi OpenGL assembla le primitive.
+
+Se abbiamo scelto =GL_TRIANGLES=, i vertici vengono raggruppati in triangoli.
+
+Le primitive attraversano quindi il clipping e le trasformazioni che le portano nello spazio finestra. Quelle che sopravvivono vengono rasterizzate, cioè usate per generare frammenti nelle aree coperte.
+
+Il fragment shader produce valori di uscita per i frammenti, spesso uno o più colori.
+
+Infine, dopo test e operazioni finali, il risultato può essere scritto nel framebuffer.
+
+Questa è ancora una mappa semplificata: alcuni stadi sono opzionali e le operazioni per-sample comprendono, tra le altre cose, test, maschere e blending. Per il nostro percorso, però, è sufficiente a collegare la geometria ai valori conservati nel framebuffer.
+
+** Perché il triangolo produce tanti frammenti
+Un triangolo è definito da tre vertici.
+
+Tuttavia, quando viene disegnato sullo schermo, può coprire molti pixel.
+
+La rasterizzazione deve capire quali parti dello schermo sono coperte dal triangolo.
+
+Per i campioni coperti, produce frammenti da elaborare.
+
+Quindi tre vertici possono generare centinaia, migliaia o milioni di frammenti, a seconda della dimensione del triangolo sullo schermo, del campionamento e dell'eventuale overdraw.
+
+Questo è un passaggio fondamentale.
+
+Il numero di vertici non coincide con il numero di pixel o campioni coinvolti.
+
+Un triangolo enorme può avere solo tre vertici, ma coprire quasi tutto lo schermo.
+
+Un modello molto dettagliato ma lontano può avere tanti vertici, ma coprire pochi campioni dello schermo.
+
+Questa distinzione aiuta anche a capire alcuni problemi di performance: a volte il costo è legato ai vertici, altre volte ai frammenti.
+
+** Esempio OpenGL: tre punti, una linea, un triangolo
+Immaginiamo di avere tre vertici:
+
+#+begin_src cpp
+float vertices[] = {
+    -0.5f, -0.5f, 0.0f,
+     0.5f, -0.5f, 0.0f,
+     0.0f,  0.5f, 0.0f
+};
+#+end_src
+
+Con gli stessi dati possiamo ottenere risultati diversi cambiando il parametro =mode= della draw call.
+
+Punti:
+
+#+begin_src cpp
+glDrawArrays(GL_POINTS, 0, 3);
+#+end_src
+
+Linee:
+
+#+begin_src cpp
+glDrawArrays(GL_LINE_LOOP, 0, 3);
+#+end_src
+
+Triangolo:
+
+#+begin_src cpp
+glDrawArrays(GL_TRIANGLES, 0, 3);
+#+end_src
+
+Gli stessi vertici possono quindi essere interpretati in modi diversi.
+
+Questo ci mostra una cosa importante: i dati da soli non bastano. Serve anche dire a OpenGL come interpretarli.
+
+** Analisi dell'esempio
+Nel caso dei punti, OpenGL disegna tre primitive separate.
+
+Nel caso della linea chiusa, OpenGL collega i vertici creando un contorno.
+
+Nel caso del triangolo, OpenGL crea una superficie piena.
+
+Quindi:
+
+#+begin_src txt
+stessi vertici + primitive mode diverso = risultato diverso
+#+end_src
+
+Questo è il motivo per cui la draw call contiene un parametro come =GL_TRIANGLES=.
+
+Non stiamo solo dicendo “disegna questi dati”.
+
+Stiamo dicendo:
+
+#+begin_quote
+interpreta questi dati come triangoli.
+#+end_quote
+
+** Errori comuni
+*** Pensare che un modello 3D sia una forma continua
+Molti modelli sono approssimazioni fatte di triangoli.
+
+Anche una superficie liscia può essere composta da molte facce piane.
+
+*** Confondere punto e vertice
+Un punto è una posizione.
+
+Un vertice può contenere posizione e altri attributi.
+
+*** Pensare che il triangolo sia solo una forma didattica
+Il triangolo non è solo il primo esempio di OpenGL. È una primitiva fondamentale nella grafica rasterizzata.
+
+*** Duplicare vertici senza motivo
+Per oggetti semplici può non essere un problema, ma per mesh grandi conviene usare indici quando possibile.
+
+*** Pensare che condividere posizione significhi condividere vertice
+Due vertici possono avere la stessa posizione ma attributi diversi, ad esempio normali o coordinate texture diverse.
+
+*** Ignorare il winding order
+L'ordine dei vertici determina front face e back face, quindi influenza il culling. Se calcoliamo le normali geometriche tramite prodotto vettoriale, ne influenza anche il verso.
+
+*** Confondere mesh e modello completo
+Una mesh descrive geometria e topologia. Un modello può contenere anche materiali, texture, animazioni e gerarchie.
+
+*** Pensare che più triangoli siano sempre meglio
+Più triangoli possono aumentare il dettaglio, ma anche il costo. La qualità dipende anche da shading, texture, normali e distanza dalla camera.
+
+** Domande frequenti
+*** Perché non usare direttamente quadrati?
+Perché i quadrilateri possono diventare ambigui se i quattro vertici non sono sullo stesso piano. I triangoli sono planari e più semplici da gestire. Inoltre il core profile di OpenGL moderno non espone una primitiva per i quadrilateri: dobbiamo triangolarli prima del rendering.
+
+*** Un triangolo deve sempre essere visibile?
+No. Può essere degenere, trovarsi fuori dal volume visibile, essere scartato dal clipping, rimosso dal culling, coperto dal depth test oppure escluso da altri test e maschere.
+
+*** Una mesh contiene solo triangoli?
+Dipende dal contesto. Nei software di modellazione può contenere poligoni diversi. Nel rendering rasterizzato, però, spesso viene convertita in triangoli.
+
+*** Un vertice è sempre unico?
+No. Due vertici possono avere la stessa posizione ma attributi diversi. In quel caso, dal punto di vista del rendering, sono vertici distinti.
+
+*** Perché usare indici?
+Per riutilizzare interi vertici, con tutti i loro attributi, e ridurre le duplicazioni quando quei dati sono davvero condivisi. Questo è particolarmente utile nelle mesh complesse.
+
+*** Che cosa significa rasterizzare un triangolo?
+Significa determinare quali campioni dello schermo sono coperti dal triangolo e generare i frammenti da elaborare.
+
+*** Il triangolo viene sempre disegnato dalla GPU?
+Nelle implementazioni accelerate più comuni, la CPU prepara dati e comandi mentre la GPU esegue gran parte della pipeline grafica. La specifica OpenGL, però, definisce il comportamento dell'API e non obbliga a usare una GPU fisica: esistono anche implementazioni software.
+
+** Mini-esercizio
+Provate a rispondere a queste domande.
+
+1. Qual è la differenza tra punto e vertice?
+2. Perché tre vertici sono sufficienti per definire un triangolo?
+3. Perché un quadrato viene spesso diviso in due triangoli?
+4. Quanti triangoli servono per rappresentare le 6 facce di un cubo?
+5. Che cosa fa =GL_TRIANGLES=?
+6. Perché gli indici possono ridurre la duplicazione dei vertici?
+7. Che cos'è il winding order?
+8. Perché un triangolo con tre vertici può generare molti frammenti?
+
+Soluzioni rapide:
+
+#+begin_src txt
+1. Un punto è una posizione. Un vertice può contenere posizione e altri attributi.
+
+2. Tre punti non allineati delimitano una superficie triangolare piana.
+
+3. Perché la GPU lavora bene con triangoli e il triangolo è una primitiva semplice e non ambigua.
+
+4. 12 triangoli, perché ogni faccia quadrata può essere divisa in 2 triangoli.
+
+5. Dice a OpenGL di interpretare ogni gruppo di tre vertici come un triangolo.
+
+6. Perché permettono a più triangoli di usare gli stessi vertici.
+
+7. È l’ordine con cui i vertici di un triangolo vengono specificati, ad esempio orario o antiorario.
+
+8. Perché durante la rasterizzazione il triangolo può coprire molti campioni dello schermo.
+#+end_src
+
+** Conclusione
+Abbiamo visto come la grafica 3D non parta direttamente dai pixel finali, ma da una descrizione geometrica della scena.
+
+Questa descrizione usa elementi semplici: punti, linee, vertici, triangoli e mesh.
+
+Il punto indica una posizione. Il vertice associa alla posizione altri attributi. Il segmento collega due vertici. Il triangolo delimita una superficie. La mesh organizza vertici e facce per rappresentare forme complesse.
+
+Il triangolo è centrale perché è semplice, planare, facile da interpolare e adatto alla pipeline grafica. Anche oggetti complessi, come cubi, case, personaggi e ambienti, possono essere rappresentati come insiemi di triangoli.
+
+In OpenGL, questi dati vengono letti dai buffer, elaborati dal vertex shader e assemblati in primitive. Dopo clipping e trasformazioni finali, le primitive vengono rasterizzate in frammenti; il fragment shader e le operazioni per-sample determinano poi quali valori raggiungono il framebuffer.
+
+In sostanza:
+
+#+begin_src txt
+mesh → vertici → primitive → frammenti → framebuffer → immagine
+#+end_src
+
+Nel prossimo articolo passeremo dalla geometria al ruolo di OpenGL stesso. Vedremo perché OpenGL non è un motore grafico, non è una GPU e non è una libreria magica, ma una API basata su specifiche, driver e stato.
+
+** Fonti e riferimenti
+- [[https://registry.khronos.org/OpenGL/specs/gl/glspec33.core.pdf][Khronos, /OpenGL 3.3 Core Profile Specification/]], riferimento normativo per la pipeline e lo stato di OpenGL 3.3 core.
+- [[https://wikis.khronos.org/opengl/Primitive][OpenGL Wiki, =Primitive=]], per l'assemblaggio di punti, linee, triangoli e triangle strip.
+- [[https://wikis.khronos.org/opengl/Face_Culling][OpenGL Wiki, =Face Culling=]], per winding order, front face e stato iniziale del culling.
+- [[https://wikis.khronos.org/opengl/Rendering_Pipeline_Overview][OpenGL Wiki, =Rendering Pipeline Overview=]], per gli stadi principali della pipeline.
+- [[https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawArrays.xhtml][Khronos Reference Pages, =glDrawArrays=]], per il rendering non indicizzato.
+- [[https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawElements.xhtml][Khronos Reference Pages, =glDrawElements=]], per il rendering indicizzato e il significato dell'offset.
+- [[https://registry.khronos.org/OpenGL-Refpages/gl4/html/glFrontFace.xhtml][Khronos Reference Pages, =glFrontFace=]] e [[https://registry.khronos.org/OpenGL-Refpages/gl4/html/glCullFace.xhtml][=glCullFace=]], per la configurazione delle facce e del culling.
+- Immagine di copertina: [[https://commons.wikimedia.org/wiki/File:Rendering_techniques_example,_rasterization,_low_quality,_Blender_EEVEE.png][Rendering techniques example, rasterization, low quality, Blender EEVEE]] di [[https://commons.wikimedia.org/wiki/User:KaiaVintr][KaiaVintr]], Wikimedia Commons, licenza [[https://creativecommons.org/licenses/by-sa/4.0][CC BY-SA 4.0]]. Immagine ritagliata e convertita in WebP per il layout del sito.

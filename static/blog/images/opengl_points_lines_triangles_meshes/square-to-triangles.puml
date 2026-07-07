@@ -1,0 +1,16 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+title A square becomes two triangles
+
+rectangle "Square face: A B C D" as square
+rectangle "Shared diagonal: A to C" as diagonal
+rectangle "Triangle 1: A B C" as t1
+rectangle "Triangle 2: A C D" as t2
+
+square --> diagonal : split
+diagonal --> t1
+diagonal --> t2
+t1 -[hidden]right- t2
+@enduml

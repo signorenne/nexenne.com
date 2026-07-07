@@ -1,0 +1,15 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+title From geometry building blocks to a mesh
+
+rectangle "Point: position" as pt
+rectangle "Line: 2 vertices" as ln
+rectangle "Triangle: 3 vertices" as tri
+rectangle "Mesh: vertices + faces" as mesh
+
+pt --> ln : connect
+ln --> tri : close surface
+tri --> mesh : repeat and share
+@enduml

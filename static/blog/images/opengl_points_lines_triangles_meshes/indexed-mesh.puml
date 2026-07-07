@@ -1,0 +1,28 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+title Indexed drawing reuses complete vertices
+
+rectangle "Vertex buffer" as vb
+rectangle "v0 position + attributes" as v0
+rectangle "v1 position + attributes" as v1
+rectangle "v2 position + attributes" as v2
+rectangle "v3 position + attributes" as v3
+rectangle "Index buffer: 0,1,2 and 0,2,3" as ib
+rectangle "Triangle T0" as t0
+rectangle "Triangle T1" as t1
+
+vb --> v0
+vb --> v1
+vb --> v2
+vb --> v3
+ib --> t0 : 0,1,2
+ib --> t1 : 0,2,3
+t0 --> v0
+t0 --> v1
+t0 --> v2
+t1 --> v0
+t1 --> v2
+t1 --> v3
+@enduml
