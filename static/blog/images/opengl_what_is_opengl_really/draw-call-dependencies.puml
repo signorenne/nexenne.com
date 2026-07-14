@@ -1,0 +1,23 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+title A draw call depends on previously configured objects
+
+rectangle "Shader program" as shader
+rectangle "VAO" as vao
+rectangle "Vertex buffer" as vbo
+rectangle "Index buffer" as ebo
+rectangle "Textures" as textures
+rectangle "Framebuffer" as framebuffer
+rectangle "glDrawArrays or glDrawElements" as draw
+rectangle "Primitives and fragments" as output
+
+shader --> draw
+vao --> draw
+vbo --> vao
+ebo --> vao
+textures --> draw
+framebuffer --> draw
+draw --> output
+@enduml

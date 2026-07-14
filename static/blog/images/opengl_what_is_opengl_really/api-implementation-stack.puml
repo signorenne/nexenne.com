@@ -1,0 +1,19 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+title OpenGL is the API boundary, not the engine or the GPU
+
+rectangle "Application code" as app
+rectangle "OpenGL API calls" as api
+rectangle "OpenGL specification: contract" as spec
+rectangle "Implementation and driver" as impl
+rectangle "GPU or software renderer" as gpu
+rectangle "Framebuffer" as fb
+
+spec .. api : defines behavior
+app --> api
+api --> impl
+impl --> gpu
+gpu --> fb
+@enduml

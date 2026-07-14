@@ -1,0 +1,21 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+title OpenGL calls modify and consume current context state
+
+rectangle "Current context" as context
+rectangle "Bind VAO" as vao
+rectangle "Use shader program" as shader
+rectangle "Bind texture" as texture
+rectangle "Select framebuffer" as framebuffer
+rectangle "Draw call" as draw
+rectangle "State used by pipeline" as pipeline
+
+context --> vao : stores binding
+context --> shader : stores program
+context --> texture : stores texture binding
+context --> framebuffer : stores destination
+draw --> context : reads current state
+context --> pipeline
+@enduml

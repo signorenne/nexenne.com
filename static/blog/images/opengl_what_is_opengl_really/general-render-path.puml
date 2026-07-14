@@ -1,0 +1,21 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+title A simplified path from program commands to pixels
+
+rectangle "Program prepares data" as program
+rectangle "OpenGL commands" as commands
+rectangle "Implementation validates and schedules" as implementation
+rectangle "Driver translates work" as driver
+rectangle "GPU pipeline executes" as pipeline
+rectangle "Framebuffer receives values" as framebuffer
+rectangle "Visible image" as image
+
+program --> commands
+commands --> implementation
+implementation --> driver
+driver --> pipeline
+pipeline --> framebuffer
+framebuffer --> image
+@enduml

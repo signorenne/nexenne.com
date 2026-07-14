@@ -1,0 +1,1052 @@
+#+TITLE: Che cos'è OpenGL davvero?
+#+LANG: it
+#+DATE: 2026-07-14
+#+LASTMOD: 2026-07-24
+#+DESC: Chiarimento su OpenGL come API e specifica, non come motore grafico o GPU, con contesto, stato, driver, GLSL, buffer, VAO e draw call.
+#+IMAGE: /blog/covers/opengl_what_is_opengl_really.webp
+#+READ: 29 min
+#+TAGS: Computer Graphics, OpenGL, API, GPU, Rendering
+#+CATEGORIES: Computer Graphics, Tutorial
+
+** Abstract
+Quando si inizia a studiare OpenGL, è facile farsi un'idea sbagliata.
+
+Alcuni pensano che OpenGL sia un motore grafico. Altri pensano che sia una libreria che disegna automaticamente modelli 3D. Altri ancora immaginano che OpenGL sia la GPU stessa.
+
+Non proprio.
+
+OpenGL è una API grafica definita da una specifica. Questa stabilisce funzioni, tipi, costanti, comportamenti e regole con cui un programma può chiedere a un'implementazione OpenGL di eseguire operazioni di rendering.
+
+Questo significa che OpenGL non è un motore grafico, non è una scena 3D già pronta, non è un editor e non è l'hardware. È l'interfaccia tra il nostro programma e un'implementazione concreta, normalmente fornita dallo stack grafico del sistema e dal driver.
+
+In questo articolo voglio chiarire che cosa sia davvero OpenGL, perché funziona come una macchina a stati, quale ruolo abbiano l'implementazione, il driver e la GPU e perché l'OpenGL moderno richieda shader, buffer, VAO e draw call invece di funzioni “magiche” per disegnare oggetti.
+
+Vediamo dunque cosa stiamo davvero usando quando scriviamo codice OpenGL.
+
+[[/blog/images/opengl_what_is_opengl_really/api-implementation-stack.svg]]
+
+/OpenGL sta tra il nostro programma e l'implementazione concreta: la specifica definisce il contratto, driver e hardware realizzano il lavoro disponibile sulla piattaforma./
+
+
+** Perché serve chiarire questo punto
+Quando si impara OpenGL, molte difficoltà non nascono dal singolo comando, ma dal modello mentale sbagliato.
+
+Se penso che OpenGL sia un motore grafico, mi aspetto funzioni di alto livello come:
+
+#+begin_src cpp
+drawModel("house.obj");
+createLight();
+setCameraPosition();
+loadScene();
+#+end_src
+
+Ma OpenGL non ragiona così.
+
+OpenGL non conosce il concetto di “casa”, “luce cinematografica”, “personaggio”, “materiale realistico” o “scena”.
+
+OpenGL lavora con concetti di livello più basso:
+
+- buffer;
+- texture;
+- shader program;
+- framebuffer;
+- vertex array object;
+- primitive;
+- stato;
+- draw call.
+
+Questo significa che il programmatore deve preparare esplicitamente molti dati e molte configurazioni.
+
+All'inizio può sembrare scomodo. Tuttavia è proprio questa scomodità a rendere OpenGL utile per imparare la grafica: costringe a vedere i pezzi che un motore grafico normalmente nasconde.
+
+Unity, Unreal Engine o Godot permettono di lavorare a un livello più alto. OpenGL, invece, ci fa ragionare più vicino alla pipeline.
+
+Non al livello più basso possibile, perché sotto l'API ci sono l'implementazione, il driver e, nella maggior parte dei casi, l'hardware. Ma abbastanza in basso da capire come i dati attraversano la pipeline e contribuiscono all'immagine.
+
+** OpenGL è una specifica
+La prima cosa da capire è che OpenGL non è, in sé, un singolo programma installato sul computer.
+
+È una API descritta da una specifica.
+
+Una specifica è un documento tecnico che descrive come deve comportarsi una certa API.
+
+Il Khronos OpenGL Registry contiene le specifiche dell'API OpenGL, del linguaggio GLSL, delle estensioni approvate da Khronos e dai vendor, oltre agli header e ad altri documenti collegati.
+
+Questo significa che la specifica dice, ad esempio:
+
+- quali funzioni esistono;
+- quali parametri accettano;
+- quali errori possono generare;
+- quali oggetti manipolano;
+- quale stato modificano;
+- quali risultati devono produrre;
+- quali versioni supportano certe funzionalità.
+
+La specifica non è però la GPU.
+
+La specifica è la regola.
+
+L'implementazione concreta viene fornita dalla piattaforma o dal driver grafico e deve rispettare i comportamenti definiti dalla specifica.
+
+** Specifica e implementazione
+Per capire la differenza, possiamo usare una metafora.
+
+Immaginiamo il codice della strada.
+
+Il codice della strada stabilisce regole:
+
+- con il rosso ci si ferma;
+- con il verde si passa;
+- si guida su un certo lato della carreggiata;
+- bisogna rispettare i limiti di velocità.
+
+Il codice della strada però non è l'automobile.
+
+Allo stesso modo, la specifica OpenGL stabilisce regole e comportamenti, ma non è il software che materialmente esegue i comandi.
+
+Nella configurazione più comune, l'implementazione di OpenGL fa parte dello stack grafico e dialoga con il driver dell'hardware. Esistono però anche implementazioni software: la specifica descrive il risultato e il comportamento osservabile, non impone la presenza di una GPU fisica.
+
+Quindi, quando il nostro programma chiama una funzione OpenGL, non sta parlando direttamente con un documento PDF. Sta chiamando una funzione esposta da un'implementazione OpenGL presente sul sistema.
+
+Questa implementazione si occupa di realizzare le operazioni richieste usando il driver e l'hardware disponibili oppure, se necessario, un percorso software.
+
+** Il percorso generale
+Il percorso semplificato è questo:
+
+[[/blog/images/opengl_what_is_opengl_really/general-render-path.svg]]
+
+/Il programma prepara dati e comandi; l'implementazione li valida, li traduce e li porta verso il framebuffer tramite driver e pipeline./
+
+
+#+begin_src txt
+programma
+    ↓
+chiamate OpenGL
+    ↓
+implementazione OpenGL / driver grafico
+    ↓
+GPU o esecuzione software
+    ↓
+framebuffer
+    ↓
+eventuale presentazione sullo schermo
+#+end_src
+
+Il nostro programma prepara i dati e invia comandi attraverso l'interfaccia OpenGL. L'implementazione realizza il comportamento richiesto e, quando il rendering è accelerato, comunica con il driver e con la GPU.
+
+Il framebuffer conserva i valori prodotti. Se stiamo disegnando nel framebuffer predefinito di una finestra, il sistema di finestre può poi presentarne il contenuto sullo schermo.
+
+Naturalmente, nella pratica il percorso è molto più complesso. L'implementazione può validare, accumulare, rimandare o riorganizzare internamente il lavoro, purché rispetti il comportamento osservabile richiesto dalla specifica. La GPU può eseguire operazioni in parallelo; entrano inoltre in gioco code, sincronizzazioni e diversi tipi di memoria.
+
+Per ora, però, questa catena è sufficiente per capire il ruolo di OpenGL.
+
+** OpenGL non è la GPU
+Dire “OpenGL disegna” è comodo, ma tecnicamente impreciso.
+
+OpenGL definisce l'interfaccia con cui richiediamo operazioni di rendering. Nelle implementazioni accelerate, la GPU esegue il lavoro grafico; il driver e l'implementazione traducono i comandi dell'API in operazioni adatte al sistema disponibile.
+
+Quando scriviamo:
+
+#+begin_src cpp
+glDrawArrays(GL_TRIANGLES, 0, 3);
+#+end_src
+
+non stiamo dicendo alla CPU di colorare manualmente ogni pixel.
+
+Stiamo inviando una richiesta al sistema grafico: usa lo stato corrente, leggi i vertici configurati, interpreta i dati come triangoli e avvia il rendering secondo la pipeline.
+
+La funzione =glDrawArrays= usa elementi sequenziali degli array di attributi abilitati per costruire primitive geometriche; il parametro =mode= stabilisce come assemblarle.
+
+Quindi =glDrawArrays= non “contiene” l'algoritmo completo del rendering nel nostro codice. È una chiamata che entra nell'implementazione OpenGL e attiva un lavoro molto più ampio.
+
+** OpenGL non è un motore grafico
+Un motore grafico offre strumenti ad alto livello.
+
+Ad esempio, un motore può gestire:
+
+- scene;
+- entità;
+- componenti;
+- materiali;
+- luci;
+- ombre;
+- animazioni;
+- fisica;
+- editor visuale;
+- importazione di asset;
+- gestione audio;
+- scripting;
+- collisioni;
+- sistemi particellari;
+- pipeline di build.
+
+OpenGL non fornisce tutto questo.
+
+OpenGL non sa caricare automaticamente un file =.obj= e non possiede il concetto di camera come oggetto della scena. Non conosce nemmeno materiali PBR, luci direzionali o gerarchie di nodi come astrazioni già pronte.
+
+Tutte queste astrazioni possono essere costruite sopra OpenGL, ma non fanno parte di OpenGL in quanto tale.
+
+OpenGL offre invece operazioni di livello più basso:
+
+- crea buffer;
+- carica dati;
+- configura attributi;
+- compila shader;
+- crea texture;
+- imposta stati;
+- esegue draw call;
+- scrive nel framebuffer.
+
+Questo è il motivo per cui, per disegnare un singolo triangolo, dobbiamo fare così tanti passaggi.
+
+Non perché il triangolo sia difficile, ma perché stiamo costruendo manualmente l'ambiente minimo per far lavorare la pipeline.
+
+** API, libreria, framework e motore
+Conviene distinguere alcuni termini.
+
+Una *API* è un'interfaccia di programmazione. Definisce come un programma può usare certe funzionalità.
+
+Una *libreria* è un insieme di codice riutilizzabile. Può implementare funzioni, strutture dati, algoritmi o servizi.
+
+Un *framework* impone spesso una struttura più ampia all'applicazione. Non offre solo funzioni, ma anche un modo di organizzare il programma.
+
+Un *motore grafico* è un sistema più completo che gestisce molti aspetti della produzione e del rendering di una scena.
+
+OpenGL è una API grafica.
+
+GLFW, che useremo per creare finestre e contesti, è una libreria.
+
+GLAD è un loader-generator: useremo il codice che produce per caricare i puntatori alle funzioni OpenGL.
+
+Unreal Engine è un motore.
+
+Questa distinzione evita molti fraintendimenti.
+
+** OpenGL e il contesto
+Per inviare comandi OpenGL serve un contesto OpenGL corrente sul thread che li esegue.
+
+Il contesto è l'ambiente in cui vive lo stato OpenGL.
+
+Possiamo immaginarlo come il laboratorio che raccoglie:
+
+- stato corrente;
+- oggetti creati o condivisi con altri contesti;
+- configurazioni;
+- binding;
+- risorse associate;
+- informazioni sulla versione;
+- capacità disponibili.
+
+La specifica descrive una macchina GL composta da stato interrogabile, binding e oggetti. Non tutto è però esclusivo di un solo contesto: alcuni oggetti possono essere condivisi tra contesti creati in modo compatibile, mentre altri stati rimangono specifici del singolo contesto.
+
+Un contesto può essere corrente su un solo thread alla volta e un thread può avere un solo contesto corrente. Senza questo legame, non possiamo usare correttamente le funzioni OpenGL che dipendono dal contesto.
+
+Nel percorso di questa serie useremo GLFW per creare insieme una finestra e il relativo contesto, quindi renderemo corrente quel contesto. OpenGL, preso da solo, non impone però che il rendering sia sempre destinato a una finestra visibile: esistono anche configurazioni fuori schermo.
+
+Questo sarà il tema dell'articolo successivo.
+
+** OpenGL come macchina a stati
+Uno dei concetti più importanti è questo:
+
+#+begin_quote
+OpenGL funziona come una macchina a stati associata al contesto corrente.
+#+end_quote
+
+[[/blog/images/opengl_what_is_opengl_really/context-state-machine.svg]]
+
+/Le chiamate OpenGL modificano o consumano lo stato del contesto corrente: una draw call usa ciò che è stato configurato prima./
+
+
+Una macchina a stati conserva configurazioni correnti.
+
+Quando chiamiamo certe funzioni, non stiamo necessariamente eseguendo subito un disegno. Spesso stiamo modificando lo stato che verrà usato da chiamate successive.
+
+Ad esempio:
+
+#+begin_src cpp
+glUseProgram(shaderProgram);
+#+end_src
+
+Questa funzione non disegna nulla.
+
+Se il program object è stato collegato correttamente, =glUseProgram= ne installa il codice eseguibile come parte dello stato di rendering corrente.
+
+Altro esempio:
+
+#+begin_src cpp
+glBindVertexArray(vao);
+#+end_src
+
+Anche questa funzione non disegna nulla.
+
+Rende corrente il Vertex Array Object indicato. In OpenGL 3.3 core, quel nome deve essere =0= oppure provenire da una precedente chiamata a =glGenVertexArrays=; per disegnare da array serve poi un VAO non nullo correttamente configurato.
+
+Quindi, quando più tardi chiamiamo:
+
+#+begin_src cpp
+glDrawArrays(GL_TRIANGLES, 0, 3);
+#+end_src
+
+OpenGL usa lo stato attuale:
+
+- quale VAO è bindato;
+- quale shader program è attivo;
+- quali buffer e attributi sono richiamati dal VAO;
+- quale viewport è impostata;
+- quali test sono attivi;
+- quale framebuffer è bindato.
+
+Questa è una delle ragioni principali per cui OpenGL può sembrare difficile all'inizio.
+
+Non basta guardare la draw call. Bisogna sapere in quale stato è stata chiamata.
+
+** Una metafora: il tavolo da lavoro
+Immaginiamo un tavolo da lavoro.
+
+Prima di costruire qualcosa, prepariamo il tavolo:
+
+- mettiamo il materiale;
+- scegliamo gli strumenti;
+- apriamo le istruzioni;
+- impostiamo le misure;
+- decidiamo dove appoggiare il risultato.
+
+Solo dopo diciamo: “costruisci”.
+
+OpenGL funziona in modo simile.
+
+Prima configuriamo:
+
+#+begin_src cpp
+glUseProgram(shaderProgram);
+glBindVertexArray(vao);
+#+end_src
+
+Poi disegniamo:
+
+#+begin_src cpp
+glDrawArrays(GL_TRIANGLES, 0, 3);
+#+end_src
+
+Se abbiamo preparato male il tavolo, il risultato sarà sbagliato.
+
+Se abbiamo dimenticato lo shader, OpenGL non userà il programma corretto.
+
+Se abbiamo bindato il VAO sbagliato, OpenGL leggerà configurazioni sbagliate.
+
+Se il VAO non richiama buffer contenenti dati validi, il triangolo non apparirà.
+
+Tenete presente un dettaglio che eviterà confusione più avanti: dopo aver configurato gli attributi, il VAO conserva i riferimenti necessari ai vertex buffer. Non dobbiamo quindi ribindare =GL_ARRAY_BUFFER= prima di ogni =glDrawArrays=; dobbiamo invece bindare il VAO corretto.
+
+Spesso lo schermo nero non nasce dalla draw call in sé, ma da uno stato preparato male prima della draw call.
+
+** Binding
+Il binding è il meccanismo con cui associamo un oggetto OpenGL a un certo punto di collegamento del contesto.
+
+Ad esempio:
+
+#+begin_src cpp
+glBindBuffer(GL_ARRAY_BUFFER, vbo);
+#+end_src
+
+Qui stiamo dicendo:
+
+#+begin_quote
+il buffer =vbo= diventa il buffer attualmente associato al target =GL_ARRAY_BUFFER=.
+#+end_quote
+
+Dopo questa chiamata, se eseguiamo:
+
+#+begin_src cpp
+glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+#+end_src
+
+OpenGL sa su quale buffer caricare i dati, perché quel buffer è attualmente bindato a =GL_ARRAY_BUFFER=.
+
+Questo è un pattern comune nell'OpenGL 3.3 che useremo:
+
+#+begin_src txt
+crea oggetto
+binda oggetto
+configura oggetto tramite il target
+usa oggetto
+#+end_src
+
+Il vantaggio è che molte funzioni non devono ricevere direttamente l'oggetto come parametro ogni volta. Lo svantaggio è che dobbiamo tenere traccia dello stato corrente. Versioni successive dell'API hanno introdotto anche funzioni di direct state access, ma non sono disponibili nel core di OpenGL 3.3 e non ci servono ancora.
+
+** Oggetti OpenGL
+OpenGL usa molti oggetti.
+
+Alcuni esempi:
+
+- buffer object;
+- vertex array object;
+- texture object;
+- shader object;
+- program object;
+- framebuffer object;
+- renderbuffer object;
+- query object;
+- sampler object.
+
+Un oggetto OpenGL viene spesso identificato da un numero intero, chiamato /name/ e, nel linguaggio comune, anche /handle/.
+
+Ad esempio:
+
+#+begin_src cpp
+unsigned int vbo;
+glGenBuffers(1, &vbo);
+#+end_src
+
+Dopo questa chiamata, =vbo= contiene un nome precedentemente non usato e ora riservato da OpenGL.
+
+Questo identificatore non è il buffer in senso C++.
+
+Non è un puntatore a una struttura che possiamo leggere direttamente.
+
+Con =glGenBuffers= l'oggetto non esiste ancora in senso completo: il nome acquisisce lo stato di un buffer quando viene bindato per la prima volta con =glBindBuffer=. Da quel momento OpenGL lo usa per riferirsi alla risorsa interna.
+
+Questa distinzione è importante: non dobbiamo trattare un =GLuint= come se fosse un oggetto C++ normale. È soltanto un identificatore numerico; la risorsa e il suo stato sono gestiti dall'implementazione OpenGL.
+
+** Creare, bindare, configurare, cancellare
+Molti oggetti OpenGL seguono un ciclo di vita simile.
+
+Nel caso di un buffer, prima chiediamo un nome:
+
+#+begin_src cpp
+glGenBuffers(1, &vbo);
+#+end_src
+
+Poi li bindiamo:
+
+#+begin_src cpp
+glBindBuffer(GL_ARRAY_BUFFER, vbo);
+#+end_src
+
+Poi li configuriamo o carichiamo dati:
+
+#+begin_src cpp
+glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+#+end_src
+
+Poi li usiamo durante il rendering.
+
+Alla fine, quando non servono più, li cancelliamo:
+
+#+begin_src cpp
+glDeleteBuffers(1, &vbo);
+#+end_src
+
+Questo approccio vale con variazioni anche per texture, VAO, framebuffer e altri oggetti.
+
+Per iniziare, il punto importante è capire che OpenGL gestisce risorse. Il nostro programma crea nomi e chiede a OpenGL di associare quei nomi a risorse interne.
+
+** Stato del contesto e ordine delle chiamate
+In OpenGL l'ordine delle chiamate è fondamentale. Quando in modo informale parliamo di “stato globale”, intendiamo lo stato corrente visibile attraverso un determinato contesto, non una configurazione unica per tutto il processo.
+
+Questo codice:
+
+#+begin_src cpp
+glBindBuffer(GL_ARRAY_BUFFER, vbo);
+glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+#+end_src
+
+ha senso.
+
+Prima bindiamo il buffer.
+
+Poi carichiamo dati nel buffer bindato.
+
+Ma se invertiamo l'ordine:
+
+#+begin_src cpp
+glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+glBindBuffer(GL_ARRAY_BUFFER, vbo);
+#+end_src
+
+la prima chiamata non carica i dati in =vbo=, perché =vbo= non è ancora bindato.
+
+Potrebbe essere bindato un altro buffer: in quel caso modificheremmo quello. Se invece al target è associato il nome =0=, =glBufferData= genera =GL_INVALID_OPERATION=. Dipende dallo stato corrente.
+
+Questo è il motivo per cui OpenGL va studiato con calma.
+
+Le funzioni non sono isolate. Sono inserite in una sequenza.
+
+** OpenGL moderno e OpenGL storico
+“OpenGL moderno” non è il nome formale di una versione. Di solito usiamo questa espressione per indicare l'approccio basato su:
+
+- shader;
+- buffer object;
+- vertex array object;
+- pipeline programmabile;
+- GLSL;
+- draw call esplicite;
+- gestione più diretta dei dati.
+
+In passato, OpenGL permetteva anche uno stile più immediato, basato su funzioni come =glBegin= e =glEnd=.
+
+Un esempio storico poteva assomigliare a questo:
+
+#+begin_src cpp
+glBegin(GL_TRIANGLES);
+glVertex3f(-0.5f, -0.5f, 0.0f);
+glVertex3f( 0.5f, -0.5f, 0.0f);
+glVertex3f( 0.0f,  0.5f, 0.0f);
+glEnd();
+#+end_src
+
+Questo stile è più facile da leggere all'inizio, perché sembra dire direttamente “disegna questi tre vertici”.
+
+Tuttavia non rappresenta bene la pipeline programmabile che vogliamo studiare.
+
+Nel core profile moderno, i dati dei vertici risiedono in buffer e gli stadi programmabili vengono controllati tramite shader.
+
+Per questo, in questa serie, eviteremo di basarci su =glBegin= e =glEnd=.
+
+Non perché siano inutili storicamente, ma perché vogliamo imparare il modello mentale corretto per la grafica moderna.
+
+** OpenGL Core Profile e Compatibility Profile
+OpenGL ha attraversato molte versioni.
+
+Per mantenere compatibilità con vecchio codice, alcune implementazioni offrono un compatibility profile.
+
+Il compatibility profile mantiene molte funzionalità storiche.
+
+Il core profile, invece, esclude le funzionalità rimosse dall'API, tra cui la vecchia fixed-function pipeline e l'immediate mode usato nell'esempio precedente.
+
+Quando useremo OpenGL 3.3 core dovremo quindi configurare una pipeline programmabile e, per le draw call basate su array, usare un VAO non nullo. Non potremo contare sulla fixed-function pipeline storica.
+
+Questa scelta è utile dal punto di vista didattico.
+
+Ci obbliga a capire:
+
+- come passare dati alla GPU;
+- come scrivere shader;
+- come configurare attributi;
+- come eseguire draw call;
+- come ragionare sulla pipeline.
+
+In altre parole, ci fa imparare l'OpenGL moderno invece di un modello storico più semplice ma meno rappresentativo.
+
+** Fixed pipeline e pipeline programmabile
+La fixed pipeline era un modello in cui molte parti del rendering erano già definite dall'API.
+
+Il programmatore poteva configurare luci, materiali e trasformazioni tramite funzioni OpenGL, ma non scriveva direttamente shader per controllare certi stadi.
+
+La pipeline programmabile, invece, permette di fornire programmi eseguibili agli stadi configurabili dell'implementazione.
+
+Questi programmi sono gli shader.
+
+Per il rendering di base della serie useremo almeno due stadi:
+
+- vertex shader;
+- fragment shader.
+
+Il vertex shader elabora ogni vertice e deve produrne la posizione in clip space.
+
+Il fragment shader elabora i frammenti e può produrre uno o più valori di uscita, normalmente colori. Può anche scartare un frammento e, in casi specifici, scriverne la profondità.
+
+La specifica GLSL definisce gli shader come programmi destinati agli stadi programmabili della pipeline.
+
+Questo passaggio è centrale.
+
+L'OpenGL moderno non prova dunque a indovinare come illuminare o trasformare la scena. Richiede che il programmatore definisca esplicitamente questi comportamenti tramite shader e stato della pipeline.
+
+** Cosa fa davvero una draw call
+Una draw call è una chiamata che chiede a OpenGL di disegnare qualcosa usando lo stato corrente.
+
+[[/blog/images/opengl_what_is_opengl_really/draw-call-dependencies.svg]]
+
+/Una draw call non contiene tutto da sola: dipende da shader, VAO, buffer, texture e framebuffer già configurati./
+
+
+Esempi:
+
+#+begin_src cpp
+glDrawArrays(GL_TRIANGLES, 0, 3);
+#+end_src
+
+Oppure:
+
+#+begin_src cpp
+glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+#+end_src
+
+Con =glDrawArrays=, OpenGL usa una sequenza di vertici dagli array abilitati.
+
+Con =glDrawElements=, OpenGL usa indici per costruire primitive a partire dagli array di attributi abilitati.
+
+Nel secondo esempio presupponiamo inoltre che il VAO corrente richiami un EBO valido: l'ultimo argomento, =0=, rappresenta un offset di zero byte nel buffer degli indici.
+
+La draw call non contiene tutti i dati come parametri.
+
+Non passiamo direttamente:
+
+- shader program;
+- buffer;
+- attributi;
+- texture;
+- framebuffer;
+- viewport.
+
+Molte di queste cose sono già nello stato corrente.
+
+Quindi una draw call è breve perché si appoggia su tutto ciò che è stato configurato prima.
+
+Questo è potente, ma anche pericoloso: se lo stato corrente non è quello che pensiamo, il risultato sarà sbagliato.
+
+** Un esempio concreto di stato
+Immaginiamo di voler disegnare un triangolo.
+
+Una sequenza semplificata potrebbe essere:
+
+#+begin_src cpp
+glUseProgram(shaderProgram);
+glBindVertexArray(triangleVao);
+glDrawArrays(GL_TRIANGLES, 0, 3);
+#+end_src
+
+La draw call usa:
+
+- lo shader program =shaderProgram=;
+- il VAO =triangleVao=;
+- i buffer e gli attributi richiamati da quel VAO;
+- il framebuffer attivo;
+- la viewport attiva;
+- lo stato di blending, depth test e altri test.
+
+Ora immaginiamo di avere due triangoli con VAO diversi:
+
+#+begin_src cpp
+glUseProgram(shaderProgram);
+
+glBindVertexArray(firstTriangleVao);
+glDrawArrays(GL_TRIANGLES, 0, 3);
+
+glBindVertexArray(secondTriangleVao);
+glDrawArrays(GL_TRIANGLES, 0, 3);
+#+end_src
+
+Qui stiamo usando lo stesso shader program, ma due VAO diversi.
+
+Se dimentichiamo il secondo =glBindVertexArray=, la seconda draw call userà ancora il primo VAO.
+
+Questo è un tipico errore di stato.
+
+** OpenGL e il caricamento delle funzioni
+Un altro aspetto che confonde chi inizia è il caricamento delle funzioni OpenGL.
+
+Su molte piattaforme non basta includere un header e chiamare tutte le funzioni moderne.
+
+Dobbiamo ottenere i puntatori alle funzioni disponibili per il contesto corrente.
+
+Per questo useremo uno strumento come GLAD.
+
+GLAD non è OpenGL.
+
+GLAD è un loader-generator: il codice che genera carica i puntatori alle funzioni OpenGL richieste e disponibili.
+
+GLFW non è OpenGL.
+
+GLFW serve, tra le altre cose, a creare finestre e contesti OpenGL, gestire eventi e ottenere gli indirizzi delle funzioni esposte dalla piattaforma.
+
+Quindi il primo setup tipico sarà:
+
+#+begin_src txt
+GLFW → crea finestra e contesto
+GLFW → rende corrente il contesto
+GLAD → carica i puntatori alle funzioni OpenGL
+implementazione OpenGL → riceve ed esegue i comandi tramite il contesto
+#+end_src
+
+Questo sarà spiegato nel prossimo articolo.
+
+** OpenGL e GLSL
+OpenGL lavora insieme a GLSL, cioè OpenGL Shading Language.
+
+GLSL è il linguaggio con cui scriviamo shader.
+
+Il Khronos OpenGL Registry raccoglie anche le specifiche del linguaggio di shading, oltre a quelle dell'API OpenGL.
+
+Un vertex shader minimale può essere:
+
+#+begin_src glsl
+#version 330 core
+
+layout (location = 0) in vec3 aPos;
+
+void main()
+{
+    gl_Position = vec4(aPos, 1.0);
+}
+#+end_src
+
+Un fragment shader minimale:
+
+#+begin_src glsl
+#version 330 core
+
+out vec4 FragColor;
+
+void main()
+{
+    FragColor = vec4(1.0, 0.4, 0.2, 1.0);
+}
+#+end_src
+
+OpenGL fornisce le funzioni per creare, compilare, collegare e usare questi shader.
+
+In un'implementazione accelerata, il codice GLSL compilato viene eseguito sulla GPU come parte della pipeline. Un'implementazione software può invece eseguirne un equivalente sulla CPU.
+
+** OpenGL è multipiattaforma?
+OpenGL è nato come API grafica multipiattaforma.
+
+Questo significa che lo stesso codice OpenGL, almeno in teoria, può funzionare su sistemi diversi:
+
+- GNU/Linux;
+- Windows;
+- macOS, fino al core profile 4.1 e con API deprecata da macOS 10.14;
+- altri ambienti con supporti specifici.
+
+Tuttavia, nella pratica, il supporto dipende da:
+
+- driver;
+- versione OpenGL disponibile;
+- profilo richiesto;
+- sistema operativo;
+- hardware;
+- estensioni supportate.
+
+Quindi è meglio evitare affermazioni troppo assolute.
+
+OpenGL è pensato come API portabile, ma il codice deve sempre fare i conti con versioni, profili, estensioni e integrazioni di piattaforma differenti.
+
+Questo è uno dei motivi per cui conviene controllare versione, estensioni e capacità disponibili.
+
+** Estensioni OpenGL
+Le estensioni permettono a un'implementazione di esporre funzionalità non comprese nella versione core dichiarata dal contesto.
+
+Possono essere definite da singoli vendor, da più vendor oppure dai gruppi di lavoro di Khronos.
+
+Il Registry ufficiale contiene anche le specifiche delle estensioni approvate.
+
+Le estensioni sono importanti perché molte funzionalità sono nate come estensioni prima di entrare nel core di versioni successive.
+
+Tuttavia, per una serie introduttiva, conviene non abusarne.
+
+Useremo prima ciò che è necessario per capire il modello base:
+
+- buffer;
+- VAO;
+- shader;
+- texture;
+- framebuffer;
+- depth test;
+- blending.
+
+Solo più avanti avrebbe senso parlare di estensioni specifiche.
+
+** OpenGL e Vulkan
+OpenGL non è l'unica API grafica.
+
+Oggi esistono anche API come Vulkan, Direct3D, Metal e WebGPU.
+
+Vulkan, in particolare, espone in modo molto più esplicito risorse, sincronizzazione e gestione del lavoro.
+
+Questo significa che dà più controllo, ma richiede anche molta più configurazione.
+
+OpenGL nasconde diversi dettagli che Vulkan rende espliciti.
+
+Per imparare computer graphics, OpenGL resta utile perché permette di concentrarsi prima sui concetti fondamentali:
+
+- pipeline;
+- shader;
+- buffer;
+- texture;
+- framebuffer;
+- draw call;
+- trasformazioni;
+- rasterizzazione.
+
+Una volta compresi questi concetti, API più esplicite diventano meno spaventose.
+
+Non perché siano facili, ma perché il vocabolario di base è già chiaro.
+
+** OpenGL è ancora utile per imparare?
+Secondo me sì.
+
+Non necessariamente perché sia sempre la scelta migliore per iniziare oggi un nuovo motore grafico, ma perché resta valido come strumento didattico.
+
+OpenGL permette di vedere concetti importanti senza scrivere fin da subito centinaia o migliaia di righe di setup.
+
+Con poche decine o centinaia di righe possiamo arrivare a:
+
+- creare una finestra;
+- caricare funzioni;
+- compilare shader;
+- creare buffer;
+- disegnare un triangolo;
+- usare texture;
+- applicare trasformazioni;
+- gestire depth test;
+- usare framebuffer.
+
+Questo rende OpenGL un buon compromesso per imparare il percorso dal codice al pixel.
+
+** Cosa OpenGL non fa per noi
+È utile ribadirlo.
+
+OpenGL non fornisce automaticamente:
+
+- caricamento dei modelli;
+- gestione della scena;
+- gestione delle entità;
+- fisica;
+- animazioni scheletriche;
+- sistema di materiali ad alto livello;
+- gestione automatica della camera;
+- importazione asset;
+- interfaccia utente completa;
+- organizzazione del progetto;
+- gestione del ciclo di vita dell'applicazione.
+
+Tutto questo deve essere costruito sopra, oppure fornito da librerie e motori esterni.
+
+Nel contesto di OpenGL 3.3, l'API si concentra sulla pipeline di rendering e sulle relative risorse grafiche.
+
+Questa limitazione non è un difetto in senso assoluto. È una scelta di livello.
+
+** Cosa OpenGL fa per noi
+OpenGL ci permette di:
+
+- creare e gestire buffer;
+- descrivere come leggere i dati dei vertici;
+- creare texture e caricarvi dati già decodificati;
+- compilare, collegare e usare shader scritti dal programmatore;
+- configurare la pipeline;
+- disegnare primitive;
+- gestire framebuffer;
+- controllare depth test, blending e altri stati;
+- interrogare errori e capacità;
+- inviare comandi all'implementazione grafica.
+
+In sostanza, OpenGL ci dà gli strumenti per costruire il rendering.
+
+Non costruisce l'applicazione completa.
+
+** Collegamento con gli articoli precedenti
+Nei primi tre articoli abbiamo introdotto:
+
+- pixel e colori;
+- immagini digitali;
+- punti, linee, triangoli e mesh.
+
+Ora possiamo collocare OpenGL nel mezzo.
+
+Da un lato abbiamo i dati:
+
+#+begin_src txt
+vertici
+colori
+texture
+indici
+shader
+#+end_src
+
+Dall'altro abbiamo il risultato:
+
+#+begin_src txt
+frammenti
+colori finali
+framebuffer
+pixel visibili
+#+end_src
+
+OpenGL è l'API con cui descriviamo all'implementazione come attraversare questo percorso.
+
+Non è l'immagine finale.
+
+Non è il modello.
+
+Non è il motore.
+
+È il ponte operativo tra il nostro programma e la pipeline grafica implementata dal sistema.
+
+** Esempio mentale completo
+Supponiamo di voler disegnare un triangolo arancione.
+
+Non basta dire:
+
+#+begin_src txt
+disegna un triangolo arancione
+#+end_src
+
+Con OpenGL dovremo fare qualcosa del genere:
+
+#+begin_src txt
+1. Creare una finestra.
+2. Creare un contesto OpenGL.
+3. Caricare le funzioni OpenGL.
+4. Preparare i vertici del triangolo.
+5. Creare un VBO.
+6. Caricare i vertici nel VBO.
+7. Creare un VAO.
+8. Dire a OpenGL come leggere gli attributi.
+9. Scrivere un vertex shader.
+10. Scrivere un fragment shader.
+11. Compilare e linkare gli shader.
+12. Attivare lo shader program.
+13. Bindare il VAO.
+14. Chiamare una draw call.
+15. Presentare il framebuffer predefinito tramite GLFW.
+#+end_src
+
+Sembra tanto.
+
+Tuttavia ogni passaggio ha un ruolo.
+
+La finestra dà un luogo visibile.
+
+Il contesto dà a OpenGL un ambiente.
+
+Il codice generato da GLAD rende disponibili i puntatori alle funzioni.
+
+Il VBO contiene i dati.
+
+Il VAO descrive come leggerli.
+
+Gli shader dicono cosa fare.
+
+La draw call richiede l'elaborazione delle primitive usando lo stato corrente.
+
+Il framebuffer conserva il risultato; =glfwSwapBuffers= presenta poi il back buffer della finestra.
+
+Lo schermo mostra i pixel.
+
+** Errori comuni
+*** Pensare che OpenGL sia un motore grafico
+OpenGL non gestisce scene, modelli, luci e materiali ad alto livello.
+
+Fornisce strumenti di rendering di livello più basso.
+
+*** Pensare che OpenGL sia la GPU
+OpenGL è una API definita da una specifica. La GPU è hardware. L'implementazione, normalmente insieme al driver, realizza il comportamento richiesto usando l'hardware disponibile o un percorso software.
+
+*** Ignorare lo stato corrente
+Molte funzioni OpenGL dipendono dallo stato. Se lo stato è sbagliato, il risultato sarà sbagliato.
+
+*** Guardare solo la draw call
+Una draw call usa configurazioni precedenti. Per capire cosa disegna, bisogna sapere quale VAO, shader program, framebuffer e stato sono attivi.
+
+*** Confondere handle OpenGL e oggetti C++
+Un =GLuint= non è un oggetto C++ con dati leggibili direttamente. È un identificatore di una risorsa gestita da OpenGL.
+
+*** Caricare dati senza bind corretto
+Se chiamiamo =glBufferData= sul target sbagliato o senza il buffer corretto bindato, i dati non finiscono dove pensiamo.
+
+*** Usare tutorial vecchi basati su =glBegin=
+Sono utili per capire la storia, ma non rappresentano l'OpenGL 3.3 core usato nella serie.
+
+*** Non distinguere GLFW, GLAD e OpenGL
+GLFW crea finestre e contesti. Il codice generato da GLAD carica i puntatori alle funzioni. OpenGL è l'API grafica.
+
+*** Pensare che multipiattaforma significhi identico ovunque
+Il supporto reale dipende da driver, versione, hardware, sistema operativo ed estensioni.
+
+** Domande frequenti
+*** OpenGL è una libreria?
+Nel parlato comune viene spesso trattato come una libreria grafica, ma tecnicamente è meglio descriverlo come una API e una specifica. L'implementazione concreta è fornita dal driver o dalla piattaforma.
+
+*** OpenGL è scritto in C?
+L'interfaccia storica di OpenGL è in stile C. Tuttavia può essere usata da molti linguaggi tramite binding.
+
+*** Posso usare OpenGL senza shader?
+In OpenGL 3.3 core non possiamo ottenere un normale rendering definito senza un program object valido che contenga almeno gli stadi necessari. Nel percorso di questa serie useremo sempre un vertex shader e un fragment shader collegati nello stesso shader program.
+
+*** Perché serve un contesto OpenGL?
+Perché i comandi devono riferirsi a uno stato OpenGL ben definito. Senza un contesto corrente sul thread, le funzioni che dipendono da quel contesto non possono operare correttamente. Alcuni oggetti possono comunque essere condivisi tra contesti compatibili.
+
+*** Che differenza c'è tra OpenGL e GLSL?
+OpenGL è l'API grafica. GLSL è il linguaggio usato per scrivere shader che vengono eseguiti nella pipeline OpenGL.
+
+*** Che differenza c'è tra GLFW e OpenGL?
+GLFW aiuta a creare finestre e contesti e a gestire l'input. OpenGL è l'API con cui inviamo i comandi di rendering all'implementazione.
+
+*** Che differenza c'è tra GLAD e OpenGL?
+Il codice generato da GLAD carica puntatori alle funzioni OpenGL. Non sostituisce l'implementazione e non esegue il rendering.
+
+*** OpenGL è più facile di Vulkan?
+In genere il primo programma OpenGL richiede meno configurazione esplicita. Vulkan espone più dettagli, soprattutto nella gestione delle risorse e della sincronizzazione; per questo il suo setup iniziale tende a essere più ampio. La difficoltà complessiva dipende comunque dal progetto.
+
+*** Perché OpenGL usa così tanto binding?
+Perché in OpenGL 3.3 molte funzioni operano sull'oggetto associato a un certo target nel contesto corrente. È parte del modello a stato dell'API; le versioni più recenti offrono anche funzioni che agiscono direttamente sugli oggetti.
+
+** Mini-esercizio
+Provate a rispondere a queste domande.
+
+1. Perché OpenGL non è un motore grafico?
+2. Qual è la differenza tra specifica e implementazione?
+3. Che ruolo ha il driver grafico?
+4. Perché serve un contesto OpenGL?
+5. Cosa significa dire che OpenGL è una macchina a stati?
+6. Che cosa fa =glUseProgram=?
+7. Che cosa fa =glBindVertexArray=?
+8. Perché una draw call dipende dallo stato configurato prima?
+9. Qual è la differenza tra GLFW, GLAD e OpenGL?
+10. Perché in questa serie useremo l'OpenGL moderno e non =glBegin=/=glEnd=?
+
+Soluzioni rapide:
+
+#+begin_src txt
+1. Perché non gestisce scene, asset, fisica, materiali e logica ad alto livello.
+
+2. La specifica definisce regole e comportamenti. L’implementazione li realizza concretamente sulla piattaforma disponibile.
+
+3. Collabora con l’implementazione per realizzare le chiamate OpenGL sull’hardware disponibile.
+
+4. Perché i comandi OpenGL devono riferirsi allo stato e agli oggetti di un contesto corrente.
+
+5. Significa che molte funzioni modificano configurazioni correnti usate da chiamate successive.
+
+6. Imposta lo shader program corrente come parte dello stato di rendering.
+
+7. Rende attivo un Vertex Array Object.
+
+8. Perché usa VAO, shader, buffer, framebuffer e altri stati già configurati.
+
+9. GLFW crea finestre e contesti, il codice generato da GLAD carica i puntatori alle funzioni e OpenGL è l’API grafica.
+
+10. Perché vogliamo imparare la pipeline programmabile moderna, basata su shader e buffer.
+#+end_src
+
+** Conclusione
+Abbiamo visto come OpenGL non sia un motore grafico, non sia una GPU e non sia una libreria magica per disegnare oggetti complessi.
+
+OpenGL è una API grafica definita da una specifica. L'implementazione concreta è fornita dallo stack grafico della piattaforma, normalmente insieme al driver, e può usare hardware dedicato oppure un percorso software.
+
+Il modello di OpenGL è fortemente basato sullo stato: bindiamo oggetti, impostiamo configurazioni, attiviamo shader program e poi chiamiamo draw call che usano tutto ciò che è stato preparato.
+
+Questo può sembrare macchinoso, ma è proprio ciò che ci permette di capire il percorso dal codice al pixel.
+
+In sostanza:
+
+#+begin_src txt
+OpenGL non costruisce la scena per noi.
+OpenGL ci dà gli strumenti per descrivere all’implementazione come renderizzarla.
+#+end_src
+
+Nel prossimo articolo passeremo al primo passo pratico: creare una finestra OpenGL, ottenere un contesto valido, caricare le funzioni con GLAD e preparare l'ambiente minimo per iniziare a disegnare.
+
+** Fonti e riferimenti
+- [[https://registry.khronos.org/OpenGL/specs/gl/glspec33.core.pdf][Khronos, /OpenGL 3.3 Core Profile Specification/]], riferimento normativo per stato, contesti, oggetti, buffer, VAO, shader e draw call usati nella serie.
+- [[https://registry.khronos.org/OpenGL/][Khronos OpenGL Registry]], per le specifiche ufficiali dell'API OpenGL, del linguaggio GLSL, delle estensioni e degli header collegati.
+- [[https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUseProgram.xhtml][Khronos Reference Pages, =glUseProgram=]], per l'installazione del codice eseguibile di un program object nello stato corrente.
+- [[https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindVertexArray.xhtml][Khronos Reference Pages, =glBindVertexArray=]], per il binding dei Vertex Array Object.
+- [[https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGenBuffers.xhtml][Khronos Reference Pages, =glGenBuffers=]], [[https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindBuffer.xhtml][=glBindBuffer=]] e [[https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribPointer.xhtml][=glVertexAttribPointer=]], per nomi, creazione dei buffer e associazione dei vertex buffer agli attributi del VAO.
+- [[https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawArrays.xhtml][Khronos Reference Pages, =glDrawArrays=]] e [[https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawElements.xhtml][=glDrawElements=]], per il rendering tramite array e indici.
+- [[https://www.glfw.org/docs/latest/context_guide.html][GLFW, /Context guide/]], per creazione, condivisione e uso del contesto corrente e per il caricamento delle funzioni.
+- [[https://www.glfw.org/docs/latest/quick_guide.html][GLFW, /Getting started/]], per la presentazione del back buffer tramite =glfwSwapBuffers=.
+- [[https://github.com/Dav1dde/glad][GLAD, repository ufficiale]], per il ruolo di loader-generator basato sulle specifiche ufficiali.
+- [[https://developer.apple.com/documentation/macos-release-notes/macos-mojave-10_14-release-notes/][Apple, /macOS Mojave 10.14 Release Notes/]], per la deprecazione delle API OpenGL su macOS.
+- [[https://developer.apple.com/documentation/appkit/nsopenglprofileversion4_1core][Apple, =NSOpenGLProfileVersion4_1Core=]], per il core profile OpenGL 4.1 disponibile nell'integrazione nativa di macOS.
+- Immagine di copertina: [[https://commons.wikimedia.org/wiki/File:ATX_computer_case_-_left_-_2018-05-18.jpg][ATX computer case - left - 2018-05-18]] di [[https://commons.wikimedia.org/wiki/User:Bretwa][Bretwa]], Wikimedia Commons, licenza [[https://creativecommons.org/licenses/by-sa/4.0][CC BY-SA 4.0]]. Immagine ritagliata e convertita in WebP per il layout del sito.
