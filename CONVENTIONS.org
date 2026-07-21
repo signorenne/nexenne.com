@@ -52,8 +52,12 @@ tests, skipping checks, or hiding warnings that represent real failures.
 
 * Git Workflow
 
-- Work on a branch off =main=.
 - Keep one concern per branch.
+- Use =dev= for general development work.
+- Use =articles= for authored article work.
+- Merge completed development and article work into =release= for final review.
+- Merge =release= into =main= only after the release candidate passes checks.
+- Push =main= to publish the site through GitHub Pages.
 - Do not commit generated output.
 - Do not bypass hooks with =--no-verify=.
 - Commit subject format:
@@ -96,10 +100,10 @@ Rules:
 
 * Release And Deploy
 
-There is no package release flow for this site. Shipping means merging to
-=main= and letting GitHub Pages deploy =build/=.
+There is no package artifact release flow for this site. Shipping means merging
+=release= into =main= and letting GitHub Pages deploy =build/=.
 
-Before deploy-impacting changes, run:
+Before merging =release= into =main=, run:
 
 #+begin_src sh
 yarn install --immutable
