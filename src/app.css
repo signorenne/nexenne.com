@@ -1918,11 +1918,22 @@ a.chip:hover,
 	transition:
 		border-color var(--t-med) var(--ease-out),
 		background var(--t-med) var(--ease-out),
-		transform var(--t-med) var(--ease-out);
+		box-shadow var(--t-med) var(--ease-out);
 }
 .bento-item:hover {
 	border-color: var(--ink);
 	background: color-mix(in oklab, var(--bg-elev), var(--ink) 3%);
+	box-shadow: 0 14px 36px color-mix(in oklab, var(--ink), transparent 92%);
+}
+.bento-item > div:first-child,
+.bento-item > .tags {
+	transition: transform var(--t-med) var(--ease-out);
+	will-change: transform;
+}
+.bento-item:hover > div:first-child,
+.bento-item:hover > .tags,
+.bento-item:focus-visible > div:first-child,
+.bento-item:focus-visible > .tags {
 	transform: translateY(-3px);
 }
 .bento-item > div:first-child {
@@ -4052,11 +4063,24 @@ html.is-transitioning {
 	transition:
 		border-color var(--t-med) var(--ease-out),
 		background var(--t-med) var(--ease-out),
-		transform var(--t-med) var(--ease-out);
+		box-shadow var(--t-med) var(--ease-out);
 }
 .svc:hover {
 	border-color: var(--ink);
 	background: color-mix(in oklab, var(--bg-elev), var(--ink) 3%);
+	box-shadow: 0 12px 32px color-mix(in oklab, var(--ink), transparent 92%);
+}
+.svc > .num,
+.svc > div {
+	transition: transform var(--t-med) var(--ease-out);
+	will-change: transform;
+}
+.svc:hover > .num,
+.svc:hover > div,
+.svc:focus-visible > .num,
+.svc:focus-visible > div,
+.svc:focus-within > .num,
+.svc:focus-within > div {
 	transform: translateY(-2px);
 }
 .svc .num {
@@ -4085,6 +4109,18 @@ html.is-transitioning {
 	align-self: center;
 	text-align: right;
 	white-space: nowrap;
+	will-change: transform;
+	transition:
+		color var(--t-med) var(--ease-out),
+		transform var(--t-med) var(--ease-out),
+		text-shadow var(--t-med) var(--ease-out);
+}
+.svc:hover .price,
+.svc:focus-visible .price,
+.svc:focus-within .price {
+	color: var(--accent-2);
+	text-shadow: 0 0 12px color-mix(in oklab, var(--accent), transparent 72%);
+	transform: translate(-2px, -2px);
 }
 .svc-grid {
 	display: grid;
@@ -4534,11 +4570,18 @@ html.is-transitioning {
 	transition:
 		border-color var(--t-med) var(--ease-out),
 		background var(--t-med) var(--ease-out),
-		transform var(--t-med) var(--ease-out);
+		box-shadow var(--t-med) var(--ease-out);
 }
 .uses-box:hover {
 	border-color: var(--ink);
 	background: color-mix(in oklab, var(--bg-elev), var(--accent) 3%);
+	box-shadow: 0 12px 32px color-mix(in oklab, var(--accent), transparent 90%);
+}
+.uses-box > * {
+	transition: transform var(--t-med) var(--ease-out);
+	will-change: transform;
+}
+.uses-box:hover > * {
 	transform: translateY(-2px);
 }
 
@@ -4547,6 +4590,8 @@ html.is-transitioning {
 }
 .uses-box[data-hover]:hover {
 	background: color-mix(in oklab, var(--bg-elev), var(--accent) 6%);
+}
+.uses-box[data-hover]:hover > * {
 	transform: translateY(-3px);
 }
 .uses-box h3 {
@@ -4579,6 +4624,8 @@ html.is-transitioning {
 }
 .uses-box--link:hover {
 	background: color-mix(in oklab, var(--bg-elev), var(--accent) 6%);
+}
+.uses-box--link:hover > * {
 	transform: translateY(-3px);
 }
 
