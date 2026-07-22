@@ -192,6 +192,7 @@
 			page(tt('cmd.go.contact'), '/contact/'),
 			page(tt('cmd.go.uses'), '/uses/'),
 			page(tt('cmd.go.now'), '/now/'),
+			page(tt('cmd.go.terminal'), '/terminal/'),
 			page(tt('cmd.go.404'), '/404/')
 		];
 		const projects: Item[] = worksM.map((w) => {

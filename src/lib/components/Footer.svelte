@@ -58,6 +58,9 @@
 				<h4>{$t('footer.pages')}</h4>
 				<a href={$lhref('/now/')} on:click|preventDefault={() => go('/now/')} data-hover>/now</a>
 				<a href={$lhref('/uses/')} on:click|preventDefault={() => go('/uses/')} data-hover>/uses</a>
+				<a href={$lhref('/terminal/')} on:click|preventDefault={() => go('/terminal/')} data-hover
+					>/terminal</a
+				>
 				<a href={$lhref('/card/')} on:click|preventDefault={() => go('/card/')} data-hover>/card</a>
 				<a href={$lhref('/feed.xml')} target="_blank" rel="noopener" data-hover>RSS · /feed.xml ↗</a
 				>

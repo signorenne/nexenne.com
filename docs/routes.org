@@ -33,6 +33,7 @@ full routing picture, and always build internal links through =src/lib/paths.ts=
 - =now/+page.svelte= current work
 - =resume/+page.svelte= resume
 - =card/+page.svelte= business card generator
+- =terminal/+page.svelte= fake terminal and playful easter egg route
 - =colophon/+page.svelte= site colophon
 
 The =404/+page.svelte= not-found page stays at the root, because it is a single

@@ -50,6 +50,7 @@
 				{ key: 'c', label: $t('leader.contact'), glyph: '→', run: nav('/contact/') },
 				{ key: 'u', label: $t('leader.uses'), glyph: '→', run: nav('/uses/') },
 				{ key: 'n', label: $t('leader.now'), glyph: '→', run: nav('/now/') },
+				{ key: 'x', label: $t('leader.terminal'), glyph: '▣', run: nav('/terminal/') },
 				{ key: 'k', label: $t('leader.card'), glyph: '▢', run: nav('/card/') },
 				{ key: 'o', label: $t('leader.colophon'), glyph: '→', run: nav('/colophon/') }
 			]

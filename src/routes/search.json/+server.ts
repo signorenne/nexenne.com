@@ -32,6 +32,7 @@ const PAGES: { path: string; prefixes: string[]; titleKey: string }[] = [
 	{ path: '/contact/', prefixes: ['contact.'], titleKey: 'sidemap.contact' },
 	{ path: '/uses/', prefixes: ['uses.'], titleKey: 'sidemap.uses' },
 	{ path: '/now/', prefixes: ['now.'], titleKey: 'sidemap.now' },
+	{ path: '/terminal/', prefixes: ['terminal.'], titleKey: 'sidemap.terminal' },
 	{ path: '/colophon/', prefixes: ['colophon.'], titleKey: 'footer.colophon' }
 ];
 
