@@ -25,14 +25,37 @@ export interface SearchEntry {
 const LANGS: Lang[] = ['en', 'it'];
 
 // Static pages are assembled from their i18n keys (keys are prefixed per page).
-const PAGES: { path: string; prefixes: string[]; titleKey: string }[] = [
+// `exclude` drops key prefixes that would pollute the index: runtime output the
+// visitor never reads as page copy, and answers that are meant to be discovered
+// by using the page rather than by searching for them.
+const PAGES: { path: string; prefixes: string[]; exclude?: string[]; titleKey: string }[] = [
 	{ path: '/', prefixes: ['hero.', 'home.'], titleKey: 'sidemap.home' },
 	{ path: '/about/', prefixes: ['about.'], titleKey: 'sidemap.about' },
 	{ path: '/services/', prefixes: ['services.'], titleKey: 'sidemap.services' },
 	{ path: '/contact/', prefixes: ['contact.'], titleKey: 'sidemap.contact' },
 	{ path: '/uses/', prefixes: ['uses.'], titleKey: 'sidemap.uses' },
 	{ path: '/now/', prefixes: ['now.'], titleKey: 'sidemap.now' },
-	{ path: '/terminal/', prefixes: ['terminal.'], titleKey: 'sidemap.terminal' },
+	{
+		path: '/brand/',
+		prefixes: ['brand.'],
+		exclude: ['brand.toast.', 'brand.vector', 'brand.safearea'],
+		titleKey: 'sidemap.brand'
+	},
+	{
+		path: '/terminal/',
+		prefixes: ['terminal.'],
+		exclude: [
+			'terminal.easter.',
+			'terminal.fortunes',
+			'terminal.scan.',
+			'terminal.snake.',
+			'terminal.guess.',
+			'terminal.error.',
+			'terminal.help.',
+			'terminal.status.'
+		],
+		titleKey: 'sidemap.terminal'
+	},
 	{ path: '/colophon/', prefixes: ['colophon.'], titleKey: 'footer.colophon' }
 ];
 
@@ -58,11 +81,13 @@ function toText(html: string, max = 2200): string {
 		.slice(0, max);
 }
 
-function pageText(lang: Lang, prefixes: string[]): string {
+function pageText(lang: Lang, prefixes: string[], exclude: string[] = []): string {
 	const dict = DICT[lang];
 	const parts: string[] = [];
 	for (const key of Object.keys(dict)) {
-		if (prefixes.some((p) => key.startsWith(p))) parts.push(dict[key]);
+		if (!prefixes.some((p) => key.startsWith(p))) continue;
+		if (exclude.some((p) => key.startsWith(p))) continue;
+		parts.push(dict[key]);
 	}
 	return toText(parts.join(' '));
 }
@@ -88,7 +113,7 @@ export const GET: RequestHandler = () => {
 				path: page.path,
 				lang,
 				title: DICT[lang][page.titleKey] ?? '',
-				text: pageText(lang, page.prefixes)
+				text: pageText(lang, page.prefixes, page.exclude)
 			});
 		}
 		entries.push({

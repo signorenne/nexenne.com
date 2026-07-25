@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { DICT } from '$lib/i18n';
 
 vi.mock('$lib/content/blog.server', () => ({
 	getAllPosts: () => [
@@ -37,10 +38,20 @@ describe('search.json', () => {
 		const aboutIt = list.find((e) => e.path === '/about/' && e.lang === 'it');
 		expect(aboutEn?.text.length).toBeGreaterThan(0);
 		expect(aboutIt?.text.length).toBeGreaterThan(0);
-		// home, services, contact, uses, now, colophon, resume all present
-		for (const p of ['/', '/services/', '/contact/', '/uses/', '/now/', '/colophon/', '/resume/']) {
+		// Main static pages and the renamed brand assets route are all present.
+		for (const p of [
+			'/',
+			'/services/',
+			'/contact/',
+			'/uses/',
+			'/now/',
+			'/brand/',
+			'/colophon/',
+			'/resume/'
+		]) {
 			expect(list.some((e) => e.path === p)).toBe(true);
 		}
+		expect(list.some((e) => e.path === '/card/')).toBe(false);
 	});
 
 	it('indexes posts and work by path, per language', async () => {
@@ -58,6 +69,19 @@ describe('search.json', () => {
 		const en = list.find((e) => e.path === '/blog/post-one/' && e.lang === 'en');
 		expect(en?.text).toBe('Intro about types & safety');
 		expect(en?.text).not.toContain('<');
+	});
+
+	it('indexes the terminal page without leaking its easter eggs', async () => {
+		const list = await entries();
+		for (const lang of ['en', 'it']) {
+			const terminal = list.find((e) => e.path === '/terminal/' && e.lang === lang);
+			expect(terminal?.text).toContain(DICT[lang as 'en' | 'it']['terminal.lede']);
+			// Hidden commands and runtime chatter must stay out of the public index,
+			// so they can only be found by using the terminal.
+			expect(terminal?.text).not.toContain('xyzzy');
+			expect(terminal?.text).not.toContain(DICT[lang as 'en' | 'it']['terminal.easter.sudo']);
+			expect(terminal?.text).not.toContain(DICT[lang as 'en' | 'it']['terminal.fortunes']);
+		}
 	});
 
 	it('résumé text includes experience/skills content', async () => {

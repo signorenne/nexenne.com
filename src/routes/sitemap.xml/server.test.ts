@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { OPEN_TARGETS } from '$lib/terminal';
 
 vi.mock('$lib/content/blog.server', () => ({
 	getAllPosts: () => [
@@ -25,6 +26,9 @@ describe('sitemap.xml', () => {
 		expect(xml).toContain('<loc>https://nexenne.com/it/</loc>');
 		expect(xml).toContain('<loc>https://nexenne.com/about/</loc>');
 		expect(xml).toContain('<loc>https://nexenne.com/it/about/</loc>');
+		expect(xml).toContain('<loc>https://nexenne.com/brand/</loc>');
+		expect(xml).toContain('<loc>https://nexenne.com/it/brand/</loc>');
+		expect(xml).not.toContain('<loc>https://nexenne.com/card/</loc>');
 	});
 
 	it('emits both languages for posts and work', async () => {
@@ -73,5 +77,14 @@ describe('sitemap.xml', () => {
 	it('declares the xhtml namespace', async () => {
 		const xml = await body();
 		expect(xml).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"');
+	});
+
+	// The terminal's `open` command navigates by path, so a target the site does
+	// not publish would send visitors to a 404 the rest of the site cannot reach.
+	it('publishes every page the terminal can open', async () => {
+		const xml = await body();
+		for (const target of OPEN_TARGETS) {
+			expect(xml).toContain(`<loc>https://nexenne.com${target.path}</loc>`);
+		}
 	});
 });

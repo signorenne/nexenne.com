@@ -32,8 +32,25 @@ full routing picture, and always build internal links through =src/lib/paths.ts=
 - =uses/+page.svelte= tools and stack
 - =now/+page.svelte= current work
 - =resume/+page.svelte= resume
-- =card/+page.svelte= business card generator
-- =terminal/+page.svelte= fake terminal and playful easter egg route
+- =brand/+page.svelte= brand asset library for print, channel, developer, and
+  social graphics. The presets live in =src/lib/brand/banners.ts=: each one
+  declares its canvas, the safe area that stays clear of the platform's own
+  chrome and crops, whether the mascot sits beside the motto or above it, and
+  for the profile covers whether the lockup anchors to the safe area's left edge
+  instead of centring in it (the avatar is an obstacle there, not a margin).
+  Adding a channel is one preset plus its label, group, and note keys in both
+  languages; the layout maths and the containment tests come for free. All of it
+  measures the mascot's drawn outline, never the square box around it, which is
+  a third wider than the drawing
+- =card/+page.svelte= compatibility entry that renders the brand assets but is
+  marked =noindex= and omitted from navigation, search, and the sitemap
+- =terminal/+page.svelte= browser-local virtual shell, navigation tool, and
+  playful easter egg route. =src/lib/terminal.ts= holds the command registry,
+  which is the single source of truth: tab completion, the generated =help=
+  index, the =usage:= lines, =ls=, and the =open= targets all read from it, so a
+  new command is one registry entry plus its =terminal.cmd.*= description key in
+  both languages. Commands marked =hidden= still run but stay out of =help= and
+  completion, and their strings are excluded from the search index (see below)
 - =colophon/+page.svelte= site colophon
 
 The =404/+page.svelte= not-found page stays at the root, because it is a single
@@ -56,7 +73,10 @@ with =lang: ''= and one with =lang: 'it'=) so both URLs prerender.
 - =feed.xml/+server.ts= English RSS feed
 - =it/feed.xml/+server.ts= Italian RSS feed
 - =sitemap.xml/+server.ts= sitemap with hreflang alternates
-- =search.json/+server.ts= prerendered search index for the command palette
+- =search.json/+server.ts= prerendered search index for the command palette. A
+  static page is indexed by i18n key prefix; =exclude= drops prefixes that
+  should not be searchable, such as runtime output and answers meant to be
+  discovered by using the page
 - =og/[slug].png/+server.ts= per-article Open Graph image
 
 * Adding A Page
@@ -66,5 +86,13 @@ with =lang: ''= and one with =lang: 'it'=) so both URLs prerender.
 3. Add the route to =src/lib/data.ts= if it belongs in navigation.
 4. Add labels to =src/lib/i18n.ts= in both languages (the parity test enforces
    this).
-5. Use =lpath=, =lhref=, or =lgoto= from =src/lib/paths.ts= for every internal
+5. Add the route to =SECTION_KEY= in =src/routes/+layout.svelte=. That map owns
+   the document title, =og:title=, and =twitter:title=; a route missing from it
+   silently falls back to the bare site name. Do not work around this with a
+   page-level =svelte:head= title, because that fixes only the =title= tag and
+   leaves the social metadata wrong.
+6. Register the page in =src/routes/search.json/+server.ts= and
+   =src/routes/sitemap.xml/+server.ts= unless it is deliberately unlisted, and
+   say why in the entry when it is.
+7. Use =lpath=, =lhref=, or =lgoto= from =src/lib/paths.ts= for every internal
    link, never a hand-written path.

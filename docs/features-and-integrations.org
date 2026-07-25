@@ -38,11 +38,43 @@ maintenance.
 
 - Web fonts live in =static/fonts/= (Inter Tight, Space Grotesk, JetBrains Mono
   with its italic, Fraunces, plus the Nexenne Icons subset).
+- The brand assets in =src/lib/brand/= pin JetBrains Mono rather than following
+  =--font-display=, so an export does not change face with the font-pairing
+  tweak. It is the same family the hero shows by default and the only one here
+  that ships a real italic, which the motto needs.
+- Nothing in =src/app.css= draws with Space Grotesk any more; its =@font-face=
+  stays declared but unused, so it is never fetched. The satori copy below is
+  still live.
 - The =@font-face= rules and the first-paint =<link rel="preload">= tags are in
   =src/app.css= and =src/app.html=. There is no third-party font request.
 - =src/lib/og/fonts/= holds TTF copies (Space Grotesk and JetBrains Mono) used
   only by satori at build time, because satori cannot read woff2. These are not
   shipped to visitors.
+
+* Brand asset platform specs
+
+Each banner preset in =src/lib/brand/banners.ts= encodes a real platform
+requirement, not a guess. The constraints are asserted in the "platform specs"
+block of =banners.test.ts=, so changing a safe area fails the build if it
+violates the spec it came from.
+
+| channel           | canvas    | constraint that drives the safe area              |
+|-------------------+-----------+---------------------------------------------------|
+| YouTube           | 2560x1440 | only the central 1546x423 shows on every device    |
+| GitHub            | 1280x640  | cropped to 2:1, keep 50px clear of every edge      |
+| Link preview (OG) | 1200x630  | unfurlers crop toward 1.91:1                       |
+| LinkedIn          | 1584x396  | profile photo covers the lower left, about 24%     |
+| X                 | 1500x500  | avatar covers the bottom-left 250x250; 50px top    |
+| Facebook          | 1702x630  | desktop shows 820x312, mobile 640x360              |
+| Instagram 4:5     | 1080x1350 | profile grid square-crops to the central 1080x1080 |
+| Instagram square  | 1080x1080 | no chrome                                          |
+| Instagram story   | 1080x1920 | story UI reserves the top and bottom 250px         |
+
+These change over time. When revisiting, check the platform's own help pages
+first: third-party "image size" articles disagree with each other and with what
+a real profile renders. The LinkedIn photo overlap is the live example, where
+published guides claim 36% and a real profile measures 24%; the preset uses 27%
+so it clears either.
 
 * Bilingual URL routing
 

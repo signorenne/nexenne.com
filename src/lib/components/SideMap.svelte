@@ -16,7 +16,8 @@
 	function routeFromPath(path: string): string {
 		const p = stripLang(path).replace(/^\/+|\/+$/g, '');
 		if (!p) return 'home';
-		return p.split('/')[0];
+		const route = p.split('/')[0];
+		return route === 'card' ? 'brand' : route;
 	}
 
 	function routeToPath(id: string): string {

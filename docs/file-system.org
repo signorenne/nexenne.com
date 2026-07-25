@@ -57,6 +57,7 @@ src/
 
 | folder/file             | owns                                                |
 |-------------------------+-----------------------------------------------------|
+| =brand/=                | banner presets, card formats, mascot, SVG export    |
 | =components/=           | reusable Svelte components                          |
 | =content/=              | server-only content loading, parsing, feeds         |
 | =stores/=               | client-side Svelte stores                           |
@@ -64,9 +65,11 @@ src/
 | =og/=                   | Open Graph image rendering                          |
 | =data.ts=               | site facts, navigation, stack, experience data       |
 | =i18n.ts=               | app-shell labels and language store                 |
+| =colors.ts=             | resolving theme tokens to sRGB for canvas and SVG   |
 | =paths.ts=              | language-aware links and navigation helpers         |
 | =highlight.ts=          | search-result highlighting                          |
-| =share.ts=              | native share and copy fallback                      |
+| =share.ts=              | native share, and copy-to-clipboard with a fallback |
+| =terminal.ts=           | /terminal command registry and game logic           |
 | =tweaks.ts=             | visual preference model                             |
 
 * Content

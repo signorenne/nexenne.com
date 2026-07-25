@@ -33,7 +33,36 @@ route until another page needs it.
 * Tools
 
 - =CommandPalette.svelte= keyboard/search palette
+- =MatrixRain.svelte= canvas digital rain behind the terminal log, driven by the
+  =matrix= command. Draws only glyphs JetBrains Mono has, and paints one still
+  frame instead of animating when motion is off
 - =Tweaks.svelte= visual preference panel
+- =BrandAssets.svelte= the /brand workspace: picks an asset, draws the selected
+  banner live, and exports it. A banner carries the mascot and the site motto and
+  nothing else; the motto is read from the =hero.motto.*= keys so a banner can
+  never disagree with the home page
+- =BusinessCardGenerator.svelte= print-card layouts and front/back exports used
+  inside the brand assets route
+
+Both read their data from =src/lib/brand/=: =banners.ts= owns the presets and the
+layout maths, =cards.ts= the print formats, the front lockup and the motto,
+=mascot.ts= the shared outline and its measured bounding box, =geometry.ts= the
+shared =Box=, and =export.ts= the SVG/PNG download path. Put new brand logic
+there rather than in either component, so it stays testable and the two cannot
+drift apart.
+
+Every asset is built from the same two pieces and marks them the same way:
+
+- The motto is assembled from the =hero.motto.*= keys, never stored again. A
+  banner keeps its four lines; a card folds them into one. The word the hero
+  tints and the word it underlines carry those marks in both.
+- The underline mirrors =.hero-display .sweep::after= in =src/app.css=. Its
+  position starts from a character-count estimate so it renders server-side, then
+  the component refines it with =getSubStringLength= once the display face has
+  loaded. Exports serialize the DOM, so the measured value is what ships.
+- Safe areas are one idea with two meanings: a platform's crop for a banner, the
+  print trim margin for a card. One toggle in the workspace header draws both,
+  and the guides are =data-noexport= so they never reach a file.
 
 * When To Extract
 

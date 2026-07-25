@@ -80,7 +80,9 @@
 		now: 'sidemap.now',
 		uses: 'sidemap.uses',
 		contact: 'sidemap.contact',
-		card: 'sidemap.card',
+		brand: 'sidemap.brand',
+		card: 'sidemap.brand',
+		terminal: 'sidemap.terminal',
 		colophon: 'footer.colophon',
 		notfound: '404.eyebrow'
 	};

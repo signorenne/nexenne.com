@@ -61,7 +61,9 @@
 				<a href={$lhref('/terminal/')} on:click|preventDefault={() => go('/terminal/')} data-hover
 					>/terminal</a
 				>
-				<a href={$lhref('/card/')} on:click|preventDefault={() => go('/card/')} data-hover>/card</a>
+				<a href={$lhref('/brand/')} on:click|preventDefault={() => go('/brand/')} data-hover
+					>/brand</a
+				>
 				<a href={$lhref('/feed.xml')} target="_blank" rel="noopener" data-hover>RSS · /feed.xml ↗</a
 				>
 				<a href={$lhref('/colophon/')} on:click|preventDefault={() => go('/colophon/')} data-hover
