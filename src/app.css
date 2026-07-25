@@ -202,6 +202,11 @@
 	--grid: rgba(255, 255, 255, 0.035);
 	--shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.7);
 	--noise-op: 0.04;
+
+	/* Terminal output colors: fixed hues, because a shell's red-for-error and
+	   green-for-matrix must not follow the selected accent. */
+	--term-error: oklch(74% 0.18 32);
+	--term-matrix: oklch(80% 0.2 145);
 }
 
 [data-theme="light"] {
@@ -220,6 +225,9 @@
 	--accent: oklch(48% 0.22 285);
 	--accent-2: oklch(52% 0.16 220);
 	--accent-ink: #ffffff;
+
+	--term-error: oklch(52% 0.2 32);
+	--term-matrix: oklch(46% 0.16 145);
 }
 
 *,
@@ -6531,170 +6539,176 @@ main[data-page="uses"] .uses-box h3 {
 	border: 0;
 }
 
+/* --- /terminal ---------------------------------------------------------- */
+
 .terminal-title {
 	position: relative;
+}
+.terminal-lede {
+	margin-top: 16px;
 }
 .terminal-section {
 	padding-top: var(--sp-6);
 }
 .terminal-grid {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+	grid-template-columns: minmax(0, 1fr) minmax(260px, 310px);
 	gap: var(--sp-5);
 	align-items: start;
 }
-.terminal-panel {
-	border: 1px solid var(--line);
-	border-radius: var(--r-md);
-	background: color-mix(in oklab, var(--bg-elev), var(--bg) 28%);
-	box-shadow: var(--shadow);
-	overflow: hidden;
-}
-.terminal-panel-head {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--sp-3);
-	padding: 14px 16px;
-	border-bottom: 1px solid var(--line);
-}
-.terminal-chip-row {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: flex-end;
-	gap: 6px;
-	font-family: var(--font-mono);
-	font-size: 10px;
-	color: var(--muted);
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-}
-.terminal-chip-row span {
-	padding: 3px 7px;
-	border: 1px solid var(--line);
-	border-radius: var(--r-pill);
-	background: var(--bg);
-}
+
+/* The shell is the whole panel: chrome, log, prompt and status live in one
+   bordered box so the page has a single frame instead of a box inside a box. */
 .terminal-shell {
 	position: relative;
-	min-height: min(620px, 72vh);
+	min-width: 0;
+	height: clamp(460px, 66svh, 680px);
 	display: grid;
-	grid-template-rows: auto 1fr auto;
-	background:
-		linear-gradient(color-mix(in oklab, var(--accent), transparent 96%) 1px, transparent 1px),
-		linear-gradient(
-			90deg,
-			color-mix(in oklab, var(--accent), transparent 97%) 1px,
-			transparent 1px
-		),
-		color-mix(in oklab, var(--bg), black 8%);
-	background-size:
-		100% 26px,
-		32px 100%,
-		auto;
+	grid-template-rows: auto minmax(0, 1fr) auto auto;
+	border: 1px solid var(--line);
+	border-radius: var(--r-md);
+	background: color-mix(in oklab, var(--bg), black 6%);
+	box-shadow: var(--shadow);
 	font-family: var(--font-mono);
-	cursor: text;
 	overflow: hidden;
 }
+.terminal-shell:focus-within {
+	border-color: color-mix(in oklab, var(--accent), var(--line) 45%);
+}
+/* A single soft wash from the top-left corner, kept behind every row. */
 .terminal-shell::before {
 	content: "";
 	position: absolute;
 	inset: 0;
 	pointer-events: none;
 	background: radial-gradient(
-		circle at 20% 0%,
-		color-mix(in oklab, var(--accent), transparent 86%),
-		transparent 34%
+		circle at 18% -10%,
+		color-mix(in oklab, var(--accent), transparent 88%),
+		transparent 42%
 	);
-	opacity: 0.7;
 }
-.terminal-shell.term-matrix::after {
-	content: "0101\\A 1100\\A 0011\\A 1010\\A 0110\\A 1001\\A 1110";
-	white-space: pre;
-	position: absolute;
-	inset: -20% 0 auto auto;
-	width: 36%;
-	min-height: 140%;
-	color: color-mix(in oklab, var(--accent), lime 24%);
-	font-size: 18px;
-	line-height: 1.8;
-	letter-spacing: 0.4em;
-	opacity: 0.14;
-	animation: terminal-rain 2.8s linear infinite;
-	pointer-events: none;
-}
-.terminal-bar {
+.terminal-shell > * {
 	position: relative;
 	z-index: 1;
+}
+
+.terminal-bar {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 10px 14px;
+	gap: var(--sp-3);
+	padding: 10px 12px 10px 16px;
 	border-bottom: 1px solid var(--line);
-	background: color-mix(in oklab, var(--bg-elev), transparent 8%);
+	background: color-mix(in oklab, var(--bg-elev), transparent 12%);
+}
+.terminal-session {
+	display: inline-flex;
+	align-items: center;
+	gap: 9px;
 	color: var(--muted);
 	font-size: 11px;
-}
-.terminal-bar span {
-	width: 10px;
-	height: 10px;
-	border-radius: 50%;
-	border: 1px solid var(--line-2);
-	background: var(--bg);
-}
-.terminal-bar span:nth-child(1) {
-	background: color-mix(in oklab, oklch(68% 0.2 30), var(--bg) 20%);
-}
-.terminal-bar span:nth-child(2) {
-	background: color-mix(in oklab, oklch(80% 0.16 90), var(--bg) 20%);
-}
-.terminal-bar span:nth-child(3) {
-	background: color-mix(in oklab, oklch(72% 0.18 145), var(--bg) 20%);
-}
-.terminal-bar strong {
-	margin-left: 6px;
-	font-weight: 500;
 	letter-spacing: 0.08em;
 }
-.terminal-log {
-	position: relative;
-	z-index: 1;
-	overflow: auto;
-	padding: 18px;
-	overscroll-behavior: contain;
+.terminal-session::before {
+	content: "";
+	width: 7px;
+	height: 7px;
+	border-radius: 2px;
+	background: var(--accent);
 }
-.terminal-log pre {
-	margin: 0 0 10px 0;
+.terminal-bar-actions {
+	display: flex;
+	gap: 4px;
+	margin-left: auto;
+}
+.terminal-bar-actions button,
+.terminal-submit {
+	display: grid;
+	place-items: center;
+	border: 1px solid transparent;
+	border-radius: var(--r-xs);
+	background: transparent;
+	color: var(--muted);
+	font-family: var(--font-mono);
+	cursor: pointer;
+	transition:
+		color var(--t-fast) var(--ease),
+		border-color var(--t-fast) var(--ease),
+		background var(--t-fast) var(--ease);
+}
+.terminal-bar-actions button {
+	width: 27px;
+	height: 25px;
+	font-size: 14px;
+}
+.terminal-bar-actions button:hover,
+.terminal-bar-actions button:focus-visible,
+.terminal-submit:hover,
+.terminal-submit:focus-visible {
+	color: var(--ink);
+	border-color: var(--line-2);
+	background: var(--bg);
+	outline: 0;
+}
+
+.terminal-log {
+	min-height: 0;
+	overflow: auto;
+	padding: 16px 18px;
+	overscroll-behavior: contain;
+	scrollbar-gutter: stable;
+	cursor: text;
+}
+.terminal-line {
+	margin: 0 0 8px 0;
 	white-space: pre-wrap;
-	word-break: break-word;
+	overflow-wrap: anywhere;
 	font-family: var(--font-mono);
 	font-size: clamp(12px, 1.8vw, 13px);
-	line-height: 1.55;
+	line-height: 1.6;
 	color: var(--ink-2);
 }
-.terminal-log pre.terminal-in {
+.terminal-line[data-kind="system"] {
+	color: var(--muted);
+}
+.terminal-line[data-kind="error"] {
+	color: var(--term-error);
+}
+.terminal-line[data-kind="art"] {
+	margin-bottom: 12px;
+	color: var(--ink);
+	line-height: 1.35;
+}
+/* Echoed commands: the prompt stays muted so the typed text reads first. */
+.terminal-line.is-in {
+	margin-top: 14px;
 	color: var(--accent);
 }
-.terminal-log pre.terminal-err {
-	color: oklch(74% 0.18 32);
+.terminal-line.is-in:first-child {
+	margin-top: 0;
 }
-.terminal-log pre.terminal-art {
-	color: var(--ink);
-	text-shadow: 0 0 12px color-mix(in oklab, var(--accent), transparent 74%);
+.terminal-line-prompt {
+	margin-right: 0.6ch;
+	color: var(--muted);
+	user-select: none;
 }
+
 .terminal-form {
-	position: relative;
-	z-index: 1;
 	display: grid;
-	grid-template-columns: auto minmax(0, 1fr);
+	grid-template-columns: auto minmax(0, 1fr) auto;
 	gap: 10px;
 	align-items: center;
-	padding: 14px 18px;
+	padding: 12px 12px 12px 16px;
 	border-top: 1px solid var(--line);
-	background: color-mix(in oklab, var(--bg-elev), transparent 8%);
+	background: color-mix(in oklab, var(--bg-elev), transparent 12%);
 	color: var(--accent);
 	font-family: var(--font-mono);
 	font-size: 13px;
+}
+.terminal-prompt {
+	white-space: nowrap;
+}
+.terminal-prompt-short {
+	display: none;
 }
 .terminal-form input {
 	min-width: 0;
@@ -6708,46 +6722,280 @@ main[data-page="uses"] .uses-box h3 {
 .terminal-form input::placeholder {
 	color: var(--muted);
 }
+.terminal-submit {
+	width: 30px;
+	height: 28px;
+	color: var(--accent);
+	font-size: 16px;
+}
+
+.terminal-statusbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--sp-3);
+	padding: 7px 14px;
+	border-top: 1px solid var(--line);
+	background: var(--bg);
+	color: var(--muted);
+	font-family: var(--font-mono);
+	font-size: 10px;
+	letter-spacing: 0.04em;
+}
+.terminal-status {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	white-space: nowrap;
+}
+.terminal-status.is-live {
+	color: var(--accent);
+}
+.terminal-status-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: currentcolor;
+}
+/* Only a running task pulses, so the dot means something rather than decorating. */
+.terminal-status.is-live .terminal-status-dot {
+	animation: terminal-pulse 1.6s var(--ease) infinite;
+}
+.terminal-status-meta {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* matrix: real falling glyphs on a canvas (MatrixRain.svelte), plus a green cast
+   on the log so the whole panel reads as the mode. */
+.terminal-shell > .terminal-rain {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	opacity: 0.55;
+}
+.terminal-shell.is-matrix .terminal-line,
+.terminal-shell.is-matrix .terminal-form input {
+	color: var(--term-matrix);
+}
+.terminal-shell.is-matrix .terminal-line[data-kind="error"] {
+	color: var(--term-error);
+}
+
 .terminal-side {
 	display: grid;
 	gap: var(--sp-4);
 }
-@keyframes terminal-rain {
-	from {
-		transform: translateY(-8%);
+.terminal-box {
+	border: 1px solid var(--line);
+	border-radius: var(--r-md);
+	padding: var(--sp-4) var(--sp-5) var(--sp-5);
+	background: var(--bg-elev);
+}
+.terminal-box-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 10px;
+	margin-bottom: 14px;
+}
+.terminal-box-head h3 {
+	margin: 0;
+	font-size: var(--fs-md);
+}
+.terminal-box-head > span {
+	color: var(--muted);
+	font-family: var(--font-mono);
+	font-size: 9.5px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+
+/* One row per command, read like a short man page rather than a button grid. */
+.terminal-shortcuts {
+	display: grid;
+	gap: 2px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.terminal-shortcuts button {
+	width: 100%;
+	display: grid;
+	grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+	align-items: baseline;
+	gap: 10px;
+	padding: 7px 10px;
+	border: 1px solid transparent;
+	border-radius: var(--r-sm);
+	background: transparent;
+	text-align: left;
+	cursor: pointer;
+	transition:
+		border-color var(--t-fast) var(--ease),
+		background var(--t-fast) var(--ease);
+}
+.terminal-shortcuts button:hover,
+.terminal-shortcuts button:focus-visible {
+	border-color: var(--line-2);
+	background: var(--bg);
+	outline: 0;
+}
+.terminal-shortcut-name {
+	font-family: var(--font-mono);
+	font-size: 12px;
+	color: var(--accent);
+	white-space: nowrap;
+}
+.terminal-shortcut-desc {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--muted);
+	font-size: 11.5px;
+}
+.terminal-shortcuts button:hover .terminal-shortcut-desc,
+.terminal-shortcuts button:focus-visible .terminal-shortcut-desc {
+	color: var(--ink-2);
+}
+
+.terminal-note {
+	margin: 0 0 14px;
+	color: var(--ink-2);
+	font-size: 13px;
+	line-height: 1.55;
+}
+.terminal-keys {
+	display: grid;
+	gap: 7px;
+	margin: 0;
+	padding: 14px 0 0;
+	border-top: 1px dashed var(--line);
+	list-style: none;
+}
+.terminal-keys li {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	color: var(--muted);
+	font-size: 11.5px;
+}
+.terminal-keys kbd {
+	flex: none;
+	min-width: 56px;
+	padding: 3px 7px;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	background: var(--bg);
+	color: var(--ink-2);
+	font-family: var(--font-mono);
+	font-size: 10.5px;
+	text-align: center;
+}
+
+.terminal-controller {
+	display: grid;
+	gap: 14px;
+	border-color: color-mix(in oklab, var(--accent), var(--line) 55%);
+}
+.terminal-dpad {
+	display: grid;
+	grid-template-columns: repeat(3, 42px);
+	grid-template-rows: repeat(2, 42px);
+	justify-content: center;
+	gap: 5px;
+}
+.terminal-dpad button {
+	display: grid;
+	place-items: center;
+	border: 1px solid var(--line-2);
+	border-radius: 7px;
+	background: var(--bg);
+	color: var(--ink);
+	font-size: 18px;
+	cursor: pointer;
+	box-shadow: 0 3px 0 var(--line);
+}
+.terminal-dpad button:active {
+	transform: translateY(2px);
+	box-shadow: 0 1px 0 var(--line);
+}
+.terminal-dpad button:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+.terminal-dpad .is-up {
+	grid-column: 2;
+}
+.terminal-dpad .is-left {
+	grid-column: 1;
+	grid-row: 2;
+}
+.terminal-dpad .is-down {
+	grid-column: 2;
+	grid-row: 2;
+}
+.terminal-dpad .is-right {
+	grid-column: 3;
+	grid-row: 2;
+}
+
+@keyframes terminal-pulse {
+	0%,
+	100% {
+		opacity: 1;
 	}
-	to {
-		transform: translateY(18%);
+	50% {
+		opacity: 0.25;
 	}
 }
-.motion-off .terminal-shell.term-matrix::after {
+.motion-off .terminal-status.is-live .terminal-status-dot {
 	animation: none;
 }
+
 @media (max-width: 900px) {
 	.terminal-grid {
 		grid-template-columns: 1fr;
 	}
 	.terminal-shell {
-		min-height: 68vh;
+		height: clamp(440px, 68svh, 640px);
+	}
+	.terminal-side {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		align-items: start;
+	}
+	.terminal-controller {
+		grid-column: span 2;
 	}
 }
 @media (max-width: 560px) {
-	.terminal-panel-head,
-	.terminal-form {
-		grid-template-columns: 1fr;
-	}
-	.terminal-panel-head {
-		align-items: flex-start;
-		flex-direction: column;
-	}
-	.terminal-chip-row {
-		justify-content: flex-start;
-	}
 	.terminal-log {
 		padding: 14px;
 	}
 	.terminal-form {
+		gap: 8px;
+		padding-left: 14px;
 		font-size: 12px;
+	}
+	.terminal-prompt-full {
+		display: none;
+	}
+	.terminal-prompt-short {
+		display: inline;
+	}
+	.terminal-statusbar {
+		padding: 7px 12px;
+	}
+	.terminal-status-meta {
+		display: none;
+	}
+	.terminal-side {
+		grid-template-columns: 1fr;
+	}
+	.terminal-controller {
+		grid-column: auto;
 	}
 }
 

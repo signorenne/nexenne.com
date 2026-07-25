@@ -2,4 +2,4 @@
 	import BrandAssets from '$lib/components/BrandAssets.svelte';
 </script>
 
-<BrandAssets legacy />
+<BrandAssets />
