@@ -1930,7 +1930,9 @@ a.chip:hover,
 	border-radius: var(--r-md);
 	overflow: hidden;
 	background: var(--bg-elev);
-	padding: 20px;
+	/* Slightly tighter at the foot than the sides: the tag chips carry their own
+	   padding, so equal insets leave them looking like they float. */
+	padding: 20px 20px 14px;
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
@@ -2017,8 +2019,11 @@ a.chip:hover,
 	overflow: hidden;
 	position: relative;
 
-	mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
-	-webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+	/* The fade only has to signal "there is more", so keep it short: a long one
+	   ends the readable text well above the tags and leaves the card looking
+	   half empty. */
+	mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
+	-webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
 }
 .bento-item .summary .marquee-track-y {
 	margin: 0;
@@ -2052,6 +2057,9 @@ a.chip:hover,
 	gap: 6px;
 	flex-wrap: wrap;
 	flex: none;
+	/* Pulls the row down into part of the card's own flex gap, so the summary
+	   above it keeps more of the height. */
+	margin-top: -2px;
 }
 .bento-thumb {
 	position: absolute;
