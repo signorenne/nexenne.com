@@ -82,6 +82,12 @@ export interface WorkMeta {
 	coverFit: 'cover' | 'contain';
 	/** Curated for the home page, instead of taking whatever is most recent. */
 	spotlight: boolean;
+	/**
+	 * Drawn as a large card in both grids. A property of the project, not of
+	 * where it happens to land: the order shifts as work is published, and tying
+	 * size to a grid position silently hands the big slot to another project.
+	 */
+	feature: boolean;
 	lang: ContentLang;
 	translatedFrom: ContentLang | null;
 	autoTranslated: boolean;

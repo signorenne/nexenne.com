@@ -62,11 +62,13 @@ study opts in with =spotlight: true= (=#\+SPOTLIGHT:= in Org), and
 back to recent work, so the section is never empty because frontmatter is
 missing.
 
-Flag both language versions of a project together. The layout in
-=.bento--spotlight= is sized for the current count: the card shapes are picked so
-they tile a four-column and a two-column grid without leaving holes. Adding or
-removing a project changes that, so re-derive the spans rather than assuming the
-old ones still fit.
+=feature: true= draws a project as a large card in both grids. Keep it to a few:
+the shape only reads as emphasis while most cards are the regular size.
+
+Flag both language versions of a project together. Card size follows these flags
+rather than a grid position, because the order is newest-first and shifts as work
+is published; an earlier version keyed the large cards to nth-child and handed
+the big slot to whichever project drifted into it.
 
 * Parser
 
