@@ -2086,14 +2086,23 @@ a.chip:hover,
 .bento--varied .b-4 {
 	grid-column: span 2;
 }
-/* The home spotlight is a fixed set of five, so the widths are chosen to tile
-   rather than to vary: 2 + 1 + 1 then 2 + 2 fills four columns exactly, and
-   still fills two columns exactly when the grid narrows. All five keep the
-   regular height, so none of them opens a gap under its copy. */
+/* The home spotlight is a fixed set of five and gets the same editorial rhythm
+   as the project index: two tall features, two single cards, one wide. The
+   shapes are chosen so the set tiles rather than leaves holes behind it, which
+   is what a naive pattern does at five items:
+     2x3 + 1x2 + 1x2 + 2x3 + 2x2 = 20 cells, exactly 4 columns by 5 tracks,
+   and exactly 2 columns by 10 tracks when the grid narrows. */
 .bento--spotlight .b-1,
-.bento--spotlight .b-4,
+.bento--spotlight .b-4 {
+	grid-column: span 2;
+	grid-row: span 3;
+}
 .bento--spotlight .b-5 {
 	grid-column: span 2;
+}
+.bento--spotlight .b-1 .bento-cover,
+.bento--spotlight .b-4 .bento-cover {
+	height: 340px;
 }
 /* Never span wider than the grid itself once it drops to one or two columns. */
 @media (max-width: 900px) {
@@ -2114,6 +2123,16 @@ a.chip:hover,
 	.bento--spotlight .b-4,
 	.bento--spotlight .b-5 {
 		grid-column: span 1;
+	}
+	/* One column: every card the same shape, so the feature cover does not end up
+	   nearly square in a narrow card. */
+	.bento--spotlight .b-1,
+	.bento--spotlight .b-4 {
+		grid-row: span 2;
+	}
+	.bento--spotlight .b-1 .bento-cover,
+	.bento--spotlight .b-4 .bento-cover {
+		height: 120px;
 	}
 }
 
