@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { lpath, stripLang } from '$lib/paths';
 	import { SIDEMAP_ROUTES } from '$lib/data';
 	import { t } from '$lib/i18n';
@@ -24,11 +24,25 @@
 		return id === 'home' ? lpath('/') : lpath(`/${id}/`);
 	}
 
-	function navTo(id: string, e: Event) {
-		e.preventDefault();
-		goto(routeToPath(id));
+	function close() {
 		mobileNavOpen.set(false);
 	}
+
+	function navTo(id: string, e: Event) {
+		e.preventDefault();
+		// Closed here as well as in beforeNavigate: tapping the route you are
+		// already on does not navigate, so nothing else would close the drawer.
+		close();
+		goto(routeToPath(id));
+	}
+
+	/**
+	 * Any navigation closes the drawer, wherever it came from: the top bar, the
+	 * footer, the command palette, a link inside the page, or the browser's back
+	 * button. Closing before the navigation runs means the drawer is gone during
+	 * the page transition rather than lingering into the next route.
+	 */
+	beforeNavigate(close);
 
 	let asideEl: HTMLElement;
 
@@ -38,7 +52,7 @@
 			const max = h.scrollHeight - h.clientHeight;
 			scrollPct = max > 0 ? Math.min(1, h.scrollTop / max) : 0;
 			// Scrolling the page dismisses the open mobile drawer immediately.
-			if (get(mobileNavOpen)) mobileNavOpen.set(false);
+			if (get(mobileNavOpen)) close();
 		};
 		window.addEventListener('scroll', onScroll, { passive: true });
 		onScroll();
@@ -51,12 +65,12 @@
 			if (!target) return;
 			if (asideEl && asideEl.contains(target)) return;
 			if (target.closest('.nav-burger')) return;
-			mobileNavOpen.set(false);
+			close();
 		};
 		document.addEventListener('pointerdown', onOutside, true);
 
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') mobileNavOpen.set(false);
+			if (e.key === 'Escape') close();
 		};
 		document.addEventListener('keydown', onKey);
 
@@ -69,11 +83,7 @@
 </script>
 
 {#if $mobileNavOpen}
-	<button
-		class="sidemap-backdrop"
-		aria-label={$t('a11y.closeMenu')}
-		on:click={() => mobileNavOpen.set(false)}
-	></button>
+	<button class="sidemap-backdrop" aria-label={$t('a11y.closeMenu')} on:click={close}></button>
 {/if}
 <aside
 	bind:this={asideEl}
