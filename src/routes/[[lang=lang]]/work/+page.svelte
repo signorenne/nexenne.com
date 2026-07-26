@@ -119,8 +119,9 @@
 		<div class="bento bento--varied">
 			{#each filtered as w, i (w.slug)}
 				<div
-					class="bento-item b-{(i % 7) + 1}"
+					class="bento-item"
 					class:has-cover={!!w.cover}
+					class:is-feature={w.feature}
 					on:click={() => go(`/work/${w.slug}/`)}
 					on:keydown={(e) => e.key === 'Enter' && go(`/work/${w.slug}/`)}
 					role="button"

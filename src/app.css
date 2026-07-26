@@ -2068,76 +2068,40 @@ a.chip:hover,
 	opacity: 0.85;
 }
 
-/* Every card is two half-tracks unless a variant says otherwise. */
+/* Every card is two half-tracks unless it is a feature. */
 .bento-item {
 	grid-column: span 1;
 	grid-row: span 2;
 }
-/* Bento rhythm: one tall feature, one wide, the rest single. Opt-in, because it
-   only pays off in a long list that dense flow can backfill. A short, fixed set
-   like the home page's four cards reads better as one even row. */
-.bento--varied .b-1 {
-	grid-column: span 2;
-	/* One half-track taller than the rest, not twice as tall: a full extra card
-	   of height is more than its copy can fill, and the slack lands under the
-	   summary as an empty gap. */
-	grid-row: span 3;
-}
-.bento--varied .b-4 {
-	grid-column: span 2;
-}
-/* The home spotlight is a fixed set of eight and gets the same editorial rhythm
-   as the project index: three tall features, four single cards, and a wide one
-   closing the grid. The shapes are chosen so the set tiles rather than leaving
-   holes behind it:
-     3 x 2x3 + 4 x 1x2 + 1 x 2x2 = 30 cells across 4 columns by 8 tracks.
-   Re-derive this if the number of spotlighted projects changes, or if their
-   order does: the feature slots follow the newest-first order, not the slug. */
-.bento--spotlight .b-1,
-.bento--spotlight .b-4,
-.bento--spotlight .b-7 {
+/* A feature card is wider and one half-track taller, with a cover to match.
+   Which projects get it is a content decision (`feature: true` in frontmatter),
+   not a grid position: the order changes as work is published, and keying this
+   to nth-child hands the big slot to whichever project happens to land there. */
+.bento .is-feature {
 	grid-column: span 2;
 	grid-row: span 3;
 }
-.bento--spotlight .b-8 {
-	grid-column: span 2;
-}
-.bento--spotlight .b-1 .bento-cover,
-.bento--spotlight .b-4 .bento-cover,
-.bento--spotlight .b-7 .bento-cover {
+.bento .is-feature .bento-cover {
 	height: 340px;
 }
 /* Never span wider than the grid itself once it drops to one or two columns. */
 @media (max-width: 900px) {
-	.bento--varied .b-1 {
+	.bento .is-feature {
 		grid-column: span 2;
 		grid-row: span 2;
 	}
-	/* Once the feature card is regular height it takes the regular cover too:
-	   keeping the tall one here would leave the summary a single faded line. */
-	.bento--varied .b-1 .bento-cover {
-		height: 120px;
+	.bento .is-feature .bento-cover {
+		height: 200px;
 	}
 }
 @media (max-width: 620px) {
-	.bento--varied .b-1,
-	.bento--varied .b-4,
-	.bento--spotlight .b-1,
-	.bento--spotlight .b-4,
-	.bento--spotlight .b-7,
-	.bento--spotlight .b-8 {
-		grid-column: span 1;
-	}
 	/* One column: every card the same shape, so the feature cover does not end up
 	   nearly square in a narrow card. */
-	.bento--spotlight .b-1,
-	.bento--spotlight .b-4,
-	.bento--spotlight .b-7 {
+	.bento .is-feature {
+		grid-column: span 1;
 		grid-row: span 2;
 	}
-	.bento--spotlight .b-1 .bento-cover,
-	.bento--spotlight .b-4 .bento-cover,
-	.bento--spotlight .b-7 .bento-cover {
+	.bento .is-feature .bento-cover {
 		height: 120px;
 	}
 }
@@ -4369,9 +4333,6 @@ html.is-transitioning {
 	overflow: hidden;
 	border-bottom: 1px solid var(--line);
 	background: color-mix(in oklab, var(--bg-elev), var(--accent) 6%);
-}
-.bento--varied .b-1 .bento-cover {
-	height: 340px;
 }
 /* The wide card gains area from its extra column, not from a taller cover:
    growing it here would eat the same summary room a single card has. */
