@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import {
 	slugFromPath,
@@ -144,5 +146,29 @@ describe('parseByPath', () => {
 	it('routes other files to the markdown parser', () => {
 		const out = parseByPath('/content/blog/x.md', '---\ntitle: M\n---\n\nbody\n');
 		expect(out.data.title).toBe('M');
+	});
+});
+
+describe('authored Org source', () => {
+	function orgFiles(): string[] {
+		const root = join(process.cwd(), 'content');
+		return readdirSync(root, { recursive: true, encoding: 'utf8' })
+			.filter((entry) => entry.endsWith('.org'))
+			.map((entry) => join(root, entry));
+	}
+
+	// In Org a leading '*' is a heading, not a bullet: a list has to use '-'.
+	// Writing bullets with '*' turns every one of them into a section title, which
+	// wrecks the article's typography and floods its table of contents. It reached
+	// production once, with 363 bullets rendered as headings across one case study.
+	it('never writes a list item as a heading', () => {
+		const offenders = orgFiles().flatMap((file) =>
+			readFileSync(file, 'utf8')
+				.split('\n')
+				.map((line, index) => ({ line, index }))
+				.filter(({ line }) => /^\*+ \S/.test(line) && line.trimEnd().endsWith(';'))
+				.map(({ line, index }) => `${file.split('/content/')[1]}:${index + 1} ${line.slice(0, 50)}`)
+		);
+		expect(offenders).toEqual([]);
 	});
 });
