@@ -2086,20 +2086,25 @@ a.chip:hover,
 .bento--varied .b-4 {
 	grid-column: span 2;
 }
-/* The home spotlight is a fixed set of six and gets the same editorial rhythm as
-   the project index: two tall features and four single cards. The shapes are
-   chosen so the set tiles rather than leaving holes behind it:
-     2x3 + 1x2 + 2x3 + 1x2 + 1x2 + 1x2 = 20 cells, exactly 4 columns by 5
-   tracks, and exactly 2 columns by 10 tracks when the grid narrows.
-   Re-derive this if the number of spotlighted projects changes: a pattern sized
-   for one count leaves gaps at another. */
+/* The home spotlight is a fixed set of eight and gets the same editorial rhythm
+   as the project index: three tall features, four single cards, and a wide one
+   closing the grid. The shapes are chosen so the set tiles rather than leaving
+   holes behind it:
+     3 x 2x3 + 4 x 1x2 + 1 x 2x2 = 30 cells across 4 columns by 8 tracks.
+   Re-derive this if the number of spotlighted projects changes, or if their
+   order does: the feature slots follow the newest-first order, not the slug. */
 .bento--spotlight .b-1,
-.bento--spotlight .b-3 {
+.bento--spotlight .b-4,
+.bento--spotlight .b-7 {
 	grid-column: span 2;
 	grid-row: span 3;
 }
+.bento--spotlight .b-8 {
+	grid-column: span 2;
+}
 .bento--spotlight .b-1 .bento-cover,
-.bento--spotlight .b-3 .bento-cover {
+.bento--spotlight .b-4 .bento-cover,
+.bento--spotlight .b-7 .bento-cover {
 	height: 340px;
 }
 /* Never span wider than the grid itself once it drops to one or two columns. */
@@ -2118,17 +2123,21 @@ a.chip:hover,
 	.bento--varied .b-1,
 	.bento--varied .b-4,
 	.bento--spotlight .b-1,
-	.bento--spotlight .b-3 {
+	.bento--spotlight .b-4,
+	.bento--spotlight .b-7,
+	.bento--spotlight .b-8 {
 		grid-column: span 1;
 	}
 	/* One column: every card the same shape, so the feature cover does not end up
 	   nearly square in a narrow card. */
 	.bento--spotlight .b-1,
-	.bento--spotlight .b-3 {
+	.bento--spotlight .b-4,
+	.bento--spotlight .b-7 {
 		grid-row: span 2;
 	}
 	.bento--spotlight .b-1 .bento-cover,
-	.bento--spotlight .b-3 .bento-cover {
+	.bento--spotlight .b-4 .bento-cover,
+	.bento--spotlight .b-7 .bento-cover {
 		height: 120px;
 	}
 }
