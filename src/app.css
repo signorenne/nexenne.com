@@ -1906,13 +1906,18 @@ a.chip:hover,
 
 .bento {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	/* Rows are a fixed track so a card can span two of them and land on the same
+	   grid as its neighbours. Dense backfills the gaps a spanning card leaves. */
+	grid-auto-rows: 292px;
+	grid-auto-flow: dense;
 	gap: var(--sp-4);
 }
 
 .bento-item {
 	position: relative;
-	height: 280px;
+	height: 100%;
+	min-height: 0;
 	border: 1px solid var(--line);
 	border-radius: var(--r-md);
 	overflow: hidden;
@@ -1933,18 +1938,18 @@ a.chip:hover,
 	background: color-mix(in oklab, var(--bg-elev), var(--ink) 3%);
 	box-shadow: 0 14px 36px color-mix(in oklab, var(--ink), transparent 92%);
 }
-.bento-item > div:first-child,
+.bento-item > .bento-copy,
 .bento-item > .tags {
 	transition: transform var(--t-med) var(--ease-out);
 	will-change: transform;
 }
-.bento-item:hover > div:first-child,
+.bento-item:hover > .bento-copy,
 .bento-item:hover > .tags,
-.bento-item:focus-visible > div:first-child,
+.bento-item:focus-visible > .bento-copy,
 .bento-item:focus-visible > .tags {
 	transform: translateY(-3px);
 }
-.bento-item > div:first-child {
+.bento-item > .bento-copy {
 	flex: 1 1 auto;
 	min-height: 0;
 	display: flex;
@@ -2047,15 +2052,32 @@ a.chip:hover,
 	opacity: 0.85;
 }
 
-.b-1,
-.b-2,
-.b-3,
-.b-4,
-.b-5,
-.b-6,
-.b-7 {
-	grid-column: auto;
-	grid-row: auto;
+/* Bento rhythm: one tall feature, one wide, the rest single. The index cycles
+   these every seven cards, so the pattern repeats down a long list. */
+.bento-item {
+	grid-column: span 1;
+	grid-row: span 1;
+}
+.bento .b-1 {
+	grid-column: span 2;
+	grid-row: span 2;
+}
+.bento .b-4 {
+	grid-column: span 2;
+}
+/* Never span wider than the grid itself once it drops to one or two columns. */
+@media (max-width: 900px) {
+	.bento .b-1 {
+		grid-column: span 2;
+		grid-row: span 1;
+	}
+}
+@media (max-width: 620px) {
+	.bento .b-1,
+	.bento .b-4 {
+		grid-column: span 1;
+		grid-row: span 1;
+	}
 }
 
 .work-list {
@@ -4260,9 +4282,8 @@ html.is-transitioning {
 }
 
 /* Index cards: the cover sits above the copy and bleeds to the card edges. */
-/* The card is a fixed 280px, so the cover takes a fixed slice off the top and
-   leaves the rest to the copy. A ratio-based height would eat the text on a
-   narrow column and leave the card half empty on a wide one. */
+/* The cover takes a fixed slice off the top and leaves the rest to the copy. A
+   spanning card is taller, so it gets a proportionally larger slice. */
 .bento-item.has-cover {
 	padding-top: 0;
 }
@@ -4270,11 +4291,17 @@ html.is-transitioning {
 	position: relative;
 	/* Bleed to the card edges: matches .bento-item's 20px padding exactly. */
 	margin: 0 -20px 16px;
-	height: 116px;
-	flex: none;
+	height: 104px;
+	flex: 0 0 auto;
 	overflow: hidden;
 	border-bottom: 1px solid var(--line);
 	background: color-mix(in oklab, var(--bg-elev), var(--accent) 6%);
+}
+.bento .b-1 .bento-cover {
+	height: 300px;
+}
+.bento .b-4 .bento-cover {
+	height: 132px;
 }
 .bento-cover img {
 	width: 100%;

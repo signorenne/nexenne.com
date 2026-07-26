@@ -66,7 +66,7 @@
 					tabindex="0"
 					data-hover
 				>
-					<div>
+					<div class="bento-copy">
 						<div class="meta" use:marqueeOverflow>
 							<div class="meta-track">
 								<span>{String(i + 1).padStart(2, '0')} / {String(worksTotal).padStart(2, '0')}</span

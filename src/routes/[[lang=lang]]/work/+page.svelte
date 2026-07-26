@@ -128,11 +128,11 @@
 					data-hover
 				>
 					{#if w.cover}
-						<div class="bento-cover accent-{w.color}">
+						<figure class="bento-cover accent-{w.color}">
 							<img src="{base}{w.cover}" alt="" aria-hidden="true" loading="lazy" />
-						</div>
+						</figure>
 					{/if}
-					<div>
+					<div class="bento-copy">
 						<div class="meta" use:marqueeOverflow>
 							<div class="meta-track">
 								<span>{String(i + 1).padStart(2, '0')}</span>
