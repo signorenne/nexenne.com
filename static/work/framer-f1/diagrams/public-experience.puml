@@ -1,0 +1,34 @@
+@startuml
+title Framer F1 public product experience
+
+left to right direction
+
+actor Designer
+
+package "Framer F1" {
+  rectangle "75% keyboard" as Keyboard
+  rectangle "Two knobs" as Knobs
+  rectangle "Framer shortcuts" as Shortcuts
+  rectangle "Panoramic display" as Display
+}
+
+rectangle "Everyday typing" as Typing
+rectangle "Physical control" as Control
+rectangle "Publish, CMS,\nand effects" as Framer
+rectangle "Site statistics\nand feedback" as Feedback
+rectangle "One creative\nworkflow" as Outcome
+
+Designer --> Keyboard
+Designer --> Knobs
+Designer --> Shortcuts
+
+Keyboard --> Typing
+Knobs --> Control
+Shortcuts --> Framer
+Display --> Feedback
+
+Typing --> Outcome
+Control --> Outcome
+Framer --> Outcome
+Feedback --> Outcome
+@enduml
