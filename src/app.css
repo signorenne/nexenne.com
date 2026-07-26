@@ -1909,9 +1909,12 @@ a.chip:hover,
 	grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
 	/* Rows are a fixed track so a card can span two of them and land on the same
 	   grid as its neighbours. Dense backfills the gaps a spanning card leaves.
-	   360px is the floor at which a single card still fits its cover, a two-line
-	   title and a readable summary; below that the summary is all fade mask. */
-	grid-auto-rows: 360px;
+   The row height is a budget, not a guess. A single card spends it on:
+	     120 cover + 14 gap + 15 meta + 59 title (2 lines) + 8 + 14 gap
+	     + 24 tags + 20 padding = 274px fixed,
+	   leaving the summary ~106px. The summary fades out over its last 28px, so
+	   anything under about 330px here leaves one readable line and looks broken. */
+	grid-auto-rows: 380px;
 	grid-auto-flow: dense;
 	gap: var(--sp-4);
 }
@@ -4291,9 +4294,10 @@ html.is-transitioning {
 }
 .bento-cover {
 	position: relative;
-	/* Bleed to the card edges: matches .bento-item's 20px padding exactly. */
-	margin: 0 -20px 16px;
-	height: 128px;
+	/* Bleed to the card edges: matches .bento-item's 20px padding exactly. No
+	   bottom margin, because the card's own 14px flex gap already spaces it. */
+	margin: 0 -20px;
+	height: 120px;
 	flex: 0 0 auto;
 	overflow: hidden;
 	border-bottom: 1px solid var(--line);
@@ -7848,7 +7852,7 @@ main[data-page="uses"] .uses-box h3 {
 	}
 	.bento-item {
 		height: auto !important;
-		min-height: 340px;
+		min-height: 360px;
 	}
 	.post-row {
 		grid-template-columns: 1fr !important;
@@ -7960,7 +7964,7 @@ main[data-page="uses"] .uses-box h3 {
 		font-size: 8.5px;
 	}
 	.bento-cover {
-		height: 140px;
+		height: 132px;
 	}
 
 	.stack-stage,
