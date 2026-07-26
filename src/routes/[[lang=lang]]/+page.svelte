@@ -57,7 +57,7 @@
 			</button>
 		</div>
 
-		<div class="bento">
+		<div class="bento bento--spotlight">
 			{#each localizedWorks as w, i (w.slug)}
 				<div
 					class="bento-item b-{i + 1}"

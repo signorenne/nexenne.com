@@ -2086,6 +2086,15 @@ a.chip:hover,
 .bento--varied .b-4 {
 	grid-column: span 2;
 }
+/* The home spotlight is a fixed set of five, so the widths are chosen to tile
+   rather than to vary: 2 + 1 + 1 then 2 + 2 fills four columns exactly, and
+   still fills two columns exactly when the grid narrows. All five keep the
+   regular height, so none of them opens a gap under its copy. */
+.bento--spotlight .b-1,
+.bento--spotlight .b-4,
+.bento--spotlight .b-5 {
+	grid-column: span 2;
+}
 /* Never span wider than the grid itself once it drops to one or two columns. */
 @media (max-width: 900px) {
 	.bento--varied .b-1 {
@@ -2100,7 +2109,10 @@ a.chip:hover,
 }
 @media (max-width: 620px) {
 	.bento--varied .b-1,
-	.bento--varied .b-4 {
+	.bento--varied .b-4,
+	.bento--spotlight .b-1,
+	.bento--spotlight .b-4,
+	.bento--spotlight .b-5 {
 		grid-column: span 1;
 	}
 }
