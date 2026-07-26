@@ -1,11 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
 	import { lang, t } from '$lib/i18n';
 	import { lhref } from '$lib/paths';
 	import { proseEnhance } from '$lib/actions/proseEnhance';
 	import ArticleNav from '$lib/components/ArticleNav.svelte';
 	import TranslatedBanner from '$lib/components/TranslatedBanner.svelte';
-	import LogoMark from '$lib/components/LogoMark.svelte';
 	import type { ContentLang } from '$lib/content/types';
 	import type { PageData } from './$types';
 
@@ -17,51 +16,6 @@
 	$: related = data.related.map((r) => {
 		const m = r.byLang[$lang as ContentLang] ?? r.byLang[r.sourceLang];
 		return { slug: r.slug, title: m?.title ?? '', client: m?.client ?? '' };
-	});
-
-	$: chips = (() => {
-		const shells = [
-			{ r: '28cqh', speed: 26, dir: 'cw' as const },
-			{ r: '44cqh', speed: 42, dir: 'ccw' as const }
-		];
-		const buckets: string[][] = [[], []];
-		current.tags.forEach((t, i) => buckets[i % 2].push(t));
-		return shells.flatMap((shell, si) =>
-			buckets[si].map((text, i) => {
-				const n = buckets[si].length || 1;
-				const angle = (i / n) * 360;
-				return {
-					text,
-					orbitR: shell.r,
-					speed: shell.speed,
-					dir: shell.dir,
-					delay: -shell.speed * (angle / 360)
-				};
-			})
-		);
-	})();
-
-	let coverEl: HTMLDivElement;
-	onMount(() => {
-		const el = coverEl;
-		if (!el) return;
-		const onMove = (e: MouseEvent) => {
-			const r = el.getBoundingClientRect();
-			const x = (e.clientX - r.left) / r.width - 0.5;
-			const y = (e.clientY - r.top) / r.height - 0.5;
-			el.style.setProperty('--mx', x.toFixed(3));
-			el.style.setProperty('--my', y.toFixed(3));
-		};
-		const onLeave = () => {
-			el.style.setProperty('--mx', '0');
-			el.style.setProperty('--my', '0');
-		};
-		el.addEventListener('mousemove', onMove);
-		el.addEventListener('mouseleave', onLeave);
-		return () => {
-			el.removeEventListener('mousemove', onMove);
-			el.removeEventListener('mouseleave', onLeave);
-		};
 	});
 </script>
 
@@ -78,56 +32,17 @@
 	</header>
 
 	<section class="section" style="padding-top: var(--sp-6);">
-		<div class="case-cover accent-{current.color}" bind:this={coverEl} aria-hidden="true">
-			<div class="cc-bg" aria-hidden="true"></div>
-
-			<div class="cc-readout tl">
-				<span class="k">CASE</span><span class="v">/{current.slug}</span>
-				<span class="k">YEAR</span><span class="v">{current.year}</span>
-			</div>
-			<div class="cc-readout tr">
-				<span class="k">CLIENT</span><span class="v">{current.client}</span>
-				<span class="k">ROLE</span><span class="v">{current.role}</span>
-			</div>
-			<div class="cc-readout bl">
-				<span class="k">CORE</span><span class="v">{current.accent || current.title}</span>
-			</div>
-			<div class="cc-readout br">
-				<span class="k">EDGES</span><span class="v">{current.tags.length}</span>
-				<span class="k">SYS</span><span class="v">LIVE</span>
-			</div>
-
-			<div class="cc-frame">
-				<span class="cc-ring r1" aria-hidden="true"></span>
-				<span class="cc-ring r2" aria-hidden="true"></span>
-				<span class="cc-ring r3" aria-hidden="true"></span>
-
-				<div class="cc-core">
-					<span class="cc-halo" aria-hidden="true"></span>
-					<div class="loading-cube cc-cube" style="--cube-size: 66px" aria-hidden="true">
-						<span><LogoMark /></span><span><LogoMark /></span><span><LogoMark /></span><span
-							><LogoMark /></span
-						><span><LogoMark /></span><span><LogoMark /></span>
-					</div>
-				</div>
-
-				{#each chips as item, i (item.text)}
-					<span
-						class="cc-chip orbit-{item.dir}"
-						style="--orbit-r: {item.orbitR}; animation-duration: {item.speed}s; animation-delay: {item.delay}s;"
-						data-hover
-					>
-						<span class="cc-chip-dot" aria-hidden="true"></span>
-						<span class="cc-chip-text">{item.text}</span>
-						<span
-							class="cc-chip-sat"
-							style="animation-duration: {3.6 + (i % 3) * 0.7}s; animation-delay: {-i * 0.4}s;"
-							aria-hidden="true"
-						></span>
-					</span>
-				{/each}
-			</div>
-		</div>
+		<figure class="case-cover accent-{current.color}">
+			{#if current.cover}
+				<img src="{base}{current.cover}" alt="" aria-hidden="true" />
+			{/if}
+			<figcaption class="cc-readout" aria-hidden="true">
+				<span><span class="k">CASE</span><span class="v">/{current.slug}</span></span>
+				<span><span class="k">YEAR</span><span class="v">{current.year}</span></span>
+				<span><span class="k">CLIENT</span><span class="v">{current.client}</span></span>
+				<span><span class="k">ROLE</span><span class="v">{current.role}</span></span>
+			</figcaption>
+		</figure>
 
 		<div class="case-body" style="margin-top: var(--sp-6);">
 			<ArticleNav items={current.toc} title={current.title} />

@@ -4191,280 +4191,115 @@ html.is-transitioning {
 	color: var(--ink-2);
 }
 
+/* The project cover reads like the blog's, then earns its own identity back from
+   the accent tint and the technical readout across the foot. */
 .case-cover {
 	position: relative;
 	width: 100%;
+	margin: 0;
 	aspect-ratio: 21 / 9;
 	border-radius: var(--r-lg);
 	overflow: hidden;
-
-	clip-path: inset(8px round var(--r-md));
-	isolation: isolate;
-	container-type: size;
-	perspective: 1200px;
-	perspective-origin: 50% 50%;
-	--mx: 0;
-	--my: 0;
+	border: 1px solid var(--line);
+	background: color-mix(in oklab, var(--bg-elev), var(--accent) 6%);
 }
+.case-cover img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+/* A wash of the project's own accent, so two covers never read the same. */
 .case-cover::before {
 	content: "";
 	position: absolute;
-	inset: -1px;
-	border: 1px dashed var(--line);
-	border-radius: var(--r-lg);
+	inset: 0;
+	z-index: 1;
 	pointer-events: none;
-	z-index: 6;
-}
-.cc-bg {
-	position: absolute;
-	inset: 8px;
-	border-radius: var(--r-md);
 	background:
 		radial-gradient(
-			120% 80% at 50% 50%,
-			color-mix(in oklab, var(--accent), transparent 84%),
-			transparent 70%
+			circle at 22% 12%,
+			color-mix(in oklab, var(--accent), transparent 78%),
+			transparent 58%
 		),
-		linear-gradient(to right, var(--grid) 1px, transparent 1px) 0 0/40px 40px,
-		linear-gradient(to bottom, var(--grid) 1px, transparent 1px) 0 0/40px 40px;
-	z-index: 0;
+		linear-gradient(
+			to top,
+			color-mix(in oklab, #05060a, transparent 12%) 0%,
+			color-mix(in oklab, #05060a, transparent 62%) 34%,
+			transparent 68%
+		);
 }
 .case-cover .cc-readout {
 	position: absolute;
-	z-index: 5;
-	font-family: var(--font-mono);
-	font-size: 9.5px;
-	letter-spacing: 0.1em;
-	text-transform: uppercase;
-	color: var(--muted);
-	display: grid;
-	grid-template-columns: auto minmax(0, 1fr);
-	column-gap: 10px;
-	row-gap: 2px;
-	padding: 8px 10px;
-	background: color-mix(in oklab, var(--bg), transparent 40%);
-	border: 1px solid var(--line);
-	border-radius: 4px;
-	backdrop-filter: blur(4px);
-	max-width: 46%;
-}
-.case-cover .cc-readout .k {
-	color: var(--muted);
-	white-space: nowrap;
-}
-.case-cover .cc-readout .v {
-	color: var(--ink-2);
-	font-weight: 600;
-	white-space: normal;
-	word-break: break-word;
-	min-width: 0;
-}
-.case-cover .cc-readout.tl {
-	top: 12px;
-	left: 12px;
-}
-.case-cover .cc-readout.tr {
-	top: 12px;
-	right: 12px;
-}
-.case-cover .cc-readout.bl {
-	bottom: 12px;
-	left: 12px;
-}
-.case-cover .cc-readout.br {
-	bottom: 12px;
-	right: 12px;
-}
-
-.cc-frame {
-	position: absolute;
-	inset: 0;
-
-	transform-style: preserve-3d;
-	transform: rotateX(calc(var(--my) * -6deg)) rotateY(calc(var(--mx) * 6deg));
-	transition: transform 280ms var(--ease-out);
+	inset: auto 0 0 0;
 	z-index: 2;
-}
-
-.case-cover .cc-ring {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	border: 1px dashed var(--line-2);
-	border-radius: 50%;
-	aspect-ratio: 1;
-	pointer-events: none;
-}
-.case-cover .cc-ring.r1 {
-	width: 56cqh;
-	border-style: solid;
-	border-color: color-mix(in oklab, var(--accent), transparent 78%);
-}
-.case-cover .cc-ring.r2 {
-	width: 80cqh;
-}
-.case-cover .cc-ring.r3 {
-	width: 104cqh;
-	border-color: var(--line);
-}
-
-.cc-core {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	width: 66px;
-	height: 66px;
-	z-index: 4;
-	display: grid;
-	place-items: center;
-	perspective: 700px;
-	transform-style: preserve-3d;
-}
-.cc-halo {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	width: 120px;
-	height: 120px;
-	border-radius: 50%;
-	transform: translate(-50%, -50%);
-	background: radial-gradient(
-		circle,
-		color-mix(in oklab, var(--accent), transparent 60%) 0%,
-		transparent 70%
-	);
-	animation: cc-halo-pulse 4s var(--ease-out) infinite;
-	pointer-events: none;
-}
-@keyframes cc-halo-pulse {
-	0%,
-	100% {
-		opacity: 0.55;
-		transform: translate(-50%, -50%) scale(1);
-	}
-	50% {
-		opacity: 0.9;
-		transform: translate(-50%, -50%) scale(1.14);
-	}
-}
-.motion-off .cc-halo {
-	animation: none;
-}
-.case-cover .cc-mark {
-	position: relative;
-	width: 56px;
-	height: 56px;
-	border-radius: 50%;
-	display: grid;
-	place-items: center;
-	background: var(--bg);
-	border: 1px solid var(--accent);
-	box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent), transparent 88%);
-	z-index: 2;
-}
-.case-cover .cc-mark .cc-mono {
-	font-family: var(--font-display);
-	font-size: 20px;
-	letter-spacing: -0.03em;
-	color: var(--ink);
-}
-
-.case-cover .cc-chip {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	padding: 4px 10px;
-	background: var(--bg-elev);
-	border: 1px solid var(--line);
-	border-radius: 999px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 22px;
+	padding: 14px clamp(14px, 2.4vw, 24px);
 	font-family: var(--font-mono);
 	font-size: 10px;
-	letter-spacing: 0.1em;
+	letter-spacing: 0.08em;
 	text-transform: uppercase;
-	color: var(--ink-2);
-	white-space: nowrap;
-	z-index: 5;
-	cursor: default;
-	animation-timing-function: linear;
-	animation-iteration-count: infinite;
-	animation-fill-mode: both;
-	transition:
-		border-color var(--t-med) var(--ease-out),
-		color var(--t-med) var(--ease-out),
-		background var(--t-med) var(--ease-out);
 }
-.case-cover .cc-chip.orbit-cw {
-	animation-name: cc-orbit-cw;
+.case-cover .cc-readout > span {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 7px;
+	min-width: 0;
 }
-.case-cover .cc-chip.orbit-ccw {
-	animation-name: cc-orbit-ccw;
-}
-.case-cover .cc-chip:hover {
-	border-color: var(--accent);
+.case-cover .cc-readout .k {
 	color: var(--accent);
-	background: color-mix(in oklab, var(--bg-elev), var(--accent) 8%);
-	animation-play-state: paused;
+	font-weight: 700;
 }
-.cc-chip-dot {
-	width: 5px;
-	height: 5px;
-	border-radius: 50%;
-	background: var(--accent);
-	box-shadow: 0 0 6px color-mix(in oklab, var(--accent), transparent 30%);
-	flex: none;
+.case-cover .cc-readout .v {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: #e8ebf2;
 }
-.cc-chip-sat {
+
+/* Index cards: the cover sits above the copy and bleeds to the card edges. */
+.bento-item.has-cover {
+	padding-top: 0;
+	overflow: hidden;
+}
+.bento-cover {
+	position: relative;
+	margin: 0 calc(-1 * var(--sp-5)) var(--sp-4);
+	aspect-ratio: 16 / 9;
+	overflow: hidden;
+	border-bottom: 1px solid var(--line);
+	background: color-mix(in oklab, var(--bg-elev), var(--accent) 6%);
+}
+.bento-cover img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+	transition: transform var(--t-slow) var(--ease-out);
+}
+.bento-cover::after {
+	content: "";
 	position: absolute;
-	top: 50%;
-	left: 50%;
-	width: 5px;
-	height: 5px;
-	border-radius: 50%;
-	background: var(--accent);
-	box-shadow: 0 0 8px color-mix(in oklab, var(--accent), transparent 20%);
+	inset: 0;
 	pointer-events: none;
-	animation-name: cc-chip-sat-orbit;
-	animation-timing-function: linear;
-	animation-iteration-count: infinite;
+	background: linear-gradient(
+		to top,
+		color-mix(in oklab, var(--bg-elev), transparent 30%),
+		transparent 62%
+	);
 }
-
-@keyframes cc-chip-sat-orbit {
-	from {
-		transform: translate(-50%, -50%) rotate(0deg) translate(0, -86px);
-	}
-	to {
-		transform: translate(-50%, -50%) rotate(360deg) translate(0, -86px);
-	}
+.bento-item:hover .bento-cover img,
+.bento-item:focus-visible .bento-cover img {
+	transform: scale(1.04);
 }
-.motion-off .case-cover .cc-chip,
-.motion-off .case-cover .cc-chip-sat {
-	animation-play-state: paused;
+.motion-off .bento-cover img {
+	transition: none;
 }
-
-@keyframes cc-orbit-cw {
-	from {
-		transform: translate(-50%, -50%) rotate(0deg) translate(0, calc(-1 * var(--orbit-r)))
-			rotate(0deg);
-	}
-	to {
-		transform: translate(-50%, -50%) rotate(360deg) translate(0, calc(-1 * var(--orbit-r)))
-			rotate(-360deg);
-	}
-}
-@keyframes cc-orbit-ccw {
-	from {
-		transform: translate(-50%, -50%) rotate(0deg) translate(0, calc(-1 * var(--orbit-r)))
-			rotate(0deg);
-	}
-	to {
-		transform: translate(-50%, -50%) rotate(-360deg) translate(0, calc(-1 * var(--orbit-r)))
-			rotate(360deg);
-	}
+.motion-off .bento-item:hover .bento-cover img,
+.motion-off .bento-item:focus-visible .bento-cover img {
+	transform: none;
 }
 
 @media (max-width: 720px) {
@@ -8086,41 +7921,14 @@ main[data-page="uses"] .uses-box h3 {
 
 	.case-cover {
 		aspect-ratio: 4 / 3;
-		overflow: hidden !important;
-		clip-path: inset(8px round var(--r-md)) !important;
 	}
 	.case-cover .cc-readout {
+		gap: 4px 14px;
+		padding: 10px 12px;
 		font-size: 8.5px;
-		padding: 6px 8px;
-		max-width: 48%;
 	}
-	.case-cover .cc-mark {
-		width: 44px;
-		height: 44px;
-	}
-	.case-cover .cc-mark .cc-mono {
-		font-size: 15px;
-	}
-	.case-cover .cc-chip {
-		font-size: 9px;
-		padding: 3px 7px;
-		letter-spacing: 0.06em;
-	}
-	.case-cover .cc-ring.r1 {
-		width: 38cqh !important;
-	}
-	.case-cover .cc-ring.r2 {
-		width: 58cqh !important;
-	}
-	.case-cover .cc-ring.r3 {
-		width: 78cqh !important;
-	}
-
-	.case-cover .cc-chip.orbit-cw {
-		--orbit-r: 22cqh !important;
-	}
-	.case-cover .cc-chip.orbit-ccw {
-		--orbit-r: 34cqh !important;
+	.bento-cover {
+		aspect-ratio: 2 / 1;
 	}
 
 	.stack-stage,

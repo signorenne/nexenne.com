@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { replaceState } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { lgoto } from '$lib/paths';
@@ -119,12 +120,18 @@
 			{#each filtered as w, i (w.slug)}
 				<div
 					class="bento-item b-{(i % 7) + 1}"
+					class:has-cover={!!w.cover}
 					on:click={() => go(`/work/${w.slug}/`)}
 					on:keydown={(e) => e.key === 'Enter' && go(`/work/${w.slug}/`)}
 					role="button"
 					tabindex="0"
 					data-hover
 				>
+					{#if w.cover}
+						<div class="bento-cover accent-{w.color}">
+							<img src="{base}{w.cover}" alt="" aria-hidden="true" loading="lazy" />
+						</div>
+					{/if}
 					<div>
 						<div class="meta" use:marqueeOverflow>
 							<div class="meta-track">
