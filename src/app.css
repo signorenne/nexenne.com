@@ -4260,14 +4260,18 @@ html.is-transitioning {
 }
 
 /* Index cards: the cover sits above the copy and bleeds to the card edges. */
+/* The card is a fixed 280px, so the cover takes a fixed slice off the top and
+   leaves the rest to the copy. A ratio-based height would eat the text on a
+   narrow column and leave the card half empty on a wide one. */
 .bento-item.has-cover {
 	padding-top: 0;
-	overflow: hidden;
 }
 .bento-cover {
 	position: relative;
-	margin: 0 calc(-1 * var(--sp-5)) var(--sp-4);
-	aspect-ratio: 16 / 9;
+	/* Bleed to the card edges: matches .bento-item's 20px padding exactly. */
+	margin: 0 -20px 16px;
+	height: 116px;
+	flex: none;
 	overflow: hidden;
 	border-bottom: 1px solid var(--line);
 	background: color-mix(in oklab, var(--bg-elev), var(--accent) 6%);
@@ -7928,7 +7932,7 @@ main[data-page="uses"] .uses-box h3 {
 		font-size: 8.5px;
 	}
 	.bento-cover {
-		aspect-ratio: 2 / 1;
+		height: 104px;
 	}
 
 	.stack-stage,
