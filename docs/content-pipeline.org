@@ -46,6 +46,13 @@ path when rendering, so never write the base path into the content.
   a screenshot or an architecture diagram.
 - In Org files the keyword is =#+COVER:=, matching the other frontmatter
   keywords in that format.
+- =cover_fit= chooses how the image fills its frame, and defaults to =cover=.
+  The narrowest frame a cover is drawn in is the index card, at roughly 3:1, so
+  landscape photography crops well but anything portrait, square, or vector does
+  not: a 1080x2280 screenshot cropped to that frame shows 16% of itself. Set
+  =cover_fit: contain= for those and the image is matted on the project's accent
+  instead. The test reads the real pixel dimensions and fails on a cover that
+  would be cropped to a sliver, so this is enforced rather than remembered.
 
 * Parser
 

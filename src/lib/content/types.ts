@@ -74,6 +74,12 @@ export interface WorkMeta {
 	accent: string;
 	/** Cover image path under static/, or '' when the project has none. */
 	cover: string;
+	/**
+	 * How the cover fills its frame. Landscape photography crops well, so it
+	 * defaults to 'cover'. A portrait screenshot or a diagram must be contained,
+	 * or the frame shows a useless slice of it.
+	 */
+	coverFit: 'cover' | 'contain';
 	lang: ContentLang;
 	translatedFrom: ContentLang | null;
 	autoTranslated: boolean;
