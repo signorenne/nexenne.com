@@ -14,16 +14,22 @@
 		VISIBLE_COMMANDS,
 		WORKING_DIRECTORY,
 		buildHelp,
+		buildManual,
 		completeTerminalInput,
 		directionFrom,
+		entryPath,
 		findCommand,
-		listDirectory,
+		findEntry,
+		listPath,
 		moveSnake,
 		newSnake,
 		nextApple,
 		parseCommand,
+		promptPath,
 		renderSnakeBoard,
+		resolveDirectory,
 		resolveTarget,
+		searchEntries,
 		steerSnake,
 		usageFor,
 		type Point,
@@ -31,6 +37,10 @@
 		type SnakeState
 	} from '$lib/terminal';
 	import { cycleTheme } from '$lib/tweaks';
+	import type { ContentLang } from '$lib/content/types';
+	import type { PageData } from './$types';
+
+	export let data: PageData;
 	import MatrixRain from '$lib/components/MatrixRain.svelte';
 
 	type LineKind = 'system' | 'input' | 'output' | 'error' | 'art';
@@ -46,7 +56,7 @@
 		attempts: number;
 	}
 
-	const PROMPT = 'guest@nexenne:~$';
+	const USER = 'guest@nexenne';
 	const SHORT_PROMPT = '~ $';
 	/** How many stack entries `stack` and `cat stack.txt` print before stopping. */
 	const STACK_LIMIT = 18;
@@ -81,6 +91,15 @@
 	let timers: ReturnType<typeof setTimeout>[] = [];
 	let asyncRun = 0;
 	let lines: Line[] = [];
+	/** Current directory in the virtual tree: '' is the root. */
+	let cwd = '';
+
+	// The index the filesystem commands read, in the language being browsed.
+	$: content = {
+		work: data.work.map((b) => b.byLang[$lang as ContentLang] ?? Object.values(b.byLang)[0]),
+		blog: data.blog.map((b) => b.byLang[$lang as ContentLang] ?? Object.values(b.byLang)[0])
+	};
+	$: prompt = `${USER}:${promptPath(cwd)}$`;
 
 	$: busy = scanRunning || Boolean(snake) || Boolean(guess);
 	$: statusText = snake
@@ -145,6 +164,7 @@
 
 	function resetTerminal() {
 		stopTimers();
+		cwd = '';
 		guess = null;
 		snake = null;
 		matrixMode = false;
@@ -331,10 +351,37 @@
 		push('error', fill(tt('terminal.email.fallback'), { email: SITE.email }));
 	}
 
+	/**
+	 * A neofetch-style system card: the mascot in ASCII beside real build facts.
+	 * The revision, commit and date come from the build, so the card reports the
+	 * site actually being served rather than a hardcoded blurb.
+	 */
+	function neofetch(): string {
+		const art = ['    /\\_/\\  ', '   ( o.o ) ', '    > ^ <  ', '   /|   |\\ ', '  (_|   |_)'];
+		const facts: [string, string][] = [
+			[`${SITE.owner.toLowerCase()}@nexenne`, ''],
+			['os', 'nexenne-web 1.0'],
+			['host', 'static site · github pages'],
+			['shell', 'browser tty0'],
+			['role', SITE.role],
+			['where', SITE.location],
+			['rev', `${SITE.revision} · ${SITE.commit || 'local'}`],
+			['built', SITE.updated || 'dev'],
+			['stack', SITE.stack.slice(0, 6).join(' ')],
+			['content', `${content.work.length} projects · ${content.blog.length} posts`]
+		];
+		const rows = facts.map(([key, value]) => (value ? `${key.padEnd(9)}${value}` : key));
+		const height = Math.max(art.length, rows.length);
+		return Array.from({ length: height }, (_, i) => {
+			const left = (art[i] ?? '').padEnd(13);
+			return `${left}${rows[i] ?? ''}`.trimEnd();
+		}).join('\n');
+	}
+
 	/** Rebuild the visible session as plain text, prompts included. */
 	function transcript(): string {
 		return lines
-			.map((item) => (item.kind === 'input' ? `${PROMPT} ${item.text}` : item.text))
+			.map((item) => (item.kind === 'input' ? `${prompt} ${item.text}` : item.text))
 			.join('\n');
 	}
 
@@ -384,10 +431,53 @@
 				push('output', buildHelp(tt));
 				break;
 			case 'pwd':
-				push('output', WORKING_DIRECTORY);
+				push('output', cwd ? `${WORKING_DIRECTORY}/${cwd}` : WORKING_DIRECTORY);
 				break;
-			case 'ls':
-				push('output', listDirectory());
+			case 'ls': {
+				const listing = listPath(cwd, content, args[0]);
+				if (listing === null) {
+					push('error', fill(tt('terminal.cd.missing'), { dir: args[0] }));
+				} else {
+					push('output', listing || tt('terminal.ls.empty'));
+				}
+				break;
+			}
+			case 'cd': {
+				const next = resolveDirectory(cwd, args[0]);
+				if (next === null) {
+					push('error', fill(tt('terminal.cd.missing'), { dir: args[0] }));
+				} else {
+					cwd = next;
+				}
+				break;
+			}
+			case 'find': {
+				const term = args.join(' ').trim();
+				if (!term) {
+					push('error', tt('terminal.find.usage'));
+					break;
+				}
+				const matches = searchEntries(term, content);
+				if (!matches.length) {
+					push('output', fill(tt('terminal.find.none'), { term }));
+					break;
+				}
+				const width = Math.max(...matches.map((m) => m.entry.slug.length)) + 2;
+				push(
+					'output',
+					matches.map((m) => `${m.dir}/${m.entry.slug.padEnd(width)}${m.entry.title}`).join('\n')
+				);
+				push('system', fill(tt('terminal.find.count'), { count: matches.length }));
+				break;
+			}
+			case 'man': {
+				const manual = args[0] ? buildManual(args[0], tt) : null;
+				if (manual) push('output', manual);
+				else push('error', fill(tt('terminal.man.missing'), { command: args[0] ?? '' }));
+				break;
+			}
+			case 'neofetch':
+				push('art', neofetch());
 				break;
 			case 'whoami':
 				push('output', `${SITE.owner}\n${SITE.role}\n${SITE.focus}\n${SITE.location}`);
@@ -406,7 +496,15 @@
 				} else if (file === 'stack.txt') {
 					push('output', SITE.stack.slice(0, STACK_LIMIT).join('\n'));
 				} else {
-					push('error', fill(tt('terminal.cat.missing'), { file }));
+					const match = findEntry(file, content, cwd);
+					if (match) {
+						push(
+							'output',
+							`${match.entry.title}\n${match.entry.meta}\n\n${match.entry.summary}\n\n${entryPath(match)}`
+						);
+					} else {
+						push('error', fill(tt('terminal.cat.missing'), { file }));
+					}
 				}
 				break;
 			}
@@ -414,7 +512,13 @@
 				if (!args[0]) {
 					push('error', usageFor('open', tt));
 				} else if (!openPage(args[0])) {
-					push('error', fill(tt('terminal.open.missing'), { target: args[0] }));
+					const match = findEntry(args[0], content, cwd);
+					if (match) {
+						push('output', fill(tt('terminal.opening'), { target: match.entry.slug }));
+						lgoto(entryPath(match));
+					} else {
+						push('error', fill(tt('terminal.open.missing'), { target: args[0] }));
+					}
 				}
 				break;
 			case 'email':
@@ -665,7 +769,7 @@
 				<div bind:this={logEl} class="terminal-log" role="log" aria-live="polite">
 					{#each lines as item (item.id)}
 						{#if item.kind === 'input'}
-							<pre class="terminal-line is-in"><span class="terminal-line-prompt">{PROMPT}</span
+							<pre class="terminal-line is-in"><span class="terminal-line-prompt">{prompt}</span
 								>{item.text}</pre>
 						{:else}
 							<pre
@@ -679,7 +783,7 @@
 				<form class="terminal-form" on:submit|preventDefault={submit}>
 					<label class="sr-only" for="terminal-input">{$t('terminal.input')}</label>
 					<span class="terminal-prompt" aria-hidden="true">
-						<span class="terminal-prompt-full">{PROMPT}</span>
+						<span class="terminal-prompt-full">{prompt}</span>
 						<span class="terminal-prompt-short">{SHORT_PROMPT}</span>
 					</span>
 					<input

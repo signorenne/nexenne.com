@@ -50,7 +50,11 @@ full routing picture, and always build internal links through =src/lib/paths.ts=
   index, the =usage:= lines, =ls=, and the =open= targets all read from it, so a
   new command is one registry entry plus its =terminal.cmd.*= description key in
   both languages. Commands marked =hidden= still run but stay out of =help= and
-  completion, and their strings are excluded from the search index (see below)
+  completion, and their strings are excluded from the search index (see below).
+  =+page.server.ts= feeds it the site index, so =ls=, =cd=, =find=, =cat= and
+  =open= work over the real posts and projects rather than a fixed list: the
+  tree is one level deep (=work/= and =blog/=), and the prompt shows where the
+  visitor is
 - =colophon/+page.svelte= site colophon
 
 The =404/+page.svelte= not-found page stays at the root, because it is a single
