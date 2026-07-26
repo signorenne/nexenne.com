@@ -24,8 +24,28 @@
 		return id === 'home' ? lpath('/') : lpath(`/${id}/`);
 	}
 
+	/**
+	 * The rail expands on hover, so after a route change it stays open while the
+	 * pointer is still resting on it, and the station just clicked keeps focus,
+	 * which holds it open through :focus-within as well. Collapse it explicitly
+	 * and let the next deliberate gesture reopen it.
+	 */
+	let collapsed = false;
+
 	function close() {
 		mobileNavOpen.set(false);
+	}
+
+	function collapse() {
+		collapsed = true;
+		// Focus alone keeps the rail expanded, so give it up too.
+		if (asideEl?.contains(document.activeElement)) {
+			(document.activeElement as HTMLElement | null)?.blur?.();
+		}
+	}
+
+	function release() {
+		collapsed = false;
 	}
 
 	function navTo(id: string, e: Event) {
@@ -42,7 +62,10 @@
 	 * button. Closing before the navigation runs means the drawer is gone during
 	 * the page transition rather than lingering into the next route.
 	 */
-	beforeNavigate(close);
+	beforeNavigate(() => {
+		close();
+		collapse();
+	});
 
 	let asideEl: HTMLElement;
 
@@ -89,6 +112,9 @@
 	bind:this={asideEl}
 	class="sidemap"
 	class:is-open={$mobileNavOpen}
+	class:is-collapsed={collapsed}
+	on:pointerleave={release}
+	on:pointerdown={release}
 	aria-label={$t('a11y.sitemap')}
 >
 	<div class="sm-head">

@@ -5103,6 +5103,39 @@ html.is-transitioning {
 	opacity: 1;
 }
 
+/* Held collapsed for one beat after a navigation. The pointer is usually still
+   resting on the rail, and the station that was just clicked keeps focus, so
+   :hover and :focus-within would otherwise hold it open over the new page.
+   Written against both, and last in the file, because the rules it overrides
+   have the same specificity. */
+.sidemap.is-collapsed:hover,
+.sidemap.is-collapsed:focus-within {
+	width: 72px;
+}
+.sidemap.is-collapsed:hover .sm-label,
+.sidemap.is-collapsed:focus-within .sm-label {
+	opacity: 0;
+	transform: translateX(-6px);
+}
+.sidemap.is-collapsed:hover .sm-node,
+.sidemap.is-collapsed:focus-within .sm-node,
+.sidemap.is-collapsed:hover .sm-code,
+.sidemap.is-collapsed:focus-within .sm-code,
+.sidemap.is-collapsed:hover .sm-foot,
+.sidemap.is-collapsed:focus-within .sm-foot,
+.sidemap.is-collapsed:hover .sm-meta,
+.sidemap.is-collapsed:focus-within .sm-meta {
+	opacity: 0;
+}
+.sidemap.is-collapsed:hover .sm-station.is-active,
+.sidemap.is-collapsed:focus-within .sm-station.is-active {
+	background: transparent;
+}
+.sidemap.is-collapsed:hover .sm-mark,
+.sidemap.is-collapsed:focus-within .sm-mark {
+	transform: translateX(-50%);
+}
+
 .app {
 	padding-left: 72px;
 }
@@ -7811,6 +7844,10 @@ main[data-page="uses"] .uses-box h3 {
 	}
 	.sidemap.is-open .sm-label {
 		transform: translateX(0) !important;
+	}
+	.sidemap.is-open.is-collapsed:hover,
+	.sidemap.is-open.is-collapsed:focus-within {
+		width: 240px !important;
 	}
 	.sidemap-backdrop {
 		display: block;
