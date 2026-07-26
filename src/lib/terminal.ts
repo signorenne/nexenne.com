@@ -14,8 +14,11 @@ export interface VisibleCommand {
 	descriptionKey: string;
 	/** Shell-syntax argument placeholder shown in `help`, for example "<file>". */
 	arg?: string;
-	/** Values tab completion offers for the first argument. */
-	completions?: readonly string[];
+	/**
+	 * Values tab completion offers for the first argument. A thunk defers the
+	 * lookup, which `man` needs: its completions are the command list itself.
+	 */
+	completions?: readonly string[] | (() => readonly string[]);
 	hidden?: false;
 }
 
@@ -23,7 +26,7 @@ export interface VisibleCommand {
 export interface HiddenCommand {
 	name: string;
 	hidden: true;
-	completions?: readonly string[];
+	completions?: readonly string[] | (() => readonly string[]);
 }
 
 export type TerminalCommandSpec = VisibleCommand | HiddenCommand;
@@ -64,10 +67,140 @@ export interface SnakeMove {
 /** Files `ls` prints and `cat` can read. */
 export const VIRTUAL_FILES = ['about.txt', 'contact.txt', 'stack.txt'] as const;
 
-/** Directory-looking `ls` entries. They are hints for `open`, not real paths. */
-export const VIRTUAL_DIRS = ['work/', 'blog/', 'brand/'] as const;
+/** Directories the visitor can enter, each backed by real site content. */
+export const CONTENT_DIRS = ['work', 'blog'] as const;
+export type ContentDir = (typeof CONTENT_DIRS)[number];
+
+/** Everything `ls` prints at the root: the readable files, then the directories. */
+export const VIRTUAL_DIRS = CONTENT_DIRS.map((dir) => `${dir}/`);
 
 export const WORKING_DIRECTORY = '/home/guest';
+
+/** One post or project, as the terminal lists, searches and prints it. */
+export interface TerminalEntry {
+	slug: string;
+	title: string;
+	/** Date for a post, year and client for a project. */
+	meta: string;
+	summary: string;
+}
+
+export type TerminalContent = Record<ContentDir, TerminalEntry[]>;
+
+export const EMPTY_CONTENT: TerminalContent = { work: [], blog: [] };
+
+/**
+ * Resolve a `cd` argument against the current directory.
+ *
+ * The tree is one level deep, so this only has to handle the root, the two
+ * content directories, and the ways of asking for the root back.
+ *
+ * @param cwd Current directory: '' for the root.
+ * @param arg The argument typed after cd, if any.
+ * @return The new directory, or null when the target does not exist.
+ */
+export function resolveDirectory(cwd: string, arg: string | undefined): string | null {
+	const target = (arg ?? '').trim().replace(/\/+$/, '').toLowerCase();
+	if (!target || target === '~' || target === '/' || target === '..') return '';
+	if (target === '.') return cwd;
+	const dir = CONTENT_DIRS.find((name) => name === target);
+	return dir ?? null;
+}
+
+/**
+ * The prompt's path segment, so the visitor can see where they are.
+ *
+ * @param cwd Current directory.
+ * @return '~' at the root, otherwise '~/<dir>'.
+ */
+export function promptPath(cwd: string): string {
+	return cwd ? `~/${cwd}` : '~';
+}
+
+/** Longest slug in a set, used to align the listing columns. */
+function slugWidth(entries: readonly TerminalEntry[]): number {
+	return entries.reduce((width, entry) => Math.max(width, entry.slug.length), 0);
+}
+
+/**
+ * List a directory.
+ *
+ * @param cwd     Current directory.
+ * @param content The site index from the route loader.
+ * @param arg     An explicit directory argument, for `ls work` from the root.
+ * @return The listing, or null when the argument names nothing.
+ */
+export function listPath(cwd: string, content: TerminalContent, arg?: string): string | null {
+	const dir = arg ? resolveDirectory(cwd, arg) : cwd;
+	if (dir === null) return null;
+	if (!dir) return [...VIRTUAL_FILES, ...VIRTUAL_DIRS].join('  ');
+
+	const entries = content[dir as ContentDir] ?? [];
+	if (!entries.length) return '';
+	const width = slugWidth(entries);
+	return entries.map((entry) => `${entry.slug.padEnd(width + 2)}${entry.title}`).join('\n');
+}
+
+export interface EntryMatch {
+	dir: ContentDir;
+	entry: TerminalEntry;
+}
+
+/**
+ * Find a post or project by slug, searching the current directory first so a
+ * bare slug works where the visitor already is.
+ *
+ * @param slug    The slug typed by the visitor.
+ * @param content The site index.
+ * @param cwd     Current directory, searched before the others.
+ * @return The match, or null.
+ */
+export function findEntry(slug: string, content: TerminalContent, cwd = ''): EntryMatch | null {
+	const wanted = slug
+		.trim()
+		.replace(/^\/+|\/+$/g, '')
+		.toLowerCase();
+	if (!wanted) return null;
+	const order = (
+		cwd ? [cwd as ContentDir, ...CONTENT_DIRS.filter((d) => d !== cwd)] : [...CONTENT_DIRS]
+	) as ContentDir[];
+	for (const dir of order) {
+		const entry = (content[dir] ?? []).find((item) => item.slug.toLowerCase() === wanted);
+		if (entry) return { dir, entry };
+	}
+	return null;
+}
+
+/**
+ * Search every post and project for a term, matching slug, title and summary.
+ *
+ * @param term    What to look for. Case insensitive.
+ * @param content The site index.
+ * @return Matches in directory order.
+ */
+export function searchEntries(term: string, content: TerminalContent): EntryMatch[] {
+	const needle = term.trim().toLowerCase();
+	if (!needle) return [];
+	return CONTENT_DIRS.flatMap((dir) =>
+		(content[dir] ?? [])
+			.filter((entry) =>
+				[entry.slug, entry.title, entry.summary, entry.meta].some((field) =>
+					field.toLowerCase().includes(needle)
+				)
+			)
+			.map((entry) => ({ dir, entry }))
+	);
+}
+
+/**
+ * The app path for an entry, ready for lgoto.
+ *
+ * @param match A directory and entry pair.
+ * @return An unprefixed path such as /work/knob1/.
+ */
+export function entryPath(match: EntryMatch): string {
+	return `/${match.dir}/${match.entry.slug}/`;
+}
 
 /**
  * Every page `open` reaches. The compatibility /card/ route is left out because
@@ -101,14 +234,25 @@ const TARGET_ALIASES: Record<string, string> = {
 /** Alternate spellings for command names, resolved before dispatch. */
 const COMMAND_ALIASES: Record<string, string> = {
 	'?': 'help',
-	man: 'help',
 	cls: 'clear'
 };
 
 export const TERMINAL_COMMANDS: readonly TerminalCommandSpec[] = [
 	{ name: 'help', descriptionKey: 'terminal.cmd.help' },
-	{ name: 'ls', descriptionKey: 'terminal.cmd.ls' },
+	{
+		name: 'ls',
+		descriptionKey: 'terminal.cmd.ls',
+		arg: '[dir]',
+		completions: CONTENT_DIRS
+	},
+	{
+		name: 'cd',
+		descriptionKey: 'terminal.cmd.cd',
+		arg: '<dir>',
+		completions: [...CONTENT_DIRS, '..']
+	},
 	{ name: 'pwd', descriptionKey: 'terminal.cmd.pwd' },
+	{ name: 'find', descriptionKey: 'terminal.cmd.find', arg: '<text>' },
 	{ name: 'whoami', descriptionKey: 'terminal.cmd.whoami' },
 	{
 		name: 'cat',
@@ -123,11 +267,18 @@ export const TERMINAL_COMMANDS: readonly TerminalCommandSpec[] = [
 		completions: OPEN_TARGET_NAMES
 	},
 	{ name: 'stack', descriptionKey: 'terminal.cmd.stack' },
+	{ name: 'neofetch', descriptionKey: 'terminal.cmd.neofetch' },
 	{ name: 'email', descriptionKey: 'terminal.cmd.email' },
 	{ name: 'date', descriptionKey: 'terminal.cmd.date' },
 	{ name: 'uname', descriptionKey: 'terminal.cmd.uname' },
 	{ name: 'echo', descriptionKey: 'terminal.cmd.echo', arg: '<text>' },
 	{ name: 'history', descriptionKey: 'terminal.cmd.history' },
+	{
+		name: 'man',
+		descriptionKey: 'terminal.cmd.man',
+		arg: '<command>',
+		completions: () => VISIBLE_COMMANDS.map((command) => command.name)
+	},
 	{ name: 'scan', descriptionKey: 'terminal.cmd.scan' },
 	{ name: 'fortune', descriptionKey: 'terminal.cmd.fortune' },
 	{ name: 'matrix', descriptionKey: 'terminal.cmd.matrix' },
@@ -150,6 +301,17 @@ export const VISIBLE_COMMANDS = TERMINAL_COMMANDS.filter(
 );
 
 const BY_NAME = new Map(TERMINAL_COMMANDS.map((command) => [command.name, command]));
+
+/**
+ * Resolve a command's argument completions, calling the thunk when it has one.
+ *
+ * @param command A registry entry, or null.
+ * @return The values completion should offer.
+ */
+export function completionsFor(command: TerminalCommandSpec | null): readonly string[] {
+	const values = command?.completions;
+	return typeof values === 'function' ? values() : (values ?? []);
+}
 
 /**
  * Resolve a typed command word to its registry entry, following aliases.
@@ -266,7 +428,7 @@ export function completeTerminalInput(input: string): Completion {
 
 	const name = trimmed.slice(0, firstSpace).toLowerCase();
 	const rest = trimmed.slice(firstSpace).trimStart();
-	const options = findCommand(name)?.completions ?? [];
+	const options = completionsFor(findCommand(name));
 	const candidates = options.filter((option) => option.startsWith(rest.toLowerCase()));
 	if (!candidates.length) return { value: input, candidates: [] };
 	const suffix = candidates.length === 1 ? ' ' : '';
@@ -274,6 +436,27 @@ export function completeTerminalInput(input: string): Completion {
 		value: `${leading}${name} ${commonPrefix([...candidates])}${suffix}`,
 		candidates: [...candidates]
 	};
+}
+
+/**
+ * The manual page for one command: its signature, what it does, and what it
+ * accepts. `help` lists everything; this explains one thing.
+ *
+ * @param name      The command asked about.
+ * @param translate Lookup for i18n keys.
+ * @return The manual text, or null when the command does not exist.
+ */
+export function buildManual(name: string, translate: (key: string) => string): string | null {
+	const command = findCommand(name);
+	if (!command || command.hidden) return null;
+
+	const signature = command.arg ? `${command.name} ${command.arg}` : command.name;
+	const lines = [signature, `  ${translate(command.descriptionKey)}`];
+	const accepts = completionsFor(command);
+	if (accepts.length) {
+		lines.push('', `  ${translate('terminal.man.accepts')} ${accepts.join(', ')}`);
+	}
+	return lines.join('\n');
 }
 
 /**
@@ -315,8 +498,7 @@ export function listDirectory(): string {
  * @return A usage line, for example "usage: cat about.txt | contact.txt".
  */
 export function usageFor(name: string, translate: (key: string) => string): string {
-	const command = findCommand(name);
-	const options = command?.completions ?? [];
+	const options = completionsFor(findCommand(name));
 	return `${translate('terminal.usage')} ${name} ${options.join(' | ')}`;
 }
 

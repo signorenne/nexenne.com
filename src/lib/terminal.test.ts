@@ -18,6 +18,13 @@ import {
 	parseCommand,
 	renderSnakeBoard,
 	resolveTarget,
+	buildManual,
+	entryPath,
+	findEntry,
+	listPath,
+	promptPath,
+	resolveDirectory,
+	searchEntries,
 	steerSnake,
 	usageFor,
 	type SnakeState
@@ -100,7 +107,10 @@ describe('completeTerminalInput', () => {
 	});
 
 	it('returns ambiguous candidates with their shared prefix', () => {
-		expect(completeTerminalInput('c')).toEqual({ value: 'c', candidates: ['cat', 'clear'] });
+		expect(completeTerminalInput('c')).toEqual({
+			value: 'c',
+			candidates: ['cd', 'cat', 'clear']
+		});
 		expect(completeTerminalInput('s')).toEqual({
 			value: 's',
 			candidates: ['stack', 'scan', 'snake']
@@ -245,5 +255,115 @@ describe('moveSnake direction', () => {
 			nextApple(b, sc, SNAKE_WIDTH, SNAKE_HEIGHT)
 		);
 		expect(move.state.direction).toBe('down');
+	});
+});
+
+const CONTENT = {
+	work: [
+		{
+			slug: 'knob1',
+			title: 'Knob1 · firmware',
+			meta: '2026 · Work Louder',
+			summary: 'LVGL and BLE'
+		},
+		{
+			slug: 'trackomatic',
+			title: 'TrackOMatic',
+			meta: '2022 · Personal',
+			summary: 'Android tracking'
+		}
+	],
+	blog: [
+		{ slug: 'can-protocol', title: 'The CAN protocol', meta: '2026-01-01', summary: 'Bus framing' }
+	]
+};
+
+describe('resolveDirectory', () => {
+	it('enters a content directory and finds its way back', () => {
+		expect(resolveDirectory('', 'work')).toBe('work');
+		expect(resolveDirectory('', 'blog/')).toBe('blog');
+		expect(resolveDirectory('work', '..')).toBe('');
+		expect(resolveDirectory('work', '/')).toBe('');
+		expect(resolveDirectory('work', undefined)).toBe('');
+		expect(resolveDirectory('work', '.')).toBe('work');
+	});
+
+	it('refuses a directory that does not exist', () => {
+		expect(resolveDirectory('', 'etc')).toBeNull();
+		// The pages `open` reaches are not directories on this tree.
+		expect(resolveDirectory('', 'about')).toBeNull();
+	});
+});
+
+describe('promptPath', () => {
+	it('shows where the visitor is', () => {
+		expect(promptPath('')).toBe('~');
+		expect(promptPath('work')).toBe('~/work');
+	});
+});
+
+describe('listPath', () => {
+	it('lists the readable files and the directories at the root', () => {
+		const listing = listPath('', CONTENT) ?? '';
+		for (const file of VIRTUAL_FILES) expect(listing).toContain(file);
+		expect(listing).toContain('work/');
+		expect(listing).toContain('blog/');
+	});
+
+	it('lists real entries inside a content directory', () => {
+		const listing = listPath('work', CONTENT) ?? '';
+		expect(listing).toContain('knob1');
+		expect(listing).toContain('Knob1 · firmware');
+		expect(listing).not.toContain('can-protocol');
+	});
+
+	it('accepts an explicit directory from the root, and rejects a bad one', () => {
+		expect(listPath('', CONTENT, 'blog')).toContain('can-protocol');
+		expect(listPath('', CONTENT, 'nope')).toBeNull();
+	});
+});
+
+describe('findEntry', () => {
+	it('finds by slug and prefers the directory the visitor is in', () => {
+		expect(findEntry('knob1', CONTENT)?.dir).toBe('work');
+		expect(findEntry('CAN-PROTOCOL', CONTENT)?.entry.title).toBe('The CAN protocol');
+		expect(findEntry('missing', CONTENT)).toBeNull();
+	});
+
+	it('builds the app path for a match', () => {
+		const match = findEntry('knob1', CONTENT);
+		expect(match && entryPath(match)).toBe('/work/knob1/');
+	});
+});
+
+describe('searchEntries', () => {
+	it('matches slug, title, summary and meta', () => {
+		expect(searchEntries('lvgl', CONTENT).map((m) => m.entry.slug)).toEqual(['knob1']);
+		expect(searchEntries('android', CONTENT).map((m) => m.entry.slug)).toEqual(['trackomatic']);
+		expect(searchEntries('Work Louder', CONTENT).map((m) => m.entry.slug)).toEqual(['knob1']);
+		expect(searchEntries('protocol', CONTENT).map((m) => m.entry.slug)).toEqual(['can-protocol']);
+	});
+
+	it('returns nothing for an empty or unmatched term', () => {
+		expect(searchEntries('  ', CONTENT)).toEqual([]);
+		expect(searchEntries('zzz', CONTENT)).toEqual([]);
+	});
+});
+
+describe('buildManual', () => {
+	it('explains one command, including what it accepts', () => {
+		const manual = buildManual('cat', translate) ?? '';
+		expect(manual).toContain('cat <file>');
+		expect(manual).toContain(translate('terminal.cmd.cat'));
+		expect(manual).toContain('about.txt');
+	});
+
+	it('resolves the lazy completions man declares for itself', () => {
+		expect(buildManual('man', translate)).toContain('whoami');
+	});
+
+	it('has no page for an unknown or hidden command', () => {
+		expect(buildManual('nope', translate)).toBeNull();
+		expect(buildManual('xyzzy', translate)).toBeNull();
 	});
 });
