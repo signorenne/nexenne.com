@@ -2068,37 +2068,39 @@ a.chip:hover,
 	opacity: 0.85;
 }
 
-/* Bento rhythm: one tall feature, one wide, the rest single. The index cycles
-   these every seven cards, so the pattern repeats down a long list. */
+/* Every card is two half-tracks unless a variant says otherwise. */
 .bento-item {
 	grid-column: span 1;
 	grid-row: span 2;
 }
-/* The feature card is one half-track taller than the rest, not twice as tall:
-   a full extra card of height is more than its copy can fill, and the slack
-   lands under the summary as an empty gap. */
-.bento .b-1 {
+/* Bento rhythm: one tall feature, one wide, the rest single. Opt-in, because it
+   only pays off in a long list that dense flow can backfill. A short, fixed set
+   like the home page's four cards reads better as one even row. */
+.bento--varied .b-1 {
 	grid-column: span 2;
+	/* One half-track taller than the rest, not twice as tall: a full extra card
+	   of height is more than its copy can fill, and the slack lands under the
+	   summary as an empty gap. */
 	grid-row: span 3;
 }
-.bento .b-4 {
+.bento--varied .b-4 {
 	grid-column: span 2;
 }
 /* Never span wider than the grid itself once it drops to one or two columns. */
 @media (max-width: 900px) {
-	.bento .b-1 {
+	.bento--varied .b-1 {
 		grid-column: span 2;
 		grid-row: span 2;
 	}
 	/* Once the feature card is regular height it takes the regular cover too:
 	   keeping the tall one here would leave the summary a single faded line. */
-	.bento .b-1 .bento-cover {
+	.bento--varied .b-1 .bento-cover {
 		height: 120px;
 	}
 }
 @media (max-width: 620px) {
-	.bento .b-1,
-	.bento .b-4 {
+	.bento--varied .b-1,
+	.bento--varied .b-4 {
 		grid-column: span 1;
 	}
 }
@@ -4321,7 +4323,7 @@ html.is-transitioning {
 	border-bottom: 1px solid var(--line);
 	background: color-mix(in oklab, var(--bg-elev), var(--accent) 6%);
 }
-.bento .b-1 .bento-cover {
+.bento--varied .b-1 .bento-cover {
 	height: 340px;
 }
 /* The wide card gains area from its extra column, not from a taller cover:

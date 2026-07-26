@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { lgoto } from '$lib/paths';
 	import Hero from '$lib/components/Hero.svelte';
 	import Marquee from '$lib/components/Marquee.svelte';
@@ -60,12 +61,18 @@
 			{#each localizedWorks as w, i (w.slug)}
 				<div
 					class="bento-item b-{i + 1}"
+					class:has-cover={!!w.cover}
 					on:click={() => go(`/work/${w.slug}/`)}
 					on:keydown={(e) => e.key === 'Enter' && go(`/work/${w.slug}/`)}
 					role="button"
 					tabindex="0"
 					data-hover
 				>
+					{#if w.cover}
+						<figure class="bento-cover accent-{w.color}">
+							<img src="{base}{w.cover}" alt="" aria-hidden="true" loading="lazy" />
+						</figure>
+					{/if}
 					<div class="bento-copy">
 						<div class="meta" use:marqueeOverflow>
 							<div class="meta-track">

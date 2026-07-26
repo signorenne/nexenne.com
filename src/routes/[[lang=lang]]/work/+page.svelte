@@ -116,7 +116,7 @@
 			</div>
 		</div>
 
-		<div class="bento">
+		<div class="bento bento--varied">
 			{#each filtered as w, i (w.slug)}
 				<div
 					class="bento-item b-{(i % 7) + 1}"
