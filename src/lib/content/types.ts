@@ -72,6 +72,8 @@ export interface WorkMeta {
 	tags: string[];
 	color: string;
 	accent: string;
+	/** Cover image path under static/, or '' when the project has none. */
+	cover: string;
 	lang: ContentLang;
 	translatedFrom: ContentLang | null;
 	autoTranslated: boolean;
