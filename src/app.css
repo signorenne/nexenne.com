@@ -1909,12 +1909,15 @@ a.chip:hover,
 	grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
 	/* Rows are a fixed track so a card can span two of them and land on the same
 	   grid as its neighbours. Dense backfills the gaps a spanning card leaves.
-   The row height is a budget, not a guess. A single card spends it on:
-	     120 cover + 14 gap + 15 meta + 59 title (2 lines) + 8 + 14 gap
-	     + 24 tags + 20 padding = 274px fixed,
-	   leaving the summary ~106px. The summary fades out over its last 28px, so
-	   anything under about 330px here leaves one readable line and looks broken. */
-	grid-auto-rows: 380px;
+   The track is half a card, so a span can be tuned in half steps. A card of n
+	   tracks is n * 190 + (n - 1) * 16 tall:
+	     span 2 = 396px, the regular card
+	     span 3 = 602px, the feature card
+	   Both are a budget, not a guess. A regular card spends 274px on the cover,
+	   title, tags, gaps and padding, a feature card 494px on the same with its
+	   larger cover, and what is left is the summary. The summary fades out over
+	   its last 28px, so leave at least 110px of it or the text reads as clipped. */
+	grid-auto-rows: 190px;
 	grid-auto-flow: dense;
 	gap: var(--sp-4);
 }
@@ -2061,11 +2064,14 @@ a.chip:hover,
    these every seven cards, so the pattern repeats down a long list. */
 .bento-item {
 	grid-column: span 1;
-	grid-row: span 1;
+	grid-row: span 2;
 }
+/* The feature card is one half-track taller than the rest, not twice as tall:
+   a full extra card of height is more than its copy can fill, and the slack
+   lands under the summary as an empty gap. */
 .bento .b-1 {
 	grid-column: span 2;
-	grid-row: span 2;
+	grid-row: span 3;
 }
 .bento .b-4 {
 	grid-column: span 2;
@@ -2074,14 +2080,18 @@ a.chip:hover,
 @media (max-width: 900px) {
 	.bento .b-1 {
 		grid-column: span 2;
-		grid-row: span 1;
+		grid-row: span 2;
+	}
+	/* Once the feature card is regular height it takes the regular cover too:
+	   keeping the tall one here would leave the summary a single faded line. */
+	.bento .b-1 .bento-cover {
+		height: 120px;
 	}
 }
 @media (max-width: 620px) {
 	.bento .b-1,
 	.bento .b-4 {
 		grid-column: span 1;
-		grid-row: span 1;
 	}
 }
 
