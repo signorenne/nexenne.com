@@ -1,0 +1,35 @@
+@startuml
+title Codex Micro public product experience
+
+left to right direction
+
+actor Developer
+
+package "Codex Micro" {
+  rectangle "Agent Keys" as Agents
+  rectangle "Command Keys" as Commands
+  rectangle "Dial" as Dial
+  rectangle "Joystick" as Joystick
+}
+
+rectangle "Live RGB\nagent status" as Status
+rectangle "Frequent\nCodex actions" as Actions
+rectangle "Reasoning\nlevel" as Reasoning
+rectangle "Codex\nskills" as Skills
+rectangle "A more tactile\nagent workflow" as Outcome
+
+Developer --> Agents
+Developer --> Commands
+Developer --> Dial
+Developer --> Joystick
+
+Agents --> Status
+Commands --> Actions
+Dial --> Reasoning
+Joystick --> Skills
+
+Status --> Outcome
+Actions --> Outcome
+Reasoning --> Outcome
+Skills --> Outcome
+@enduml
