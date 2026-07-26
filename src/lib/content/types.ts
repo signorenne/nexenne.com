@@ -80,6 +80,8 @@ export interface WorkMeta {
 	 * or the frame shows a useless slice of it.
 	 */
 	coverFit: 'cover' | 'contain';
+	/** Curated for the home page, instead of taking whatever is most recent. */
+	spotlight: boolean;
 	lang: ContentLang;
 	translatedFrom: ContentLang | null;
 	autoTranslated: boolean;

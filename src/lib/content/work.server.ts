@@ -33,6 +33,7 @@ const FrontmatterSchema = z.object({
 	accent: z.string().default(''),
 	cover: z.string().default(''),
 	cover_fit: z.enum(['cover', 'contain']).default('cover'),
+	spotlight: z.coerce.boolean().optional().default(false),
 	metrics: z.array(MetricSchema).default([]),
 	order: z.coerce.number().optional(),
 	draft: z.coerce.boolean().optional().default(false),
@@ -111,6 +112,7 @@ function loadAll(): WorkBundle[] {
 			accent: parsed.data.accent,
 			cover: parsed.data.cover,
 			coverFit: parsed.data.cover_fit,
+			spotlight: parsed.data.spotlight,
 			metrics: parsed.data.metrics,
 			lang,
 			translatedFrom,
@@ -150,6 +152,21 @@ export function getAllWorkMeta(): WorkMetaBundle[] {
 			Object.entries(bundle.byLang).map(([l, work]) => [l, stripBody(work)])
 		) as Partial<Record<ContentLang, WorkMeta>>
 	}));
+}
+
+/**
+ * The projects curated for the home page, newest first.
+ *
+ * Falls back to the most recent few when nothing is flagged, so the section is
+ * never empty just because the frontmatter has not been filled in yet.
+ *
+ * @param fallback How many recent projects to use when none are spotlighted.
+ * @return The spotlight bundles in display order.
+ */
+export function getSpotlightWorkMeta(fallback = 4): WorkMetaBundle[] {
+	const all = getAllWorkMeta();
+	const picked = all.filter((bundle) => bundle.source.spotlight);
+	return picked.length ? picked : all.slice(0, fallback);
 }
 
 export function getWork(slug: string): WorkBundle | undefined {

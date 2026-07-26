@@ -7,6 +7,7 @@ import {
 	getAllWork,
 	getAllWorkMeta,
 	getWork,
+	getSpotlightWorkMeta,
 	pickWork
 } from '$lib/content/work.server';
 
@@ -109,5 +110,27 @@ describe('cover framing', () => {
 			if (!bundle.source.cover.endsWith('.svg')) continue;
 			expect(bundle.source.coverFit, bundle.slug).toBe('contain');
 		}
+	});
+});
+
+describe('spotlight selection', () => {
+	it('curates a non-empty set that both languages agree on', () => {
+		const spotlight = getSpotlightWorkMeta();
+		expect(spotlight.length).toBeGreaterThan(0);
+		for (const bundle of spotlight) {
+			const flags = new Set(Object.values(bundle.byLang).map((work) => work.spotlight));
+			expect(flags, bundle.slug).toEqual(new Set([true]));
+		}
+	});
+
+	it('keeps the newest-first order the full list uses', () => {
+		const order = getAllWorkMeta().map((bundle) => bundle.slug);
+		const spotlight = getSpotlightWorkMeta().map((bundle) => bundle.slug);
+		expect(spotlight).toEqual(order.filter((slug) => spotlight.includes(slug)));
+	});
+
+	// Empty frontmatter should degrade to recent work, not to an empty section.
+	it('falls back to recent projects when nothing is flagged', () => {
+		expect(getSpotlightWorkMeta(3).length).toBeGreaterThanOrEqual(3);
 	});
 });

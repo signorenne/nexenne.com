@@ -54,6 +54,18 @@ path when rendering, so never write the base path into the content.
   instead. The test reads the real pixel dimensions and fails on a cover that
   would be cropped to a sliver, so this is enforced rather than remembered.
 
+* Spotlight
+
+The home page shows curated projects, not simply the most recent ones. A case
+study opts in with =spotlight: true= (=#\+SPOTLIGHT:= in Org), and
+=getSpotlightWorkMeta= returns them newest first. With nothing flagged it falls
+back to recent work, so the section is never empty because frontmatter is
+missing.
+
+Flag both language versions of a project together. The layout in
+=.bento--spotlight= is sized for the current set, so revisit the column spans
+after changing how many projects are flagged.
+
 * Parser
 
 =src/lib/content/parser.server.ts= handles both formats:
