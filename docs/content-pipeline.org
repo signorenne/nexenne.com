@@ -41,3 +41,33 @@ skipped in production.
 
 It also builds the table of contents from headings, adds code-line wrappers,
 and fixes internal links/images when a =BASE_PATH= is used.
+
+* PlantUML Diagrams
+
+Architecture, state, activity, class, and sequence diagrams use PlantUML rather
+than text-based ASCII art.
+
+- Keep the editable =.puml= source beside its rendered =.svg=.
+- Blog diagram pairs live under =static/blog/images/<slug>/=.
+- Work case-study diagram pairs live under
+  =static/work/<slug>/diagrams/=.
+- Reference the =.svg= from authored content. Do not reference the =.puml=
+  directly.
+- Follow each diagram with a short, visible caption that explains the
+  relationship or behavior it shows. Keep accessibility text on Markdown
+  images as well.
+- Use PlantUML's default visual style unless a documented design requirement
+  calls for a different theme.
+- Reuse one diagram asset from both language versions when the diagram has
+  shared labels and meaning.
+
+Generate or refresh an SVG with:
+
+#+begin_src sh
+plantuml -charset UTF-8 -checkonly path/to/diagram.puml
+plantuml -charset UTF-8 -tsvg path/to/diagram.puml
+#+end_src
+
+Both commands must succeed before the content build. Commit the source and the
+rendered SVG together because the static site does not generate PlantUML during
+the SvelteKit build.
