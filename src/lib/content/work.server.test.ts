@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
 	getAllWork,
@@ -17,6 +19,22 @@ describe('work content loader', () => {
 		expect(codex?.byLang.it).toBeTruthy();
 		expect(codex?.byLang.en).toBeTruthy();
 		expect(codex?.source.cover).toBe('/work/codex-micro/product.webp');
+	});
+
+	it('requires every translation to share one existing static cover', () => {
+		for (const project of projects) {
+			const cover = project.source.cover;
+
+			expect(cover, `${project.slug} has no cover`).toMatch(/^\//);
+			expect(
+				existsSync(resolve(process.cwd(), 'static', cover.slice(1))),
+				`${project.slug} cover does not resolve: ${cover}`
+			).toBe(true);
+
+			for (const translation of Object.values(project.byLang)) {
+				expect(translation?.cover, `${project.slug} translations use different covers`).toBe(cover);
+			}
+		}
 	});
 
 	it('keeps cover metadata in list projections while stripping full content', () => {

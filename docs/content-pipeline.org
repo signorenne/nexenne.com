@@ -30,6 +30,23 @@ Work bundles are sorted newest first using =src/lib/content/recency.ts=, which
 turns a free-text date into a sortable number. Drafts show in development and are
 skipped in production.
 
+* Covers
+
+A blog post declares =image= and a case study declares =cover=. Both are
+root-relative paths under =static/=, and both routes prefix the SvelteKit base
+path when rendering, so never write the base path into the content.
+
+- The work index card and the case-study header are both built around the cover.
+  =src/lib/content/work.server.test.ts= fails when a project has none, when the
+  two translations disagree, or when the path does not resolve to a real file.
+- Keep both language versions of a project on the same image. It is the same
+  work, and a language switch that changes the picture reads as a different page.
+- Product photography lives at =static/work/<slug>/product.webp=. When a project
+  has none, point =cover= at the most representative asset it does have, such as
+  a screenshot or an architecture diagram.
+- In Org files the keyword is =#+COVER:=, matching the other frontmatter
+  keywords in that format.
+
 * Parser
 
 =src/lib/content/parser.server.ts= handles both formats:
