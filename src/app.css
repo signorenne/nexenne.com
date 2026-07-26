@@ -4256,6 +4256,16 @@ html.is-transitioning {
 	object-fit: cover;
 	display: block;
 }
+/* A portrait screenshot or a diagram cropped to a landscape frame shows a
+   useless slice of itself, so it is contained instead and matted on the
+   project's own accent. */
+.case-cover.is-contain {
+	background: color-mix(in oklab, var(--bg-elev), var(--accent) 10%);
+}
+.case-cover.is-contain img {
+	object-fit: contain;
+	padding: clamp(14px, 2.4vw, 28px);
+}
 /* A wash of the project's own accent, so two covers never read the same. */
 .case-cover::before {
 	content: "";
@@ -4334,6 +4344,13 @@ html.is-transitioning {
 	object-fit: cover;
 	display: block;
 	transition: transform var(--t-slow) var(--ease-out);
+}
+.bento-cover.is-contain {
+	background: color-mix(in oklab, var(--bg-elev), var(--accent) 10%);
+}
+.bento-cover.is-contain img {
+	object-fit: contain;
+	padding: 10px;
 }
 .bento-cover::after {
 	content: "";

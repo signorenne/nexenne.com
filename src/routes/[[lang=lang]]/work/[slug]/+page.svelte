@@ -32,7 +32,10 @@
 	</header>
 
 	<section class="section" style="padding-top: var(--sp-6);">
-		<figure class="case-cover accent-{current.color}">
+		<figure
+			class="case-cover accent-{current.color}"
+			class:is-contain={current.coverFit === 'contain'}
+		>
 			{#if current.cover}
 				<img src="{base}{current.cover}" alt="" aria-hidden="true" />
 			{/if}

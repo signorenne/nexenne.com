@@ -128,7 +128,10 @@
 					data-hover
 				>
 					{#if w.cover}
-						<figure class="bento-cover accent-{w.color}">
+						<figure
+							class="bento-cover accent-{w.color}"
+							class:is-contain={w.coverFit === 'contain'}
+						>
 							<img src="{base}{w.cover}" alt="" aria-hidden="true" loading="lazy" />
 						</figure>
 					{/if}
