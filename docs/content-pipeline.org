@@ -63,8 +63,10 @@ back to recent work, so the section is never empty because frontmatter is
 missing.
 
 Flag both language versions of a project together. The layout in
-=.bento--spotlight= is sized for the current set, so revisit the column spans
-after changing how many projects are flagged.
+=.bento--spotlight= is sized for the current count: the card shapes are picked so
+they tile a four-column and a two-column grid without leaving holes. Adding or
+removing a project changes that, so re-derive the spans rather than assuming the
+old ones still fit.
 
 * Parser
 
