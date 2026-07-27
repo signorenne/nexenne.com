@@ -30,15 +30,15 @@ contact:
   born: "17 giugno 1999"
 
 quote: |
-  Sono un software architect con base a Bergamo. Progetto soluzioni software su
-  misura per controllare dispositivi, semplificare sistemi complessi e
-  automatizzare processi.
+  Sono un software architect e sviluppatore embedded con base a Bergamo.
+  Progetto firmware, HMI e applicazioni che collegano dispositivi, interfacce
+  e servizi, trasformando requisiti di prodotto e vincoli tecnici in sistemi
+  chiari, verificabili e mantenibili.
 
-  Sviluppo firmware per sistemi embedded, HMI intuitive, app native, siti web,
-  applicazioni web, librerie riutilizzabili e integrazioni tra sistemi.
-  Posso definire l'architettura di un nuovo prodotto o intervenire su software
-  già in produzione, trasformando obiettivi e vincoli tecnici in soluzioni
-  verificabili, mantenibili e adatte al contesto reale.
+  Seguo lo sviluppo dall'architettura all'integrazione sul dispositivo reale,
+  fino alla validazione dell'esperienza utente. Posso avviare un prodotto da
+  zero o intervenire su software già in produzione, con un approccio pragmatico
+  orientato alla qualità tecnica, alla manutenibilità e all'utilizzo concreto.
 
 motto: "Una cosa deve essere fatta bene, altrimenti è meglio non farla."
 
@@ -48,12 +48,12 @@ experience:
     date: "dicembre 2025 - in corso"
     location: "da remoto, Canada"
     current: true
-    headline: "Sviluppo firmware, HMI ed esperienze di prodotto per tastiere e controller, inclusi Codex Micro e Framer F1 attraverso le collaborazioni pubbliche di Work Louder con OpenAI e Framer."
+    headline: "Sviluppo firmware, HMI ed esperienze di prodotto per tastiere e controller programmabili, lavorando anche su Codex Micro e Framer F1 nelle collaborazioni di Work Louder con OpenAI e Framer."
     points:
-      - "Contribuisco allo sviluppo e alla continuità dei prodotti Work Louder, collegando firmware, HMI, interazione e comportamento sul dispositivo reale."
-      - "Attraverso Work Louder ho contribuito alla collaborazione pubblica con OpenAI per Codex Micro, traducendo i flussi di Codex in interazioni fisiche chiare e coerenti."
-      - "Contribuisco a Framer F1, progettata da Framer e sviluppata da Work Louder, lavorando sul firmware e sull'esperienza coordinata tra display, controlli e funzioni Framer."
-      - "Porto avanti l'evoluzione di Creator Micro 2, XYZ Work Board r2, Knob1 e Nomad [E] 2 attraverso implementazione, validazione e rifinitura continua del prodotto."
+      - "Sviluppo e mantengo il firmware dei prodotti Work Louder, integrando input, display, LED, comunicazioni e logiche applicative."
+      - "Per Codex Micro ho lavorato sull'architettura e sulla logica principale del firmware, sulla gestione degli input, sui feedback LED e sulle chiamate RPC."
+      - "Per Framer F1 lavoro sul firmware e sull'HMI, coordinando display, tasti, encoder e funzioni del prodotto in un'esperienza coerente."
+      - "Porto avanti l'evoluzione di Creator Micro 2, XYZ Work Board r2, Knob1 e Nomad [E] 2 attraverso implementazione, test, validazione e rifinitura continua del prodotto."
     tags: [Firmware embedded, UX/UI, Product UX, HMI, Integrazione di prodotto, Validazione]
 
   - role: "Sviluppatore embedded / HMI"
@@ -61,54 +61,54 @@ experience:
     date: "gennaio 2025 - in corso"
     location: "Treviglio, Italia"
     current: true
-    headline: "Sviluppo software embedded e HMI per display di bordo, trasformando requisiti e informazioni della macchina in un'esperienza chiara per l'operatore."
+    headline: "Sviluppo software embedded e HMI per display di bordo, traducendo requisiti funzionali e informazioni della macchina in interfacce chiare per l'operatore."
     points:
-      - "Collaboro con il team R&D di SDF, tramite Re:Lab, portando contributi operativi sul software di cabina e sui display di bordo dei trattori."
-      - "Trasformo requisiti di prodotto in comportamenti comprensibili, componenti software e parti dell'interfaccia coerenti con il cluster."
-      - "Mantengo continuità tra pagine, indicatori e interazioni, considerando insieme qualità tecnica e leggibilità per l'operatore."
-      - "Integro e verifico le funzioni sulla piattaforma di riferimento, rifinendo il risultato insieme al team multidisciplinare."
+      - "Collaboro, tramite Re:Lab, con il team R&D di SDF sul software di cabina e sui display di bordo dei trattori."
+      - "Traduco requisiti di prodotto e dati macchina in componenti software, pagine, indicatori e logiche di interazione coerenti con il cluster."
+      - "Sviluppo e integro interfacce in Qt/QML, mantenendo continuità visiva e comportamentale tra le diverse funzioni."
+      - "Verifico le funzionalità sulla piattaforma di riferimento e rifinisco il risultato con il team multidisciplinare, bilanciando vincoli tecnici, leggibilità e usabilità."
     tags: [Software embedded, HMI, Qt/QML, Integrazione di prodotto, Validazione]
 
   - role: "Artigiano"
     company: NicoLab
     date: "ottobre 2023 - febbraio 2024"
     location: "Chiuduno, Italia"
-    headline: "Ho creato e gestito un'impresa individuale specializzata nella lavorazione e rifinitura di accessori moda per conto terzi, costruendo un servizio autonomo e affidabile."
+    headline: "Ho avviato e gestito un'impresa individuale specializzata nella lavorazione e rifinitura di accessori moda per conto terzi."
     points:
-      - "Ho organizzato in prima persona le lavorazioni nel rispetto di tempi, standard qualitativi e specifiche del cliente, garantendo consegne ordinate e risultati coerenti."
-      - "Mi sono assunto la gestione diretta di clienti, priorità operative, imprevisti e non conformità, mantenendo il lavoro allineato alle esigenze reali della produzione."
-      - "Ho gestito attività operative, amministrative e commerciali, sviluppando autonomia decisionale e responsabilità diretta sul risultato."
+      - "Ho pianificato e coordinato le lavorazioni nel rispetto di scadenze, specifiche del cliente e standard qualitativi."
+      - "Ho gestito direttamente clienti, priorità operative, imprevisti e non conformità, mantenendo il lavoro allineato alle esigenze della produzione."
+      - "Ho seguito le attività operative, amministrative e commerciali, assumendo responsabilità diretta sull'organizzazione e sul risultato finale."
     tags: [Gestione clienti, Pianificazione, Controllo qualità, Amministrazione, Vendita]
 
   - role: "Artigiano"
     company: Giosmalt
     date: "gennaio 2019 - settembre 2024"
     location: "Chiuduno, Italia"
-    headline: "Ho contribuito in modo continuativo all'azienda artigiana di famiglia, sostenendo produzione e rifinitura di accessori moda con attenzione a precisione e continuità."
+    headline: "Ho lavorato nell'azienda artigiana di famiglia, contribuendo alla produzione e alla rifinitura di accessori moda e alla gestione quotidiana delle attività."
     points:
-      - "Ho preso in carico attività operative e amministrative lungo l'intero processo, dalla lavorazione al controllo qualità e alla consegna, migliorando il coordinamento quotidiano."
-      - "Ho organizzato il lavoro nei periodi di maggiore carico, permettendo di rispettare scadenze e standard qualitativi anche sotto pressione."
-      - "Ho maturato esperienza nella gestione pratica di risorse, priorità e responsabilità operative in un contesto produttivo reale."
+      - "Ho seguito attività operative e amministrative lungo l'intero processo, dalla lavorazione al controllo qualità e all'organizzazione delle consegne."
+      - "Ho pianificato il lavoro nei periodi di maggiore carico, contribuendo al rispetto delle scadenze e degli standard qualitativi."
+      - "Ho gestito priorità, risorse e imprevisti in un contesto produttivo reale, sviluppando autonomia e responsabilità operativa."
     tags: [Produzione, Organizzazione, Gestione risorse, Controllo qualità]
 
   - role: "Stagista informatico"
     company: Italtrans
     date: "giugno 2018 - agosto 2018"
     location: "Calcinate, Italia"
-    headline: "Ho gestito interventi tecnici e sistemistici per manutenzione, continuità operativa e risoluzione dei problemi, contribuendo a ridurre i fermi delle postazioni."
+    headline: "Ho fornito supporto tecnico e sistemistico agli utenti aziendali, contribuendo alla manutenzione delle postazioni e alla continuità operativa."
     points:
-      - "Ho affiancato utenti e reparti diversi, traducendo esigenze operative in interventi informatici pratici."
-      - "Ho riparato e aggiornato postazioni di lavoro, gestito ticket di assistenza e curato l'hardware aziendale, rendendo il supporto più rapido e ordinato."
+      - "Ho supportato utenti e reparti diversi, traducendo le esigenze operative in interventi informatici concreti."
+      - "Ho riparato e aggiornato postazioni di lavoro, gestito ticket di assistenza e curato l'hardware aziendale."
     tags: [Supporto IT, Hardware, Ticketing, Stage]
 
   - role: "Programmatore"
     company: Garmsafe
     date: "novembre 2016 - gennaio 2018"
     location: "Bergamo, Italia"
-    headline: "Ho guidato la parte software di un progetto di Impresa Formativa Simulata, portando un contributo tecnico concreto in un contesto organizzato come una piccola azienda."
+    headline: "Ho guidato lo sviluppo software di un progetto di Impresa Formativa Simulata, trasformando un prototipo hardware in una dimostrazione funzionante."
     points:
-      - "Ho progettato e sviluppato il software per acquisire ed elaborare dati da sensori a ultrasuoni, trasformando un prototipo hardware in una dimostrazione funzionante."
-      - "Ho coordinato un team di quattro persone, dalla pianificazione alla presentazione finale, contribuendo a ottenere il primo posto al concorso IFS."
+      - "Ho progettato e sviluppato il software per acquisire ed elaborare dati provenienti da sensori a ultrasuoni."
+      - "Ho coordinato un team di quattro persone dalla pianificazione alla presentazione finale, contribuendo alla vittoria del primo premio nel concorso IFS."
     tags: [Arduino, Sensori, Coordinamento, Modellazione 3D, Lavoro di squadra]
 
 projects:
@@ -116,11 +116,11 @@ projects:
     kind: Professionale · Work Louder × OpenAI
     date: "2026"
     location: "da remoto, Canada"
-    headline: "Controller fisico per Codex, sviluppato attraverso Work Louder, che rende stati, comandi e flussi degli agenti immediatamente leggibili e controllabili."
+    headline: "Controller fisico per Codex che traduce stati, comandi e flussi degli agenti in interazioni immediate attraverso controlli dedicati e feedback visivi."
     points:
-      - "Ho contribuito al firmware e alla product UX, traducendo i flussi pubblici di Codex in interazioni fisiche chiare."
-      - "Ho lavorato sulla coerenza tra controlli dedicati, feedback visivo e risposta del prodotto."
-      - "Ho rifinito il comportamento sul dispositivo reale insieme al team Work Louder."
+      - "Ho sviluppato parte dell'architettura e della logica principale del firmware, gestendo input, display, LED e stato del dispositivo."
+      - "Ho integrato le chiamate RPC e il routing delle informazioni provenienti da Codex, introducendo nuovi layer LED per rappresentare stati e azioni in modo leggibile."
+      - "Ho validato e rifinito il comportamento sul dispositivo reale insieme al team Work Louder, contribuendo a una nuova esperienza d'uso per Codex."
     link: nexenne.com/work/codex-micro
     tags: [Firmware embedded, Product UX, HMI, Integrazione, Validazione]
 
@@ -129,11 +129,11 @@ projects:
     date: "2026 - in corso"
     location: "da remoto, Canada"
     current: true
-    headline: "Firmware e nuova esperienza HMI per la tastiera progettata da Framer e sviluppata da Work Louder, costruita attorno a display, tasti ed encoder."
+    headline: "Tastiera progettata da Framer e sviluppata da Work Louder, con un'esperienza HMI costruita attorno a display, tasti ed encoder programmabili."
     points:
-      - "Contribuisco al firmware e alla HMI, adattando l'identità di Framer ai vincoli di un display embedded."
-      - "Lavoro sull'esperienza coordinata tra tastiera, controlli programmabili, display e funzioni Framer."
-      - "Verifico e rifinisco gerarchia, feedback e comportamento direttamente sul prodotto."
+      - "Sviluppo il firmware e l'HMI, adattando l'identità e le funzioni di Framer ai vincoli di un dispositivo embedded."
+      - "Coordino il comportamento di tastiera, display, controlli programmabili ed encoder per offrire un'esperienza coerente."
+      - "Verifico e rifinisco la gerarchia delle informazioni, i feedback visivi e le interazioni direttamente sul prodotto."
     link: nexenne.com/work/framer-f1
     tags: [Firmware embedded, HMI, UI/UX, Integrazione, Validazione]
 
@@ -142,12 +142,12 @@ projects:
     date: "2026 - in corso"
     location: "Bergamo, Italia"
     current: true
-    headline: "Collezione di librerie C++23 indipendenti, nata per trasformare codice sperimentale in componenti riutilizzabili e mantenibili."
+    headline: "Collezione modulare di librerie C++23 indipendenti, progettata per trasformare codice sperimentale in componenti riutilizzabili, verificabili e mantenibili."
     points:
-      - "Ho impostato un'architettura a componenti in cui ogni modulo può essere integrato, testato e distribuito in modo indipendente, favorendo riuso e isolamento."
-      - "Sto costruendo moduli per utility, container, tempo e generazione casuale seguendo le convenzioni della standard library, così da offrire API prevedibili."
-      - "Ho reso il progetto verificabile con Doctest, preset CMake, AddressSanitizer e UndefinedBehaviorSanitizer, aumentando affidabilità e facilità di manutenzione."
-      - "Sto portando le idee maturate in Enne 2D dentro una base più semplice, modulare e mantenibile, evitando di trascinare complessità del progetto originale."
+      - "Ho definito un'architettura a componenti in cui ogni modulo può essere integrato, testato e distribuito in modo indipendente, favorendo riuso e isolamento."
+      - "Sto sviluppando moduli dedicati a utility, container, gestione del tempo e generazione casuale, seguendo le convenzioni della standard library per offrire API prevedibili."
+      - "Ho predisposto test con Doctest, preset CMake, AddressSanitizer e UndefinedBehaviorSanitizer per individuare regressioni e problemi di correttezza."
+      - "Sto trasferendo le idee maturate con Enne 2D in una base più semplice e modulare, evitando di ereditare la complessità del progetto originale."
     link: github.com/signorenne/nexenne
     tags: [C++23, CMake, Doctest, Sviluppo Agile]
 
@@ -155,12 +155,12 @@ projects:
     kind: Personale · archiviato · open source
     date: "novembre 2022 - febbraio 2023"
     location: "Chiuduno, Italia"
-    headline: "App Android nativa per registrare, sincronizzare e analizzare attività all'aperto."
+    headline: "App Android nativa per registrare, sincronizzare e analizzare attività all'aperto, sviluppata dall'architettura all'esperienza utente."
     points:
-      - "Ho ideato, progettato e sviluppato l'intera app con MVVM, Clean Architecture e Jetpack Compose, costruendo una base ordinata e facile da evolvere."
-      - "Ho integrato Google Maps, servizi di localizzazione e Firebase per autenticazione, sincronizzazione, funzioni backend e archiviazione cloud, rendendo l'app utilizzabile end-to-end."
-      - "Ho definito e documentato flussi utente, architettura e responsabilità dei moduli, dando al progetto una direzione tecnica chiara."
-      - "Ho ottimizzato il tracciamento GPS per bilanciare precisione, continuità in background e consumo energetico, migliorando l'esperienza durante l'uso reale."
+      - "Ho ideato, progettato e sviluppato l'intera applicazione con MVVM, Clean Architecture e Jetpack Compose."
+      - "Ho integrato Google Maps, servizi di localizzazione e Firebase per autenticazione, sincronizzazione, funzioni backend e archiviazione cloud."
+      - "Ho definito e documentato flussi utente, architettura e responsabilità dei moduli, mantenendo chiara la separazione tra i diversi livelli dell'applicazione."
+      - "Ho ottimizzato il tracciamento GPS per bilanciare precisione, continuità in background e consumo energetico durante l'utilizzo reale."
     link: github.com/signorenne/trackomatic
     tags: ["Clean Architecture", MVVM, Firebase]
 
@@ -197,7 +197,7 @@ languages:
 awards:
   - title: "IFS · 1° posto"
     year: "2018"
-    body: "Riconoscimento ottenuto con Garmsafe e il progetto BlindStrip, presentando un prototipo funzionante sviluppato in team."
+    body: "Primo premio ottenuto con Garmsafe e il progetto BlindStrip, presentando un prototipo funzionante sviluppato in team."
 
 hobbies: [Escursionismo, Calisthenics, Sci, Scrittura]
 
