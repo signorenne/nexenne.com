@@ -1,0 +1,24 @@
+@startuml
+title Two consumers, two time scales
+
+rectangle "Raw VBUS" as raw
+rectangle "Fast filter" as fast
+rectangle "USB stack" as stack
+rectangle "Policy debounce" as debounce
+rectangle "Application route" as route
+
+raw --> fast
+fast --> stack : attach and unplug
+raw --> debounce
+debounce --> route : probe and fallback
+
+note right of stack
+  Fast reaction:
+  physical state must remain truthful.
+end note
+
+note right of route
+  Stable reaction:
+  avoids transitions caused by glitches.
+end note
+@enduml

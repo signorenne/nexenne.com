@@ -78,20 +78,33 @@ describe('getPost / getAllPostMeta', () => {
 
 	it('wires the USB routing article to its cover and PlantUML diagrams', () => {
 		const bundle = getPost('usb_vbus_enumerazione_routing');
-		const article = bundle?.byLang.it;
+		const englishArticle = bundle?.byLang.en;
+		const italianArticle = bundle?.byLang.it;
 
-		expect(article?.date).toBe('2026-07-27');
-		expect(article?.image).toBe('/blog/covers/usb_vbus_enumerazione_routing.webp');
+		expect(englishArticle?.date).toBe('2026-07-27');
+		expect(italianArticle?.date).toBe('2026-07-27');
+		expect(englishArticle?.image).toBe('/blog/covers/usb_vbus_enumerazione_routing.webp');
+		expect(italianArticle?.image).toBe('/blog/covers/usb_vbus_enumerazione_routing.webp');
 		expect(
 			existsSync(resolve(process.cwd(), 'static/blog/covers/usb_vbus_enumerazione_routing.webp'))
 		).toBe(true);
-		expect(article?.html).toContain(
+		expect(englishArticle?.html).toContain(
+			'/blog/images/usb_vbus_enumerazione_routing/probe-then-commit-en.svg'
+		);
+		expect(italianArticle?.html).toContain(
 			'/blog/images/usb_vbus_enumerazione_routing/probe-then-commit.svg'
 		);
-		expect(article?.toc.some((item) => item.text === 'Il meccanismo: probe, poi commit')).toBe(
-			true
-		);
-		expect(article?.toc.every((item) => !item.text.includes('{#'))).toBe(true);
-		expect(pickPost(bundle!, 'en')).toBe(article);
+		expect(
+			englishArticle?.toc.some((item) => item.text === 'The mechanism: probe, then commit')
+		).toBe(true);
+		expect(
+			italianArticle?.toc.some((item) => item.text === 'Il meccanismo: probe, poi commit')
+		).toBe(true);
+		expect(englishArticle?.toc.every((item) => !item.text.includes('{#'))).toBe(true);
+		expect(italianArticle?.toc.every((item) => !item.text.includes('{#'))).toBe(true);
+		expect(pickPost(bundle!, 'en')).toBe(englishArticle);
+		expect(pickPost(bundle!, 'it')).toBe(italianArticle);
+		expect(englishArticle?.translatedFrom).toBe('it');
+		expect(englishArticle?.autoTranslated).toBe(false);
 	});
 });

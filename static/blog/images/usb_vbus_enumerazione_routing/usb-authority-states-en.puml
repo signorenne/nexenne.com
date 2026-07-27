@@ -1,0 +1,30 @@
+@startuml
+title Observable states and authority
+
+state "VBUS absent" as NoVbus
+state "VBUS present" as Vbus
+state "Device presented" as Presented
+state "Host detected" as Connected
+state "Address assigned" as Addressed
+state "Active configuration" as Mounted
+state "Class ready" as Ready
+state "USB route adopted" as Routed
+
+[*] --> NoVbus
+NoVbus --> Vbus : power detected
+Vbus --> Presented : pull-up enabled
+Presented --> Connected : reset or setup packet
+Connected --> Addressed : SET_ADDRESS
+Addressed --> Mounted : SET_CONFIGURATION
+Mounted --> Ready : class requirements
+Ready --> Routed : application decision
+
+note right of Vbus
+  Proves power,
+  not communication.
+end note
+
+note right of Mounted
+  tud_mounted()
+end note
+@enduml

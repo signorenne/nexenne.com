@@ -1,0 +1,18 @@
+@startuml
+title From VBUS presence to USB configuration
+
+participant "Device firmware" as device
+participant "USB stack" as stack
+participant Host as host
+
+device -> device: detects VBUS
+device -> stack: enables the pull-up
+host -> stack: detects attach
+host -> stack: bus reset
+host -> stack: GET_DESCRIPTOR
+host -> stack: SET_ADDRESS
+host -> stack: reads configuration
+host -> stack: SET_CONFIGURATION
+stack -> device: mount callback
+device -> device: class and route can\nnow be evaluated
+@enduml

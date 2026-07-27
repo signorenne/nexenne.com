@@ -1,0 +1,26 @@
+@startuml
+title Host and charger during the probe
+
+participant Firmware
+participant "USB stack" as stack
+participant "Cable peer" as peer
+participant Policy
+
+Firmware -> Policy: VBUS confirmed
+Policy -> stack: starts the probe
+stack -> peer: presents the device
+
+alt USB host
+  peer -> stack: bus reset
+  peer -> stack: setup packet
+  peer -> stack: SET_ADDRESS
+  peer -> stack: SET_CONFIGURATION
+  stack -> Policy: fresh mount
+  Policy -> Policy: route = USB
+else charger
+  note over peer,stack: no control traffic
+  Policy -> Policy: probe timeout
+  Policy -> stack: removes presentation
+  Policy -> Policy: route unchanged
+end
+@enduml

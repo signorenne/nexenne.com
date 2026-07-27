@@ -1,0 +1,17 @@
+@startuml
+title Correct order with lazy initialization
+
+start
+:detect VBUS;
+:ensure USB initialization;
+:keep the pull-up disabled;
+:arm the probe and save the session;
+:present the device;
+:wait for enumeration;
+if (Fresh mount?) then (yes)
+  :adopt USB;
+else (timeout)
+  :close the probe;
+endif
+stop
+@enduml

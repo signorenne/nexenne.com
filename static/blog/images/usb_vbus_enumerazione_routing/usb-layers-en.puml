@@ -1,0 +1,18 @@
+@startuml
+title Layers of an embedded USB connection
+
+rectangle "Connector and cable" as connector
+rectangle "Power and attach" as power
+rectangle "D+ and D- signaling" as signals
+rectangle "USB control on EP0" as control
+rectangle "Enumeration and configuration" as enumeration
+rectangle "USB class\nHID, CDC, MSC" as usb_class
+rectangle "Application policy" as policy
+
+connector -down-> power
+power -down-> signals
+signals -down-> control
+control -down-> enumeration
+enumeration -down-> usb_class
+usb_class -down-> policy
+@enduml
