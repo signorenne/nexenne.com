@@ -108,6 +108,22 @@ describe('getPost / getAllPostMeta', () => {
 		expect(
 			italianArticle?.toc.some((item) => item.text === 'Il meccanismo: probe, poi commit')
 		).toBe(true);
+		expect(englishArticle?.toc.some((item) => item.text === 'Notes')).toBe(true);
+		expect(italianArticle?.toc.some((item) => item.text === 'Note')).toBe(true);
+		const englishHtml = englishArticle?.html ?? '';
+		const italianHtml = italianArticle?.html ?? '';
+		expect(englishHtml.indexOf('id="notes"')).toBeGreaterThan(
+			englishHtml.indexOf('id="image-credits"')
+		);
+		expect(englishHtml.indexOf('data-footnotes')).toBeGreaterThan(
+			englishHtml.indexOf('id="notes"')
+		);
+		expect(italianHtml.indexOf('id="note"')).toBeGreaterThan(
+			italianHtml.indexOf('id="crediti-immagine"')
+		);
+		expect(italianHtml.indexOf('data-footnotes')).toBeGreaterThan(
+			italianHtml.indexOf('id="note"')
+		);
 		expect(englishArticle?.toc.every((item) => !item.text.includes('{#'))).toBe(true);
 		expect(italianArticle?.toc.every((item) => !item.text.includes('{#'))).toBe(true);
 		expect(pickPost(bundle!, 'en')).toBe(englishArticle);

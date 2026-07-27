@@ -1094,6 +1094,10 @@ In sostanza, alimentazione, attach, enumerazione e route applicativa non sono si
 
 - Immagine di copertina: [USB Type-C plug 20170626.jpg] di [Santeri Viinamäki], Wikimedia Commons, licenza [CC BY-SA 4.0]. Immagine ritagliata e convertita in WebP per il layout del sito.
 
+## Note
+
+Le note richiamate nel testo raccolgono il dettaglio delle fonti tecniche utilizzate.
+
 [^usb-concepts]: TinyUSB, [USB Concepts], in particolare ruoli host/device, stati, trasferimenti ed enumerazione.
 [^hid11]: USB-IF, [Device Class Definition for HID 1.11]. Gli endpoint interrupt sono interrogati dall'host secondo il polling interval dichiarato.
 [^typec-overview]: USB-IF, [USB Type-C System Overview], slide sul processo di discovery: CC risolve Source/Sink e DFP/UFP, mentre USB PD stabilisce il contratto di potenza e le funzioni dati seguono passaggi distinti.

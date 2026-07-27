@@ -1096,6 +1096,10 @@ In short, power, attach, enumeration, and application routing are not synonyms. 
 
 - Cover image: [USB Type-C plug 20170626.jpg] by [Santeri Viinamäki], Wikimedia Commons, licensed under [CC BY-SA 4.0]. Image cropped and converted to WebP for the site layout.
 
+## Notes
+
+The notes referenced in the text provide the details of the technical sources used.
+
 [^usb-concepts]: TinyUSB, [USB Concepts], especially host/device roles, states, transfers, and enumeration.
 [^hid11]: USB-IF, [Device Class Definition for HID 1.11]. Interrupt endpoints are polled by the host according to the declared polling interval.
 [^typec-overview]: USB-IF, [USB Type-C System Overview], slides on the discovery process: CC resolves Source/Sink and DFP/UFP, while USB PD establishes the power contract and data functions follow separate steps.
