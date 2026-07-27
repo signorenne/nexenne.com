@@ -1,0 +1,17 @@
+@startuml
+title Ordine corretto con inizializzazione lazy
+
+start
+:rileva VBUS;
+:assicura l'inizializzazione USB;
+:mantieni il pull-up disabilitato;
+:arma il probe e salva la sessione;
+:presenta il device;
+:attendi l'enumerazione;
+if (Mount fresco?) then (sì)
+  :adotta USB;
+else (timeout)
+  :chiudi il probe;
+endif
+stop
+@enduml

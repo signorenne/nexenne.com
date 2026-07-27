@@ -1,0 +1,26 @@
+@startuml
+title Quando il mount appartiene alla sessione precedente
+
+participant Host
+participant "Device self-powered" as device
+participant "Stack USB" as stack
+participant Caricatore
+
+Host -> stack: enumera e configura
+stack -> device: mount callback
+note over stack: tud_mounted() = true
+
+Host -x stack: cavo rimosso
+note over device,stack
+  Il device resta alimentato.
+  L'evento unplug non raggiunge lo stack.
+end note
+
+Caricatore -> device: VBUS presente
+device -> stack: legge lo stato
+stack --> device: mounted ancora true
+note over device
+  Lo stato è valido in memoria,
+  ma non per la sessione corrente.
+end note
+@enduml

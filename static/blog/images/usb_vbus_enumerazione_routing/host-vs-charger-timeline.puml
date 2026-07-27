@@ -1,0 +1,26 @@
+@startuml
+title Host e caricatore durante il probe
+
+participant Firmware
+participant "Stack USB" as stack
+participant "Estremità del cavo" as peer
+participant Policy
+
+Firmware -> Policy: VBUS confermata
+Policy -> stack: avvia il probe
+stack -> peer: presenta il device
+
+alt host USB
+  peer -> stack: bus reset
+  peer -> stack: setup packet
+  peer -> stack: SET_ADDRESS
+  peer -> stack: SET_CONFIGURATION
+  stack -> Policy: mount fresco
+  Policy -> Policy: route = USB
+else caricatore
+  note over peer,stack: nessun traffico di controllo
+  Policy -> Policy: timeout del probe
+  Policy -> stack: rimuove la presentazione
+  Policy -> Policy: route invariata
+end
+@enduml

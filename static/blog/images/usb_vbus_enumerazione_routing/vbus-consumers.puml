@@ -1,0 +1,24 @@
+@startuml
+title Due consumatori, due tempi
+
+rectangle "VBUS raw" as raw
+rectangle "Filtro rapido" as fast
+rectangle "Stack USB" as stack
+rectangle "Debounce di policy" as debounce
+rectangle "Route applicativa" as route
+
+raw --> fast
+fast --> stack : attach e unplug
+raw --> debounce
+debounce --> route : probe e fallback
+
+note right of stack
+  Reazione rapida:
+  lo stato fisico deve restare vero.
+end note
+
+note right of route
+  Reazione stabile:
+  evita transizioni dovute ai glitch.
+end note
+@enduml

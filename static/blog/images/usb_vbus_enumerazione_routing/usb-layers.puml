@@ -1,0 +1,18 @@
+@startuml
+title Livelli di una connessione USB embedded
+
+rectangle "Connettore e cavo" as connector
+rectangle "Alimentazione e attach" as power
+rectangle "Segnali D+ e D-" as signals
+rectangle "Controllo USB su EP0" as control
+rectangle "Enumerazione e configurazione" as enumeration
+rectangle "Classe USB\nHID, CDC, MSC" as usb_class
+rectangle "Policy applicativa" as policy
+
+connector -down-> power
+power -down-> signals
+signals -down-> control
+control -down-> enumeration
+enumeration -down-> usb_class
+usb_class -down-> policy
+@enduml

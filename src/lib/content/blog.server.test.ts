@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import {
 	getAllPosts,
@@ -72,5 +74,24 @@ describe('getPost / getAllPostMeta', () => {
 		expect('html' in meta.source).toBe(false);
 		expect('toc' in meta.source).toBe(false);
 		expect(meta.source.title).toBeTruthy();
+	});
+
+	it('wires the USB routing article to its cover and PlantUML diagrams', () => {
+		const bundle = getPost('usb_vbus_enumerazione_routing');
+		const article = bundle?.byLang.it;
+
+		expect(article?.date).toBe('2026-07-27');
+		expect(article?.image).toBe('/blog/covers/usb_vbus_enumerazione_routing.webp');
+		expect(
+			existsSync(resolve(process.cwd(), 'static/blog/covers/usb_vbus_enumerazione_routing.webp'))
+		).toBe(true);
+		expect(article?.html).toContain(
+			'/blog/images/usb_vbus_enumerazione_routing/probe-then-commit.svg'
+		);
+		expect(article?.toc.some((item) => item.text === 'Il meccanismo: probe, poi commit')).toBe(
+			true
+		);
+		expect(article?.toc.every((item) => !item.text.includes('{#'))).toBe(true);
+		expect(pickPost(bundle!, 'en')).toBe(article);
 	});
 });

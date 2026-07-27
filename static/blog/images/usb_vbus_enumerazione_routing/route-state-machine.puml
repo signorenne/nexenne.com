@@ -1,0 +1,26 @@
+@startuml
+title Macchina a stati della route USB
+
+[*] --> Idle
+Idle --> Probing : VBUS confermata
+Probing --> Active : mount fresco
+Probing --> Idle : timeout
+Probing --> Idle : VBUS assente
+Probing --> Idle : USB disabilitata
+Active --> Idle : VBUS assente
+Active --> Idle : configurazione persa
+
+state Idle
+state Probing
+state Active
+
+note right of Probing
+  USB è presentata,
+  la route non è ancora adottata.
+end note
+
+note right of Active
+  La transizione chiude lo stato
+  della route precedente.
+end note
+@enduml

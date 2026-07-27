@@ -1,0 +1,18 @@
+@startuml
+title Dalla presenza di VBUS alla configurazione USB
+
+participant "Firmware device" as device
+participant "Stack USB" as stack
+participant Host as host
+
+device -> device: rileva VBUS
+device -> stack: abilita il pull-up
+host -> stack: rileva l'attach
+host -> stack: bus reset
+host -> stack: GET_DESCRIPTOR
+host -> stack: SET_ADDRESS
+host -> stack: legge la configurazione
+host -> stack: SET_CONFIGURATION
+stack -> device: mount callback
+device -> device: classe e route possono\nessere valutate
+@enduml

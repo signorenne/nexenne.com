@@ -1,0 +1,24 @@
+@startuml
+title Probe-then-commit
+
+start
+:VBUS confermata;
+:inizializza il canale USB;
+:presenta temporaneamente il device;
+:mantieni la route precedente;
+
+if (Nuovo mount\nnella sessione corrente?) then (sì)
+  :chiudi lo stato della route uscente;
+  :adotta la route USB;
+  :mantieni il device presentato;
+else (no)
+  if (Timeout o VBUS assente?) then (sì)
+    :rimuovi la presentazione USB;
+    :mantieni la route precedente;
+  else (no)
+    :continua il probe;
+  endif
+endif
+
+stop
+@enduml
