@@ -72,7 +72,11 @@
 
 		<div class="cv-body">
 			<main class="cv-main">
-				<p class="cv-quote">{resume.quote}</p>
+				<div class="cv-intro">
+					{#each resume.quote.trim().split(/\n\s*\n/) as paragraph (paragraph)}
+						<p class="cv-quote">{paragraph}</p>
+					{/each}
+				</div>
 
 				<section class="cv-section">
 					<h2 class="cv-h">

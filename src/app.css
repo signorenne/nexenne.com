@@ -5935,13 +5935,21 @@ main[data-page="uses"] .uses-box h3 {
 	letter-spacing: 0.08em;
 }
 
+.cv-sheet .cv-intro {
+	margin: 0 0 28px;
+}
+
 .cv-sheet .cv-quote {
 	font-style: italic;
 	color: var(--cv-ink-soft);
 	font-size: 10.5pt;
 	line-height: 1.6;
 	padding: 0;
-	margin: 0 0 28px;
+	margin: 0;
+}
+
+.cv-sheet .cv-quote + .cv-quote {
+	margin-top: 0.65em;
 }
 
 .cv-sheet .cv-entry {
@@ -7767,7 +7775,7 @@ main[data-page="uses"] .uses-box h3 {
 	.cv-sheet .cv-entry {
 		margin-bottom: 14px !important;
 	}
-	.cv-sheet .cv-quote {
+	.cv-sheet .cv-intro {
 		margin-bottom: 18px !important;
 	}
 
