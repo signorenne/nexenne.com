@@ -30,15 +30,17 @@ contact:
   born: "17 giugno 1999"
 
 quote: |
-  Sono un software architect e sviluppatore embedded con base a Bergamo.
-  Progetto firmware, HMI e applicazioni che collegano dispositivi, interfacce
-  e servizi, trasformando requisiti di prodotto e vincoli tecnici in sistemi
-  chiari, verificabili e mantenibili.
+  Sono un software architect con base a Bergamo.
+  Progetto firmware, HMI, applicazioni native e web, librerie e integrazioni
+  per prodotti connessi, trasformando requisiti di prodotto e vincoli hardware
+  in sistemi affidabili, mantenibili e semplici da utilizzare.
 
-  Seguo lo sviluppo dall'architettura all'integrazione sul dispositivo reale,
-  fino alla validazione dell'esperienza utente. Posso avviare un prodotto da
-  zero o intervenire su software già in produzione, con un approccio pragmatico
-  orientato alla qualità tecnica, alla manutenibilità e all'utilizzo concreto.
+  Seguo l’intero sviluppo, dall’architettura all’integrazione sul dispositivo
+  reale: definisco componenti, flussi e protocolli; implemento le funzionalità;
+  collego interfacce, periferiche, servizi e sistemi di comunicazione; verifico
+  infine il comportamento sul prodotto. Lavoro sia su nuove piattaforme sia
+  sull’evoluzione di software già in produzione, con un approccio pragmatico
+  basato su test, validazione e qualità del codice.
 
 motto: "Una cosa deve essere fatta bene, altrimenti è meglio non farla."
 
@@ -112,31 +114,6 @@ experience:
     tags: [Arduino, Sensori, Coordinamento, Modellazione 3D, Lavoro di squadra]
 
 projects:
-  - name: Codex Micro
-    kind: Professionale · Work Louder × OpenAI
-    date: "2026"
-    location: "da remoto, Canada"
-    headline: "Controller fisico per Codex che traduce stati, comandi e flussi degli agenti in interazioni immediate attraverso controlli dedicati e feedback visivi."
-    points:
-      - "Ho sviluppato parte dell'architettura e della logica principale del firmware, gestendo input, display, LED e stato del dispositivo."
-      - "Ho integrato le chiamate RPC e il routing delle informazioni provenienti da Codex, introducendo nuovi layer LED per rappresentare stati e azioni in modo leggibile."
-      - "Ho validato e rifinito il comportamento sul dispositivo reale insieme al team Work Louder, contribuendo a una nuova esperienza d'uso per Codex."
-    link: nexenne.com/work/codex-micro
-    tags: [Firmware embedded, Product UX, HMI, Integrazione, Validazione]
-
-  - name: Framer F1
-    kind: Professionale · Work Louder × Framer
-    date: "2026 - in corso"
-    location: "da remoto, Canada"
-    current: true
-    headline: "Tastiera progettata da Framer e sviluppata da Work Louder, con un'esperienza HMI costruita attorno a display, tasti ed encoder programmabili."
-    points:
-      - "Sviluppo il firmware e l'HMI, adattando l'identità e le funzioni di Framer ai vincoli di un dispositivo embedded."
-      - "Coordino il comportamento di tastiera, display, controlli programmabili ed encoder per offrire un'esperienza coerente."
-      - "Verifico e rifinisco la gerarchia delle informazioni, i feedback visivi e le interazioni direttamente sul prodotto."
-    link: nexenne.com/work/framer-f1
-    tags: [Firmware embedded, HMI, UI/UX, Integrazione, Validazione]
-
   - name: Nexenne Library
     kind: Personale · open source
     date: "2026 - in corso"
@@ -165,20 +142,26 @@ projects:
     tags: ["Clean Architecture", MVVM, Firebase]
 
 skills:
-  - title: Soft skill
-    items: [Cura dei dettagli, Leadership, Pragmatismo, Gestione del tempo, Problem solving, Pensiero critico, Gestione dei conflitti]
+  - title: Progettazione software e architettura di sistema
+    items: [Architetture a componenti, Progettazione di API stabili, Astrazione dell’hardware, Sistemi event-driven, Modellazione di stati e flussi, Architettura dei protocolli, Integrazione tra hardware e software, Evoluzione di codebase esistenti]
   - title: Linguaggi
-    items: [C, C++, Kotlin, Java, Python, TypeScript, Bash]
-  - title: Sistemi embedded
-    items: [ESP32, ESP-IDF, FreeRTOS, PlatformIO, Embedded Linux, Sistemi real-time]
-  - title: HMI e applicazioni
-    items: [Qt, QML, LVGL, SDL, Jetpack Compose, SvelteKit]
-  - title: Comunicazione e integrazioni
-    items: [UART/I²C/SPI, CAN, BLE, TCP/IP, MQTT]
-  - title: Librerie e backend
-    items: [Boost, fmt, spdlog, nlohmann/json, MongoDB, REST API, Firebase, MySQL]
-  - title: Strumenti
-    items: [Git, CMake, Conan, Gradle, GDB, Doctest, GNU/Linux, Windows, Qt Creator, VSCode, Android Studio, IntelliJ IDEA, Org-mode, Godot Engine, Figma]
+    items: [C, C++20/23, Kotlin, Java, Python, TypeScript, Bash]
+  - title: C++ moderno e librerie
+    items: [STL, Template e programmazione generica, C++20 Concepts, Ranges e views, RAII e ownership, Strong types e type safety, Boost, fmt, spdlog, nlohmann/json]
+  - title: Firmware e sistemi embedded
+    items: [ESP32, ESP-IDF, FreeRTOS, PlatformIO, Embedded Linux, Sistemi real-time, Input e periferiche, Gestione alimentazione e batteria]
+  - title: HMI, grafica e applicazioni
+    items: [Qt, QML, LVGL, SDL, OpenGL, GLSL, Android, Jetpack Compose, Coroutines e Flow, Dagger Hilt, Google Maps]
+  - title: Interfacce e protocolli
+    items: [USB Device, HID, CDC, TinyUSB, UART, I²C, SPI, CAN/CAN FD, DBC, BLE/GATT, NimBLE, TCP/IP, MQTT, RPC, Framing e serializzazione, CRC e rilevamento degli errori]
+  - title: Web, backend e dati
+    items: [SvelteKit, REST API, Firebase, MongoDB, MySQL]
+  - title: Sistemi e networking
+    items: [GNU/Linux, Amministrazione di sistema, nftables, iptables, WireGuard, Gestione dei pacchetti]
+  - title: Toolchain, test e qualità
+    items: [Git, GitHub Actions, CMake, Conan, Gradle, GDB, Doctest, Doxygen, AddressSanitizer, UndefinedBehaviorSanitizer, Test su hardware target]
+  - title: Approccio professionale
+    items: [Cura dei dettagli, Pragmatismo, Problem solving, Pensiero critico, Gestione delle priorità, Leadership, Comunicazione tecnica]
 
 education:
   - degree: Laurea triennale in Informatica
