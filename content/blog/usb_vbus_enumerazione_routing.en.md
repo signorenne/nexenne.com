@@ -1092,6 +1092,10 @@ In short, power, attach, enumeration, and application routing are not synonyms. 
 - [ESP-IDF issue #12360] : public case of unplug not being detected in a self-powered scenario.
 - [ZMK issue #841] : USB-selection problem when only power is present.
 
+### Image credits
+
+- Cover image: [USB Type-C plug 20170626.jpg] by [Santeri Viinamäki], Wikimedia Commons, licensed under [CC BY-SA 4.0]. Image cropped and converted to WebP for the site layout.
+
 [^usb-concepts]: TinyUSB, [USB Concepts], especially host/device roles, states, transfers, and enumeration.
 [^hid11]: USB-IF, [Device Class Definition for HID 1.11]. Interrupt endpoints are polled by the host according to the declared polling interval.
 [^typec-overview]: USB-IF, [USB Type-C System Overview], slides on the discovery process: CC resolves Source/Sink and DFP/UFP, while USB PD establishes the power contract and data functions follow separate steps.
@@ -1126,3 +1130,6 @@ In short, power, attach, enumeration, and application routing are not synonyms. 
 [issue #12360: TinyUSB problems with USB unplugging detection]: https://github.com/espressif/esp-idf/issues/12360
 [ZMK issue #841]: https://github.com/zmkfirmware/zmk/issues/841
 [Battery Charging v1.2 Spec and Adopters Agreement]: https://www.usb.org/document-library/battery-charging-v12-spec-and-adopters-agreement
+[USB Type-C plug 20170626.jpg]: https://commons.wikimedia.org/wiki/File:USB_Type-C_plug_20170626.jpg
+[Santeri Viinamäki]: https://commons.wikimedia.org/wiki/User:Zunter
+[CC BY-SA 4.0]: https://creativecommons.org/licenses/by-sa/4.0/

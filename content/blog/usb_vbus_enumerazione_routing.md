@@ -1090,6 +1090,10 @@ In sostanza, alimentazione, attach, enumerazione e route applicativa non sono si
 - [ESP-IDF issue #12360]: caso pubblico di unplug non rilevato in uno scenario self-powered.
 - [ZMK issue #841]: problema di selezione USB quando è presente soltanto alimentazione.
 
+### Crediti immagine
+
+- Immagine di copertina: [USB Type-C plug 20170626.jpg] di [Santeri Viinamäki], Wikimedia Commons, licenza [CC BY-SA 4.0]. Immagine ritagliata e convertita in WebP per il layout del sito.
+
 [^usb-concepts]: TinyUSB, [USB Concepts], in particolare ruoli host/device, stati, trasferimenti ed enumerazione.
 [^hid11]: USB-IF, [Device Class Definition for HID 1.11]. Gli endpoint interrupt sono interrogati dall'host secondo il polling interval dichiarato.
 [^typec-overview]: USB-IF, [USB Type-C System Overview], slide sul processo di discovery: CC risolve Source/Sink e DFP/UFP, mentre USB PD stabilisce il contratto di potenza e le funzioni dati seguono passaggi distinti.
@@ -1124,3 +1128,6 @@ In sostanza, alimentazione, attach, enumerazione e route applicativa non sono si
 [issue #12360: TinyUSB problems with USB unplugging detection]: https://github.com/espressif/esp-idf/issues/12360
 [ZMK issue #841]: https://github.com/zmkfirmware/zmk/issues/841
 [Battery Charging v1.2 Spec and Adopters Agreement]: https://www.usb.org/document-library/battery-charging-v12-spec-and-adopters-agreement
+[USB Type-C plug 20170626.jpg]: https://commons.wikimedia.org/wiki/File:USB_Type-C_plug_20170626.jpg
+[Santeri Viinamäki]: https://commons.wikimedia.org/wiki/User:Zunter
+[CC BY-SA 4.0]: https://creativecommons.org/licenses/by-sa/4.0/

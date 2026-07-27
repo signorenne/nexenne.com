@@ -94,6 +94,14 @@ describe('getPost / getAllPostMeta', () => {
 		expect(italianArticle?.html).toContain(
 			'/blog/images/usb_vbus_enumerazione_routing/probe-then-commit.svg'
 		);
+		expect(englishArticle?.html).toContain(
+			'https://commons.wikimedia.org/wiki/File:USB_Type-C_plug_20170626.jpg'
+		);
+		expect(italianArticle?.html).toContain(
+			'https://commons.wikimedia.org/wiki/File:USB_Type-C_plug_20170626.jpg'
+		);
+		expect(englishArticle?.html).toContain('https://creativecommons.org/licenses/by-sa/4.0/');
+		expect(italianArticle?.html).toContain('https://creativecommons.org/licenses/by-sa/4.0/');
 		expect(
 			englishArticle?.toc.some((item) => item.text === 'The mechanism: probe, then commit')
 		).toBe(true);
