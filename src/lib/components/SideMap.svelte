@@ -31,6 +31,10 @@
 	 * and let the next deliberate gesture reopen it.
 	 */
 	let collapsed = false;
+	/** When the collapse was applied, so a settling pointer is not read as intent. */
+	let collapsedAt = 0;
+	/** Long enough for the page transition to finish, short enough to feel instant. */
+	const RELEASE_GRACE_MS = 260;
 
 	function close() {
 		mobileNavOpen.set(false);
@@ -38,6 +42,7 @@
 
 	function collapse() {
 		collapsed = true;
+		collapsedAt = Date.now();
 		// Focus alone keeps the rail expanded, so give it up too.
 		if (asideEl?.contains(document.activeElement)) {
 			(document.activeElement as HTMLElement | null)?.blur?.();
@@ -46,6 +51,17 @@
 
 	function release() {
 		collapsed = false;
+	}
+
+	/**
+	 * Moving the pointer across the rail is a deliberate hover, so let it expand
+	 * again. Without this the rail stays shut for as long as the pointer happens
+	 * to rest on it after a route change, and hovering appears to do nothing.
+	 * Moves within the grace window are the pointer settling as the page swaps,
+	 * not intent, so they are ignored.
+	 */
+	function releaseOnMove() {
+		if (collapsed && Date.now() - collapsedAt > RELEASE_GRACE_MS) release();
 	}
 
 	function navTo(id: string, e: Event) {
@@ -115,6 +131,7 @@
 	class:is-collapsed={collapsed}
 	on:pointerleave={release}
 	on:pointerdown={release}
+	on:pointermove={releaseOnMove}
 	aria-label={$t('a11y.sitemap')}
 >
 	<div class="sm-head">

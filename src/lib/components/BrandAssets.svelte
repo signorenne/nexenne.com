@@ -20,7 +20,7 @@
 
 	type AssetKey = 'card' | BannerKey;
 
-	/** The /card compatibility route: opens on the card and stays out of search. */
+	/** The /card compatibility route, which stays out of search. */
 	export let legacy = false;
 
 	const CARD_ASSET = {
@@ -44,7 +44,8 @@
 	/** Index of the line the hero underlines. */
 	const SWEEP_LINE = 3;
 
-	let selectedKey: AssetKey = legacy ? 'card' : 'og';
+	// The card is the asset people come here for; the banners follow it.
+	let selectedKey: AssetKey = 'card';
 	let bannerEl: SVGSVGElement;
 	let lineEls: SVGTextElement[] = [];
 	let accent = '#7c5cff';
