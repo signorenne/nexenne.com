@@ -707,9 +707,13 @@ a.chip:hover,
 	gap: 10px;
 	border: 1px solid var(--line);
 	border-radius: var(--r-pill);
-	padding: 6px 6px 6px 14px;
+	/* Match the 34px theme/lang buttons beside it so the tool row shares one
+	   baseline, and center the contents instead of relying on vertical padding. */
+	height: 34px;
+	padding: 0 6px 0 14px;
 	font-family: var(--font-mono);
 	font-size: 12px;
+	line-height: 1;
 	color: var(--muted);
 	background: var(--bg-elev);
 }
@@ -717,15 +721,33 @@ a.chip:hover,
 	color: var(--ink);
 	border-color: var(--line-2);
 }
+/* The shortcut reads as one unit, so its parts sit closer together than the
+   gap between the label and the chord. */
+.k-keys {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+.k-plus {
+	font-size: 10px;
+	line-height: 1;
+	color: var(--muted);
+}
 .k-trigger kbd {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	border: 1px solid var(--line);
 	background: var(--bg);
-	padding: 3px 7px;
+	/* Equal square caps: the glyphs have different advance widths, so sizing by
+	   padding alone left the two keys visibly mismatched. */
+	box-sizing: border-box;
+	min-width: 21px;
+	height: 21px;
+	padding: 0 5px;
 	border-radius: 6px;
 	font-size: 10.5px;
+	line-height: 1;
 	font-family: var(--font-mono);
 	color: var(--ink);
 }
@@ -7889,12 +7911,14 @@ main[data-page="uses"] .uses-box h3 {
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.nav-tools .k-trigger kbd {
+	/* Hide the whole chord, not just the keys: dropping the kbd elements alone
+	   would leave the "+" separator floating on its own. */
+	.nav-tools .k-trigger .k-keys {
 		display: none;
 	}
 
 	.nav-tools .k-trigger {
-		padding: 6px 12px !important;
+		padding: 0 12px !important;
 	}
 
 	.nav-burger {

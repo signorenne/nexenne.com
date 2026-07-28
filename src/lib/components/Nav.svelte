@@ -211,7 +211,9 @@
 			</button>
 			<button class="k-trigger" on:click={() => dispatch('openPalette')} data-hover>
 				<span>{$t('nav.search')}</span>
-				<kbd>⌘</kbd><kbd>K</kbd>
+				<span class="k-keys">
+					<kbd>⌘</kbd><span class="k-plus" aria-hidden="true">+</span><kbd>K</kbd>
+				</span>
 			</button>
 			<button
 				class="theme-btn lang-btn"
