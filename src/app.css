@@ -2456,13 +2456,20 @@ a.chip:hover,
 	--an-open-w: 280px;
 	--an-rail-x: 28px;
 	--an-station-h: 30px;
+	/* Both published by ArticleNav.svelte, which owns the pinning math:
+	   --an-pin-top is however far the header currently covers the viewport plus
+	   --an-gap, and the same gap is left under the rail so the pinned band reads
+	   as evenly inset. */
+	--an-pin-top: 24px;
+	--an-gap: 24px;
+	--an-max-h: calc(100vh - var(--an-pin-top) - var(--an-gap));
 
 	position: absolute;
 	top: 0;
 	left: 0;
 	width: var(--an-slot-w);
 	height: max-content;
-	max-height: calc(100vh - 120px);
+	max-height: var(--an-max-h);
 	transition: width var(--t-med) var(--ease);
 }
 .article-nav.is-open {
@@ -2470,7 +2477,7 @@ a.chip:hover,
 }
 .article-nav.is-pinned {
 	position: fixed;
-	top: 96px;
+	top: var(--an-pin-top);
 }
 .article-nav.is-parked {
 	position: absolute;
@@ -2478,7 +2485,7 @@ a.chip:hover,
 }
 .an-shell {
 	width: 100%;
-	max-height: calc(100vh - 120px);
+	max-height: var(--an-max-h);
 	display: flex;
 	flex-direction: column;
 	background: color-mix(in oklab, var(--bg), transparent 18%);

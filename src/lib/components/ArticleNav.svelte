@@ -39,7 +39,29 @@
 	let parkedTop = 0;
 
 	const READING_LINE = 110;
-	const PIN_TOP = 96;
+	// Breathing room left around the pinned rail: the same value above and below,
+	// so the rail reads as an evenly inset band rather than hanging low.
+	const RAIL_GAP = 24;
+	// Distance from the viewport top to the pinned rail, published to CSS as
+	// --an-pin-top so the max-height calc stays in sync.
+	let pinTop = RAIL_GAP;
+	let headerEl: HTMLElement | null = null;
+
+	/**
+	 * Measure the top gap from whatever actually covers the top of the viewport.
+	 *
+	 * Assuming a fixed header height was wrong: the gap has to be measured live,
+	 * because the header only eats into the viewport while it is stuck there. We
+	 * read how far its bottom edge currently reaches into the viewport (0 when it
+	 * has scrolled out of the way) and add RAIL_GAP, which is the same gap the
+	 * max-height calc leaves under the rail. Equal gaps, whether or not the header
+	 * is on screen.
+	 */
+	function measurePinTop() {
+		if (!headerEl?.isConnected) headerEl = document.querySelector<HTMLElement>('header.nav');
+		const covered = headerEl ? Math.max(0, headerEl.getBoundingClientRect().bottom) : 0;
+		pinTop = covered + RAIL_GAP;
+	}
 
 	function jumpTo(id: string, e: Event) {
 		e.preventDefault();
@@ -159,10 +181,10 @@
 	 * Choose the rail's positioning state from the placeholder's position.
 	 *
 	 * Three states, based on the in-flow placeholder (slotEl):
-	 * - flowing: the placeholder top is still below PIN_TOP, so the rail scrolls
+	 * - flowing: the placeholder top is still below pinTop, so the rail scrolls
 	 *   normally with the page (neither pinned nor parked).
-	 * - pinned: the placeholder has scrolled under PIN_TOP but the article is
-	 *   still tall enough, so the rail is fixed at PIN_TOP while reading.
+	 * - pinned: the placeholder has scrolled under pinTop but the article is
+	 *   still tall enough, so the rail is fixed at pinTop while reading.
 	 * - parked: the article is ending and a fixed rail would overflow past it, so
 	 *   the rail is absolutely placed at the bottom of the placeholder instead.
 	 *
@@ -171,15 +193,16 @@
 	function updatePin() {
 		if (!slotEl || !asideEl) return;
 
+		measurePinTop();
 		const slotRect = slotEl.getBoundingClientRect();
 		const asideHeight = asideEl.offsetHeight;
 
 		pinLeft = slotRect.left;
 
-		if (slotRect.top >= PIN_TOP) {
+		if (slotRect.top >= pinTop) {
 			pinned = false;
 			parked = false;
-		} else if (slotRect.bottom - PIN_TOP < asideHeight) {
+		} else if (slotRect.bottom - pinTop < asideHeight) {
 			pinned = false;
 			parked = true;
 			parkedTop = Math.max(0, slotEl.clientHeight - asideHeight);
@@ -240,6 +263,8 @@
 			class:is-open={open}
 			class:is-pinned={pinned}
 			class:is-parked={parked}
+			style:--an-pin-top="{pinTop}px"
+			style:--an-gap="{RAIL_GAP}px"
 			style:left={pinned ? `${pinLeft}px` : null}
 			style:top={parked ? `${parkedTop}px` : null}
 			aria-label={$t('article.outline.aria')}
