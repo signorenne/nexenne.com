@@ -24,6 +24,7 @@
 	import LeaderMenu from '$lib/components/LeaderMenu.svelte';
 	import CursorDot from '$lib/components/CursorDot.svelte';
 	import PageTransition from '$lib/components/PageTransition.svelte';
+	import BackToTop from '$lib/components/BackToTop.svelte';
 	import Tweaks from '$lib/components/Tweaks.svelte';
 	import NavGuide from '$lib/components/NavGuide.svelte';
 	import ResizeHud from '$lib/components/ResizeHud.svelte';
@@ -354,6 +355,7 @@
 
 <CursorDot />
 <PageTransition />
+<BackToTop />
 <a href="#main-content" class="skip-link">{$t('a11y.skip')}</a>
 <div class="app" data-page={route}>
 	<SideMap />

@@ -182,9 +182,9 @@
 	.guide-panel {
 		position: fixed;
 		right: var(--fab-edge, 20px);
-		/* Opens above both FABs, the same spot the Tweaks panel uses, so the two
+		/* Opens above every FAB, the same spot the Tweaks panel uses, so the two
 		   menus appear in an identical position. */
-		bottom: calc(var(--fab-edge, 20px) + 2 * (var(--fab-size, 46px) + var(--fab-gap, 12px)));
+		bottom: var(--fab-slot-panel);
 		z-index: 79;
 		width: min(320px, calc(100vw - 2 * var(--fab-edge, 20px)));
 		max-height: calc(100vh - 120px);

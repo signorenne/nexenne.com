@@ -94,6 +94,11 @@
 	--fab-size: 46px;
 	--fab-edge: 20px;
 	--fab-gap: 12px;
+	/* Stack upward from the bottom edge: gear, "?", back-to-top, then the panels
+	   above all three. Named slots so adding a button means changing one value
+	   here rather than hunting calc() chains across three files. */
+	--fab-slot-top: calc(var(--fab-edge) + 2 * (var(--fab-size) + var(--fab-gap)));
+	--fab-slot-panel: calc(var(--fab-edge) + 3 * (var(--fab-size) + var(--fab-gap)));
 
 	--b-hair: 1px;
 
@@ -6514,6 +6519,7 @@ main[data-page="uses"] .uses-box h3 {
 	.resize-hud,
 	.guide-fab,
 	.guide-panel,
+	.totop-fab,
 	.stack-stage,
 	.floater {
 		display: none !important;
@@ -7050,9 +7056,8 @@ main[data-page="uses"] .uses-box h3 {
 .tweaks-panel {
 	position: fixed;
 	right: var(--fab-edge);
-	/* Open above BOTH stacked FABs (gear + the "?" above it) so the panel never
-	   covers a button. The touch override below drops it when "?" is hidden. */
-	bottom: calc(var(--fab-edge) + 2 * (var(--fab-size) + var(--fab-gap)));
+	/* Opens above every stacked FAB so the panel never covers a button. */
+	bottom: var(--fab-slot-panel);
 	z-index: 79;
 	width: min(320px, calc(100vw - 2 * var(--fab-edge)));
 	max-height: calc(100vh - 120px);
@@ -7281,11 +7286,12 @@ main[data-page="uses"] .uses-box h3 {
 		--fab-edge: 14px;
 	}
 }
-/* On touch the "?" FAB is hidden (keyboard-only), so the Tweaks panel opens
-   directly above the lone gear instead of leaving a gap where "?" would be. */
+/* On touch the "?" FAB is hidden (keyboard-only), so everything stacked above it
+   drops one slot instead of leaving a gap where "?" would be. */
 @media (hover: none), (pointer: coarse) {
-	.tweaks-panel {
-		bottom: calc(var(--fab-edge) + var(--fab-size) + var(--fab-gap));
+	:root {
+		--fab-slot-top: calc(var(--fab-edge) + var(--fab-size) + var(--fab-gap));
+		--fab-slot-panel: calc(var(--fab-edge) + 2 * (var(--fab-size) + var(--fab-gap)));
 	}
 }
 

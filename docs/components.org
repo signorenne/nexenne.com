@@ -32,6 +32,9 @@ route until another page needs it.
 
 * Tools
 
+- =BackToTop.svelte= floating jump to the top of long pages. Stacks above the
+  Tweaks gear and the =?= guide using the shared =--fab-*= tokens, and appears
+  only once a viewport has been scrolled past
 - =CommandPalette.svelte= keyboard/search palette
 - =MatrixRain.svelte= canvas digital rain behind the terminal log, driven by the
   =matrix= command. Draws only glyphs JetBrains Mono has, and paints one still
