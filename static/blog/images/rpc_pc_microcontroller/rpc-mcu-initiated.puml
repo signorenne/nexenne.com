@@ -1,0 +1,15 @@
+@startuml
+title MCU-initiated request, with the PC answering
+
+participant "ESP32" as MCU
+participant "PC" as PC
+
+MCU -> PC : request save_measurement\nid = esp-105
+PC -> PC : store the measurement
+PC --> MCU : response success\nid = esp-105
+
+note over MCU, PC
+  Either side may open a call, so both
+  need a dispatcher and a pending table.
+end note
+@enduml

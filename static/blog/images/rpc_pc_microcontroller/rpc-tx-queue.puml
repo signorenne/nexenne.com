@@ -1,0 +1,23 @@
+@startuml
+title One transmit queue, so frames never interleave
+
+rectangle "handler A" as A
+rectangle "handler B" as B
+rectangle "event source" as E
+rectangle "timeout task" as T
+queue "TX queue" as Q
+rectangle "encoder" as Enc
+rectangle "transport.write()" as W
+
+A --> Q
+B --> Q
+E --> Q
+T --> Q
+Q --> Enc
+Enc --> W
+
+note bottom of Q
+  Every producer goes through the same queue:
+  two tasks writing at once would corrupt a frame.
+end note
+@enduml

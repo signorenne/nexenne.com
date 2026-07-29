@@ -1,0 +1,15 @@
+@startuml
+title Lifecycle of a pending request
+
+[*] --> CREATED
+CREATED --> QUEUED
+QUEUED --> SENT
+SENT --> TRANSPORT_ERROR : write fails
+SENT --> WAITING
+WAITING --> TIMEOUT : deadline expires
+WAITING --> COMPLETED : response arrives
+TIMEOUT --> LATE_RESPONSE : response arrives anyway
+COMPLETED --> [*] : result or error
+TRANSPORT_ERROR --> [*]
+LATE_RESPONSE --> [*] : discarded, id no longer pending
+@enduml

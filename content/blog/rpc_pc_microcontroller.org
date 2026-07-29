@@ -1,10 +1,10 @@
 #+TITLE: Come funzionano le chiamate RPC: dal software distribuito alla comunicazione tra PC e microcontrollore
 #+LANG: it
 #+DATE: 2026-06-09
-#+LASTMOD: 2026-07-17
-#+DESC: Guida pratica alle chiamate RPC tra PC e microcontrollore: contratto, serializzazione, framing, CRC, USB, UART, timeout, versionamento e debug.
+#+LASTMOD: 2026-07-29
+#+DESC: Guida pratica alle chiamate RPC tra PC e microcontrollore: richieste bidirezionali, identificatori, notifiche, serializzazione, framing, timeout, retry, versionamento e debug.
 #+IMAGE: /blog/covers/rpc_pc_microcontroller.webp
-#+READ: 30 min
+#+READ: 42 min
 #+TAGS: RPC, Embedded, Microcontroller, USB, UART, Protocols
 #+CATEGORIES: Embedded, Tutorial, Protocols
 
@@ -213,6 +213,139 @@ In caso di errore, la risposta dovrebbe distinguere almeno la categoria e il det
 }
 #+end_src
 
+
+** Cosa viaggia davvero sul canale
+
+Quando scriviamo:
+
+#+begin_src python
+value = mcu.get_temperature(sensor_id=3)
+#+end_src
+
+non stiamo trasferendo una funzione. Stiamo trasferendo una *descrizione della chiamata*.
+
+Nel caso di JSON-RPC 2.0, una richiesta valida contiene almeno =jsonrpc= e =method=. Il campo =params= è opzionale e può contenere un array posizionale oppure un oggetto con parametri nominati. Il campo =id= è presente soltanto quando il chiamante desidera una risposta:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "pc-42",
+  "method": "get_temperature",
+  "params": {
+    "sensor_id": 3
+  }
+}
+#+end_src
+
+Una risposta positiva contiene lo stesso =id= e un campo =result=:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "pc-42",
+  "result": {
+    "temperature": 23.7,
+    "unit": "C"
+  }
+}
+#+end_src
+
+Una risposta negativa contiene invece =error=. In JSON-RPC =result= ed =error= sono mutuamente esclusivi e =error.code= deve essere un intero. I nomi dei metodi che iniziano con =rpc.= sono riservati allo standard e alle sue estensioni. Un nome simbolico come =SENSOR_UNAVAILABLE= può essere mantenuto dentro =error.data=:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "pc-42",
+  "error": {
+    "code": -32001,
+    "message": "Sensore non disponibile",
+    "data": {
+      "reason": "SENSOR_UNAVAILABLE",
+      "sensor_id": 3
+    }
+  }
+}
+#+end_src
+
+È importante distinguere questo formato standard da un protocollo personalizzato. Un messaggio come:
+
+#+begin_src json
+{
+  "type": "request",
+  "id": "pc-42",
+  "method": "get_temperature",
+  "params": {}
+}
+#+end_src
+
+può essere perfettamente valido per il nostro progetto, ma il campo =type= non appartiene al nucleo di JSON-RPC 2.0. In quel caso stiamo progettando una busta RPC ispirata a JSON-RPC, non necessariamente un'implementazione strettamente interoperabile dello standard.
+
+Questa distinzione evita diversi equivoci. Lo standard definisce la semantica dei documenti RPC; il nostro protocollo deve ancora stabilire framing, trasporto, limiti, autenticazione, sessioni e comportamento dopo una disconnessione.
+
+** RPC bidirezionale: PC e MCU possono chiamarsi
+
+Nel caso più semplice il PC invia richieste e la MCU risponde. Il canale può però essere bidirezionale: anche la MCU può iniziare una chiamata diretta al PC.
+
+Supponiamo che il firmware debba chiedere all'applicazione di salvare una misura:
+
+[[/blog/images/rpc_pc_microcontroller/rpc-mcu-initiated.svg]]
+
+/Anche il microcontrollore può aprire una chiamata: il PC esegue l'handler e risponde con lo stesso identificatore./
+
+La richiesta può assumere questa forma:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "esp-105",
+  "method": "save_measurement",
+  "params": {
+    "temperature": 23.7,
+    "unit": "C"
+  }
+}
+#+end_src
+
+Il PC risponde riutilizzando lo stesso identificatore:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "esp-105",
+  "result": {
+    "saved": true
+  }
+}
+#+end_src
+
+I termini *client* e *server* diventano quindi ruoli della singola chiamata. Quando il PC invia =set_led= è client e la MCU è server; quando la MCU invia =save_measurement=, i ruoli si invertono.
+
+Per supportare davvero questa architettura, entrambe le estremità necessitano di:
+
+1. un ricevitore sempre attivo;
+2. un decoder e un classificatore dei messaggi;
+3. un dispatcher dei metodi esposti localmente;
+4. una tabella delle richieste pendenti iniziate localmente;
+5. un generatore di identificatori;
+6. timeout, errori e pulizia dello stato;
+7. una coda di trasmissione che serializzi l'accesso al trasporto.
+
+*** Evitare deadlock e rientranza
+
+La bidirezionalità introduce un caso limite poco evidente.
+
+Supponiamo che il PC invii =start_calibration=. L'handler sulla MCU, durante l'esecuzione, chiede al PC =confirm_user_present= e attende sincronicamente la risposta. Se il thread del PC che dovrebbe leggere e smistare i messaggi è già bloccato in attesa del completamento di =start_calibration=, nessuno elaborerà la richiesta inversa proveniente dalla MCU.
+
+Il risultato è un deadlock distribuito:
+
+[[/blog/images/rpc_pc_microcontroller/rpc-reentrancy-deadlock.svg]]
+
+/Se un handler attende la risposta a una richiesta che ha generato lui stesso, entrambi i lati restano bloccati./
+
+La soluzione consiste nel separare il *reader loop* dalle chiamate applicative. Il task che riceve i frame deve continuare a leggere e classificare messaggi anche mentre altre parti del programma attendono una risposta. Gli handler lunghi devono inoltre essere spostati su una coda o su task dedicati, anziché essere eseguiti direttamente nel callback di ricezione.
+
+In sostanza, un canale full-duplex non è sufficiente. Anche l'architettura software deve essere realmente concorrente.
+
 ** Perché il caso PC–MCU è particolare
 
 Due server dispongono normalmente di CPU potenti, memoria abbondante, socket, filesystem e strumenti di diagnostica evoluti. Una MCU può invece avere:
@@ -272,20 +405,21 @@ Questa separazione permette di sostituire, ad esempio, USB CDC con UART senza ri
 
 Supponiamo di definire un protocollo binario semplice. Un frame potrebbe contenere:
 
-#+begin_src text
-+---------+---------+---------+------------+-----------+--------+
-| MAGIC   | LENGTH  | TYPE    | REQUEST_ID | PAYLOAD   | CRC16  |
-+---------+---------+---------+------------+-----------+--------+
-| 1 byte  | 2 byte  | 1 byte  | 2 byte     | N byte    | 2 byte |
-+---------+---------+---------+------------+-----------+--------+
-#+end_src
+| Campo          | Dimensione | Ruolo                                  |
+|----------------+------------+----------------------------------------|
+| MAGIC          | 1 byte     | marca l'inizio di un frame             |
+| LENGTH         | 2 byte     | lunghezza del payload che segue        |
+| TYPE           | 1 byte     | richiesta, risposta, notifica o evento |
+| CORRELATION_ID | 2 byte     | lega una risposta alla sua richiesta   |
+| PAYLOAD        | N byte     | i dati veri e propri                   |
+| CRC16          | 2 byte     | validazione dell'intero frame          |
 
 In questo esempio:
 
 - *MAGIC* aiuta a riconoscere l'inizio di un frame;
 - *LENGTH* indica il numero di byte compresi tra =TYPE= e la fine del =PAYLOAD=;
 - *TYPE* distingue richieste, risposte, errori ed eventi;
-- *REQUEST_ID* collega una risposta alla relativa richiesta;
+- *CORRELATION_ID* collega una risposta alla relativa richiesta; nei messaggi non correlati può valere zero o seguire una regola specifica del protocollo;
 - *PAYLOAD* contiene metodo, parametri o risultato;
 - *CRC16* rileva alterazioni accidentali del frame.
 
@@ -300,13 +434,10 @@ I tipi di messaggio possono essere definiti in questo modo:
 
 Il payload di una richiesta contiene almeno il metodo e i relativi parametri:
 
-#+begin_src text
-+-----------+------------+
-| METHOD_ID | PARAMS     |
-+-----------+------------+
-| 2 byte    | N byte     |
-+-----------+------------+
-#+end_src
+| Campo     | Dimensione | Ruolo                    |
+|-----------+------------+--------------------------|
+| METHOD_ID | 2 byte     | quale metodo invocare    |
+| PARAMS    | N byte     | i parametri serializzati |
 
 Ad esempio:
 
@@ -333,7 +464,7 @@ RESPONSE
 
 Il formato reale deve inoltre definire l'endianness dei campi, l'algoritmo CRC, i byte coperti dal calcolo, la dimensione massima del payload e il comportamento in presenza di dati non validi.
 
-** Request ID e correlazione
+** Request ID, correlazione e ciclo di vita
 
 Il =request_id= permette di associare ogni risposta alla chiamata che l'ha generata.
 
@@ -345,7 +476,7 @@ id=11 -> leggi tensione
 id=12 -> leggi versione firmware
 #+end_src
 
-La MCU potrebbe completarle in un ordine differente:
+La MCU può completarle in un ordine differente:
 
 #+begin_src text
 id=12 -> versione firmware
@@ -355,9 +486,115 @@ id=11 -> tensione
 
 Senza identificatore, il PC non potrebbe correlare le risposte in presenza di concorrenza.
 
-In un protocollo strettamente sincrono, nel quale viene inviata una sola richiesta alla volta, il campo potrebbe non essere indispensabile. Rimane tuttavia molto utile per log, timeout, rilevamento di risposte tardive, deduplica e futura introduzione del pipelining.
+*** Quanto deve essere unico un ID?
 
-È necessario anche definire l'ambito di validità degli identificatori: una nuova sessione dopo il riavvio della MCU non dovrebbe confondere una risposta precedente con una richiesta corrente.
+Un identificatore non deve essere necessariamente unico per tutta la vita del prodotto. Deve però essere non ambiguo nell'ambito in cui viene utilizzato.
+
+La regola pratica è:
+
+#+begin_src text
+nessun ID può essere riutilizzato mentre esiste ancora
+una richiesta pendente con lo stesso ID nella stessa sessione
+#+end_src
+
+Dopo il completamento della chiamata, l'identificatore può essere riutilizzato. Tuttavia un riutilizzo troppo rapido può confondere una risposta tardiva con una richiesta nuova. Per questo motivo conviene:
+
+- mantenere un contatore abbastanza ampio, ad esempio a 32 o 64 bit;
+- non riutilizzare immediatamente gli ID scaduti;
+- scartare e registrare le risposte relative a ID sconosciuti;
+- azzerare la tabella delle richieste pendenti quando cambia sessione;
+- associare la connessione a un =session_id= o a un =boot_id= quando i reset sono frequenti.
+
+Nel caso di un contatore a 16 bit, il wrap-around non è di per sé un errore. Lo diventa se il nuovo valore coincide con una richiesta ancora pendente o con una risposta tardiva che può ancora arrivare.
+
+*** ID numerici o stringhe?
+
+JSON-RPC permette identificatori stringa o numerici e scoraggia normalmente =null=. Per un protocollo binario, un intero è più compatto. In fase di debug, una stringa può risultare più leggibile:
+
+#+begin_src json
+{
+  "id": "pc-42",
+  "method": "get_status"
+}
+#+end_src
+
+In un sistema bidirezionale si possono usare prefissi distinti:
+
+#+begin_src text
+PC:    pc-1, pc-2, pc-3
+ESP32: esp-1, esp-2, esp-3
+#+end_src
+
+I prefissi non sono obbligatori. Se ogni endpoint mantiene una tabella separata per le richieste che ha iniziato e il tipo di messaggio distingue chiaramente richiesta e risposta, =42= inviato dal PC e =42= inviato dalla MCU possono coesistere senza conflitto.
+
+I namespace separati rimangono comunque utili per:
+
+- leggere i log più facilmente;
+- attraversare bridge o router che unificano più canali;
+- diagnosticare messaggi classificati in modo errato;
+- evitare ambiguità in implementazioni personalizzate.
+
+*** Tabella delle richieste pendenti
+
+Quando il PC invia una richiesta, memorizza almeno:
+
+#+begin_src text
+ID       Metodo             Inviata       Scadenza      Stato
+pc-41    get_version        14:30:01.100  14:30:01.600 waiting
+pc-42    read_temperature   14:30:02.000  14:30:02.200 waiting
+#+end_src
+
+All'arrivo di questa risposta:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "pc-42",
+  "result": {
+    "temperature": 23.7
+  }
+}
+#+end_src
+
+il ricevitore:
+
+1. cerca =pc-42= nella tabella;
+2. verifica che la sessione sia ancora valida;
+3. consegna il risultato alla chiamata in attesa;
+4. marca la richiesta come completata;
+5. rimuove o archivia l'entry.
+
+Se la risposta non arriva entro il timeout, il chiamante riceve un errore e l'entry viene rimossa. Un'eventuale risposta successiva deve essere trattata come *late response*: normalmente viene registrata e scartata, non associata a una richiesta nuova.
+
+*** Sessione, boot ID e risposte obsolete
+
+Il solo =request_id= non risolve il caso in cui una delle due estremità si riavvii.
+
+Supponiamo che il PC invii =id=17=, la MCU si resetti e il PC riconnetta la porta. Se il firmware riparte dal contatore 1, il valore 17 potrà ricomparire. Un frame rimasto in una coda o una risposta proveniente dalla sessione precedente non deve essere accettato come corrente.
+
+Un handshake iniziale può quindi restituire:
+
+#+begin_src json
+{
+  "protocol_version": 2,
+  "session_id": "7f4a9c21",
+  "boot_id": 184,
+  "max_pending_requests": 4,
+  "max_payload_size": 256
+}
+#+end_src
+
+Il =session_id= identifica la connessione logica corrente; il =boot_id= cambia a ogni avvio della MCU. Questi campi non fanno parte di JSON-RPC 2.0, ma sono spesso utili nella busta applicativa o nella fase di negoziazione.
+
+*** Stato di una richiesta
+
+Una richiesta reale attraversa più stati di quanto suggerisca una semplice funzione:
+
+[[/blog/images/rpc_pc_microcontroller/rpc-request-lifecycle.svg]]
+
+/Il ciclo di vita di una richiesta in attesa: ogni stato terminale libera la voce dalla tabella dei pending./
+
+Questa macchina a stati aiuta a chiarire dove siano avvenuti gli errori. Un timeout non equivale a un rifiuto del comando e una scrittura completata sul PC non prova che l'handler firmware sia stato eseguito.
 
 ** Framing: ricostruire i messaggi
 
@@ -395,6 +632,49 @@ Un valore riservato marca la fine del frame:
 
 Se il delimitatore compare nei dati, deve essere codificato tramite escaping. SLIP utilizza, ad esempio, i caratteri speciali =END= ed =ESC=. Offre il framing, ma non definisce da solo indirizzamento, tipo del messaggio o controllo d'integrità.
 
+*** JSON delimitato da newline
+
+Per un protocollo leggibile si può terminare ogni documento JSON con un carattere newline:
+
+#+begin_src text
+{"jsonrpc":"2.0","id":"pc-1","method":"get_status","params":{}}\n
+{"jsonrpc":"2.0","method":"button_pressed","params":{"button":1}}\n
+#+end_src
+
+Il ricevitore accumula i byte finché incontra =\n=. La soluzione è semplice e comoda per prototipi, terminali e log.
+
+Bisogna comunque definire:
+
+- una lunghezza massima della riga;
+- cosa fare con UTF-8 non valido;
+- se accettare =\r\n= oltre a =\n=;
+- come recuperare dopo una riga malformata;
+- se gli spazi o le righe vuote siano validi.
+
+Le newline contenute in una stringa JSON vengono codificate come =\\n=, quindi non coincidono con il delimitatore fisico della riga. Il problema principale rimane una riga senza terminatore che continui a riempire il buffer: il parser deve interromperla quando supera =max_message_size=.
+
+*** Prefisso di lunghezza binario
+
+In produzione è comune anteporre una lunghezza a dimensione fissa:
+
+#+begin_src text
+[uint32 length][payload di length byte]
+#+end_src
+
+Il campo può indicare il solo payload oppure l'intero frame. La scelta è secondaria; è essenziale documentarla insieme all'endianness.
+
+Il parser segue una logica semplice:
+
+#+begin_src text
+1. accumula 4 byte
+2. decodifica length
+3. rifiuta length > MAX_PAYLOAD
+4. accumula esattamente length byte
+5. consegna il payload al decoder
+#+end_src
+
+Un prefisso di lunghezza non sostituisce la validazione. Se il campo viene corrotto, il ricevitore può perdere la sincronizzazione; un magic iniziale, un CRC e una strategia di resync aiutano a recuperare.
+
 *** COBS
 
 *Consistent Overhead Byte Stuffing*, o COBS, trasforma una sequenza affinché non contenga un determinato valore, spesso =0x00=. Quel valore può quindi essere utilizzato come delimitatore affidabile.
@@ -415,9 +695,27 @@ Un'altra soluzione usa un flag di delimitazione, escaping e controllo d'integrit
 
 Se =0x7E= o il byte di escape compaiono nel contenuto, vengono sostituiti con sequenze codificate. Anche in questo caso bisogna documentare esattamente quali byte siano soggetti a escaping e quali siano coperti dal CRC.
 
+*** WebSocket: confini di messaggio e frammentazione
+
+WebSocket introduce il concetto di *messaggio*, quindi non espone semplicemente un flusso di byte come TCP. È dunque possibile trasportare un documento RPC per messaggio WebSocket.
+
+Tenete però presente una distinzione: un messaggio WebSocket può essere composto da più frame. Alcune API ricompongono tutto prima di consegnarlo all'applicazione; altre espongono porzioni successive. Il client WebSocket di Espressif, ad esempio, può generare più eventi quando il messaggio supera la dimensione del buffer.
+
+Di conseguenza, non bisogna assumere che ogni callback contenga sempre un documento JSON completo. L'implementazione deve verificare almeno:
+
+- offset del frammento;
+- lunghezza totale prevista;
+- opcode iniziale;
+- flag di fine messaggio;
+- dimensione massima accettata.
+
+WebSocket risolve parte del framing applicativo, ma non elimina i limiti di memoria né la necessità di ricomporre dati frammentati secondo l'API utilizzata.
+
 ** CRC e validazione del frame
 
 Rumore elettrico, byte persi, buffer overflow e desincronizzazioni possono alterare un frame. Un controllo d'integrità permette di rilevare molte di queste condizioni.
+
+Su UART o RS-485 un CRC applicativo è spesso molto utile. Su USB e TCP esistono già controlli e ritrasmissioni ai livelli inferiori, quindi un secondo CRC non è automaticamente necessario. Può comunque servire per rilevare errori introdotti dal framing, dalla memoria, da bridge intermedi o dalla memorizzazione del payload. La scelta dipende dunque dal modello di errore reale, non dalla semplice presenza di un cavo.
 
 #+begin_src text
 [HEADER][PAYLOAD][CRC16]
@@ -634,49 +932,277 @@ L'applicazione può così lavorare con un'interfaccia pulita senza duplicare con
 
 Questa è la principale utilità pratica dell'RPC: la complessità della comunicazione rimane confinata in componenti dedicati, mentre il codice applicativo esprime l'operazione da compiere.
 
-** Risposte, eventi e stream
+** Il motore RPC dentro le due estremità
+
+A questo punto possiamo descrivere il comportamento reale del motore RPC. Ogni messaggio completo viene prima classificato e solo dopo consegnato al componente corretto.
+
+In un protocollo con tipo esplicito:
+
+#+begin_src c
+void rpc_on_message(rpc_message_t const* msg) {
+  switch (msg->type) {
+    case RPC_MSG_RESPONSE:
+    case RPC_MSG_ERROR:
+      rpc_complete_pending(msg);
+      break;
+
+    case RPC_MSG_REQUEST:
+      rpc_enqueue_request(msg);
+      break;
+
+    case RPC_MSG_NOTIFICATION:
+      rpc_enqueue_notification(msg);
+      break;
+
+    case RPC_MSG_NOTIFICATION_ACK:
+      rpc_complete_event_delivery(msg);
+      break;
+
+    default:
+      rpc_record_protocol_error(RPC_ERR_UNKNOWN_TYPE);
+      break;
+  }
+}
+#+end_src
+
+Il callback di ricezione non esegue direttamente un handler lento. Inserisce invece la richiesta in una coda. Un task dedicato valida i parametri, esegue il metodo e costruisce la risposta.
+
+*** Tabella fissa sul microcontrollore
+
+Sul PC una mappa dinamica è naturale. Su una MCU può essere preferibile una tabella a dimensione fissa:
+
+#+begin_src c
+#define RPC_MAX_PENDING 4
+
+typedef enum {
+  RPC_PENDING_FREE,
+  RPC_PENDING_WAITING,
+  RPC_PENDING_COMPLETED,
+  RPC_PENDING_TIMED_OUT
+} rpc_pending_state_t;
+
+typedef struct {
+  uint32_t id;
+  uint32_t deadline_ms;
+  uint16_t method_id;
+  rpc_pending_state_t state;
+  rpc_callback_t callback;
+  void* user_data;
+} rpc_pending_t;
+
+static rpc_pending_t pending[RPC_MAX_PENDING];
+#+end_src
+
+Quando la MCU chiama il PC:
+
+#+begin_src c
+rpc_status_t rpc_call_pc(
+  uint16_t method_id,
+  uint8_t const* payload,
+  size_t payload_len,
+  uint32_t timeout_ms,
+  rpc_callback_t callback,
+  void* user_data
+) {
+  rpc_pending_t* slot = rpc_pending_allocate();
+  if (slot == NULL) {
+    return RPC_ERR_TOO_MANY_PENDING;
+  }
+
+  slot->id = rpc_next_request_id();
+  slot->method_id = method_id;
+  slot->deadline_ms = monotonic_ms() + timeout_ms;
+  slot->state = RPC_PENDING_WAITING;
+  slot->callback = callback;
+  slot->user_data = user_data;
+
+  if (!rpc_send_request(slot->id, method_id, payload, payload_len)) {
+    rpc_pending_release(slot);
+    return RPC_ERR_TRANSPORT;
+  }
+
+  return RPC_OK;
+}
+#+end_src
+
+Questa funzione non blocca. La risposta verrà consegnata dal reader task al callback associato. Il main loop può inoltre scandire la tabella e marcare come scadute le entry oltre la relativa deadline. Nel codice reale il confronto fra timestamp a 32 bit deve essere eseguito in modo sicuro rispetto al wrap-around, ad esempio confrontando la differenza come intero con segno anziché usando un semplice =now > deadline=.
+
+*** Pending map sul PC
+
+Una versione asincrona semplificata in Python può essere:
+
+#+begin_src python
+import asyncio
+import itertools
+
+class RpcPeer:
+    def __init__(self, transport):
+        self.transport = transport
+        self.pending = {}
+        self.ids = itertools.count(1)
+
+    async def call(self, method, params, timeout=0.5):
+        request_id = f"pc-{next(self.ids)}"
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
+        self.pending[request_id] = future
+
+        request = {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "method": method,
+            "params": params,
+        }
+
+        try:
+            await self.transport.send_message(request)
+            return await asyncio.wait_for(future, timeout)
+        finally:
+            self.pending.pop(request_id, None)
+
+    def handle_response(self, message):
+        request_id = message.get("id")
+        future = self.pending.get(request_id)
+
+        if future is None:
+            self.log_late_or_unknown_response(message)
+            return
+
+        if "error" in message:
+            future.set_exception(RpcRemoteError(message["error"]))
+        else:
+            future.set_result(message["result"])
+#+end_src
+
+Il metodo =call()= non deve essere anche responsabile di leggere il trasporto. Un reader task separato continua a ricevere messaggi e chiama =handle_response()= oppure il dispatcher delle richieste inverse.
+
+*** Una sola coda di trasmissione
+
+Anche quando più task generano risposte, eventi e chiamate, è prudente avere un solo punto che scriva sul trasporto:
+
+[[/blog/images/rpc_pc_microcontroller/rpc-tx-queue.svg]]
+
+/Tutti i produttori passano dalla stessa coda di trasmissione, altrimenti due task potrebbero intrecciare i byte di due frame./
+
+In questo modo due frame non vengono interlacciati a livello di byte e le priorità possono essere gestite esplicitamente. Per messaggi urgenti si possono usare code separate o una coda con priorità, purché non si causi starvation dei messaggi ordinari.
+
+** Richieste, risposte, notifiche ed eventi
 
 La comunicazione non è sempre una semplice sequenza richiesta-risposta.
 
-Una *risposta* è correlata a una richiesta:
+Una *richiesta* prevede una risposta correlata:
 
-#+begin_src text
-REQUEST  id=42 method=GET_TEMPERATURE
-RESPONSE id=42 result=24.7
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "pc-7",
+  "method": "set_led",
+  "params": {
+    "state": true
+  }
+}
 #+end_src
 
-Un *evento* nasce invece sulla MCU senza una richiesta immediata del PC:
+Risposta:
 
-#+begin_src text
-EVENT event_id=BUTTON_PRESSED payload={button_id:1}
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "pc-7",
+  "result": {
+    "ok": true
+  }
+}
 #+end_src
 
-Sul PC può essere trasformato in un callback:
+Una *notifica* JSON-RPC è invece una richiesta priva di =id=:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "method": "button_pressed",
+  "params": {
+    "button": 1
+  }
+}
+#+end_src
+
+L'assenza di =id= comunica che il mittente non attende una risposta. Il ricevente non deve rispondere nemmeno quando il metodo o i parametri sono errati.
+
+[[/blog/images/rpc_pc_microcontroller/rpc-notification.svg]]
+
+/Una notifica non prevede risposta: chi la invia non sa se sia arrivata./
+
+Questo comportamento rende le notifiche semplici, ma ha una conseguenza: il mittente non può sapere se il messaggio sia stato elaborato correttamente.
+
+*** Evento applicativo e notifica RPC non sono sinonimi perfetti
+
+Un *evento* descrive normalmente un fatto avvenuto:
+
+#+begin_src text
+button_pressed
+temperature_threshold_exceeded
+motor_fault_detected
+#+end_src
+
+La *notifica* descrive invece il pattern di comunicazione: un messaggio unidirezionale senza risposta RPC.
+
+Un evento può dunque essere trasportato come notifica, ma può anche utilizzare un protocollo affidabile con ACK, persistenza o replay.
+
+Sul PC un evento semplice può diventare un callback:
 
 #+begin_src python
 def on_button_pressed(event):
-    print("Pulsante premuto:", event.button_id)
+    print("Pulsante premuto:", event["button"])
 
 mcu.on("button_pressed", on_button_pressed)
 #+end_src
 
-[[/blog/images/rpc_pc_microcontroller/rpc-message-patterns.svg]]
+*** Sequence number, notify ID e ACK
 
-/Lo stesso canale può trasportare risposte, eventi spontanei e campioni di uno stream, purché il tipo di messaggio sia identificato in modo esplicito./
+Alcuni protocolli personalizzati aggiungono un identificatore all'evento:
 
-Un protocollo può quindi prevedere:
+#+begin_src json
+{
+  "type": "notification",
+  "notify_id": 81,
+  "method": "motion_detected",
+  "params": {
+    "zone": 2
+  }
+}
+#+end_src
 
-- =REQUEST= e =RESPONSE=;
-- =ERROR=;
-- =EVENT=;
-- comandi senza risposta;
-- =ACK= e =NACK=;
-- =HEARTBEAT=;
-- =LOG= e =STREAM_DATA=.
+Questo =notify_id= non è un request ID JSON-RPC. Può servire per:
 
-Non tutte queste categorie sono necessarie in ogni progetto. Aggiungerle senza un caso d'uso concreto aumenta lo spazio degli stati da gestire e testare.
+- rilevare duplicati;
+- preservare o verificare l'ordine;
+- confermare la consegna;
+- riprendere un flusso dopo una riconnessione;
+- correlare log e metriche.
 
-Per gli stream è utile introdurre un numero di sequenza:
+Il PC può rispondere con un ACK personalizzato:
+
+#+begin_src json
+{
+  "type": "notification_ack",
+  "notify_id": 81
+}
+#+end_src
+
+Il flusso diventa:
+
+[[/blog/images/rpc_pc_microcontroller/rpc-event-ack.svg]]
+
+/L'ack rende verificabile la consegna: il mittente può ritrasmettere e il destinatario può scartare i duplicati./
+
+Se l'ACK non arriva, la MCU può ritrasmettere. Tuttavia il PC deve deduplicare, perché l'evento originale potrebbe essere stato elaborato e soltanto l'ACK potrebbe essere andato perso.
+
+Questo modello offre una consegna *almeno una volta* a livello di tentativi: l'evento arriverà nuovamente finché non viene confermato, ma può essere osservato più di una volta. Per avvicinarsi a una semantica *al massimo una volta* serve una cache degli identificatori già elaborati. Una garanzia di *esattamente una volta* attraverso reset, perdita di alimentazione e memoria non volatile richiede invece una progettazione transazionale molto più complessa.
+
+*** Stream e numeri di sequenza
+
+Per uno stream è utile introdurre un numero di sequenza:
 
 #+begin_src text
 sample_seq = 1001
@@ -684,9 +1210,38 @@ sample_seq = 1002
 sample_seq = 1005
 #+end_src
 
-Il salto permette al PC di rilevare la perdita dei campioni =1003= e =1004=. Timestamp, frequenza massima, priorità e politica di overflow devono essere definiti in base all'applicazione.
+Il salto permette al PC di rilevare la perdita dei campioni =1003= e =1004=. Un numero di sequenza non prova però che i campioni mancanti siano recuperabili: il protocollo deve stabilire se conservarli, ritrasmetterli o accettarne la perdita.
+
+Per ogni stream conviene definire:
+
+- identificatore dello stream;
+- formato e unità dei campioni;
+- frequenza nominale e massima;
+- numero di sequenza e comportamento al wrap-around;
+- timestamp e dominio temporale;
+- politica di overflow;
+- modalità di avvio, arresto e ripresa.
+
+*** Heartbeat e liveness
+
+Un heartbeat può indicare che il firmware continua a funzionare:
+
+#+begin_src json
+{
+  "type": "heartbeat",
+  "sequence": 440,
+  "uptime_ms": 913442,
+  "boot_id": 184
+}
+#+end_src
+
+La sua assenza per un certo intervallo suggerisce una disconnessione o un blocco, ma non identifica necessariamente la causa. Inoltre un collegamento TCP stabilito non garantisce da solo che l'applicazione remota stia ancora elaborando messaggi. Heartbeat, timeout applicativi e meccanismi di keepalive risolvono problemi differenti e non vanno confusi.
 
 ** USB nel collegamento PC–MCU
+
+Prima di parlare del protocollo è utile chiarire che “ESP32 collegata tramite USB” può indicare architetture differenti. Molte schede basate sull'ESP32 originale utilizzano un bridge esterno USB–UART: il PC comunica con il bridge, mentre la MCU vede una normale UART. Alcuni chip della famiglia integrano invece una periferica USB Serial/JTAG a funzione fissa; altri espongono USB OTG e possono utilizzare uno stack device come TinyUSB per implementare CDC, HID o classi vendor-specific.
+
+Queste soluzioni possono tutte apparire come una porta seriale sul PC, ma non hanno lo stesso comportamento. Cambiano la gestione del reset, i buffer, i descrittori, gli endpoint disponibili e la possibilità di personalizzare il device. Il livello RPC dovrebbe quindi dipendere da un backend di trasporto astratto, non dalla supposizione che qualunque connettore USB corrisponda alla stessa periferica firmware.
 
 In una connessione USB tradizionale il PC opera normalmente come *host* e la MCU come *device*. È l'host a pianificare le transazioni sul bus; il device rende disponibili dati ed endpoint secondo le regole del protocollo USB.
 
@@ -719,6 +1274,8 @@ Questa soluzione semplifica l'integrazione perché nella maggior parte dei casi 
 
 Sia una UART sia l'interfaccia seriale di USB CDC richiedono che l'applicazione ricostruisca i messaggi. Non bisogna assumere che una =write()= corrisponda a una singola =read()= dall'altra parte.
 
+È utile anche evitare un'ambiguità terminologica. La UART utilizza già un *frame fisico* composto da start bit, bit dati, eventuale parità e stop bit. Quel frame rappresenta normalmente un singolo carattere, non il messaggio RPC applicativo. Il framing descritto in questo articolo opera quindi a un livello superiore.
+
 Con UART bisogna inoltre definire:
 
 - baud rate;
@@ -731,7 +1288,7 @@ Con UART bisogna inoltre definire:
 
 RTS/CTS o un controllo di flusso software possono impedire che il trasmettitore sovraccarichi un ricevente più lento. Con USB CDC cambiano i dettagli elettrici e di trasporto, ma rimangono buffer finiti, latenza, timeout, reset della porta e disconnessioni del device.
 
-** Timeout, retry e idempotenza
+** Timeout, deadline, retry e idempotenza
 
 Una chiamata può fallire perché la MCU è occupata, il cavo è stato scollegato, il firmware si è riavviato o la risposta è andata persa. Il client deve quindi applicare un timeout:
 
@@ -743,6 +1300,24 @@ nessuna risposta -> timeout
 
 Il valore corretto dipende dal trasporto e dal tempo massimo previsto per l'operazione. Un timeout unico per qualunque metodo è semplice, ma può risultare troppo aggressivo per i comandi lenti e troppo permissivo per quelli immediati.
 
+Per misurare le scadenze conviene usare un clock monotono. L'orologio civile può cambiare a causa di sincronizzazione NTP, fuso orario o regolazioni manuali e non è adatto a calcolare la durata di una chiamata.
+
+*** Un timeout non dice se il comando sia stato eseguito
+
+Questa è una delle proprietà più importanti delle RPC.
+
+Supponiamo che il PC invii =dispense_liquid(10)=. La MCU esegue il comando, ma la risposta viene persa. Dal punto di vista del PC la chiamata va in timeout:
+
+[[/blog/images/rpc_pc_microcontroller/rpc-lost-response.svg]]
+
+/Il timeout dice solo che non è arrivato nulla, non se il comando sia stato eseguito./
+
+Il timeout significa soltanto: *il chiamante non ha ricevuto una risposta entro il limite*. Non significa automaticamente che il metodo non sia iniziato o non sia terminato.
+
+Questo distingue una chiamata remota da una funzione locale. Dopo un errore di rete, lo stato reale può essere incerto.
+
+*** Retry sicuri e non sicuri
+
 Dopo un timeout si può tentare un retry, ma non tutte le operazioni sono sicure da ripetere.
 
 Un comando è *idempotente* quando più esecuzioni producono lo stesso stato finale:
@@ -751,10 +1326,97 @@ Un comando è *idempotente* quando più esecuzioni producono lo stesso stato fin
 set_led(true)          -> idempotente
 toggle_led()           -> non idempotente
 set_motor_speed(1200)  -> idempotente
+increase_counter()     -> non idempotente
 dispense_liquid(10ml)  -> non idempotente
 #+end_src
 
-Per le operazioni non idempotenti bisogna considerare identificatori stabili, deduplica lato MCU, stati transazionali o una verifica esplicita dell'esito. Riutilizzare ciecamente una richiesta dopo il timeout può eseguire due volte un comando già completato la cui risposta è stata persa.
+Una politica pratica può essere:
+
+| Categoria                   | Retry automatico | Nota                                      |
+|----------------------------+------------------+-------------------------------------------|
+| lettura                     | spesso sì        | verificare costo e freschezza del dato    |
+| impostazione di uno stato   | spesso sì        | preferire metodi idempotenti              |
+| incremento o toggle         | normalmente no   | può applicare due volte la trasformazione |
+| azione fisica irreversibile | no, senza dedupe | richiede token e controllo lato MCU       |
+| operazione lunga            | dipende          | usare =operation_id= e interrogazione     |
+
+Anche per le operazioni idempotenti bisogna limitare tentativi e frequenza. Un retry aggressivo può saturare una MCU già in difficoltà. Backoff, jitter e un numero massimo di tentativi evitano una tempesta di richieste.
+
+*** Deduplica tramite operation token
+
+Per una chiamata non idempotente il chiamante può generare un token stabile e riutilizzarlo in ogni tentativo:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "pc-44",
+  "method": "dispense_liquid",
+  "params": {
+    "milliliters": 10,
+    "operation_token": "op-8f91a2"
+  }
+}
+#+end_src
+
+La MCU conserva temporaneamente il risultato associato a =op-8f91a2=. Se riceve nuovamente lo stesso token, non ripete l'azione e restituisce il risultato precedente:
+
+#+begin_src text
+prima ricezione op-8f91a2  -> esegue, salva risultato
+seconda ricezione          -> non esegue, restituisce cache
+#+end_src
+
+La cache deve avere limiti chiari:
+
+- durata delle entry;
+- numero massimo di token;
+- comportamento dopo un reboot;
+- eventuale persistenza in flash;
+- coerenza con l'azione fisica o transazionale.
+
+Un token mantenuto soltanto in RAM protegge dai retry nella stessa sessione, ma non da un reset avvenuto dopo l'esecuzione e prima della risposta.
+
+*** Cancellazione
+
+Un timeout lato PC non interrompe automaticamente l'handler firmware. Per le operazioni cancellabili si può definire un messaggio esplicito:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "pc-51",
+  "method": "cancel_operation",
+  "params": {
+    "operation_id": 7
+  }
+}
+#+end_src
+
+La cancellazione è normalmente *best effort*. Il comando può arrivare quando l'operazione è già terminata o quando ha superato un punto non più reversibile. L'handler deve quindi controllare periodicamente un flag di cancellazione e restituire uno stato preciso:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "pc-51",
+  "result": {
+    "status": "CANCELLED"
+  }
+}
+#+end_src
+
+Gli stati possibili possono includere =CANCELLED=, =ALREADY_COMPLETED=, =NOT_CANCELLABLE= e =UNKNOWN_OPERATION=. Se il chiamante non desidera alcuna conferma, =cancel_operation= può essere inviato come notifica priva di =id=, accettando però di non conoscere l'esito.
+
+*** Request ID e operation ID
+
+Il =request_id= correla la risposta immediata a una chiamata. L'=operation_id= identifica invece un'attività che continua nel tempo:
+
+#+begin_src text
+REQUEST  id=pc-50 start_calibration()
+RESPONSE id=pc-50 accepted operation_id=7
+EVENT    operation_id=7 progress=25
+EVENT    operation_id=7 progress=80
+EVENT    operation_id=7 completed=OK
+#+end_src
+
+I due identificatori non sono intercambiabili. Il primo vive per la durata della richiesta; il secondo può rimanere valido per minuti, attraversare più messaggi e supportare query come =get_operation_status(7)=.
 
 Quando possibile, è preferibile esporre operazioni che descrivano lo stato desiderato, come =set_motor_speed(1200)=, anziché trasformazioni relative come =increase_motor_speed(100)=.
 
@@ -808,6 +1470,8 @@ Una chiamata iniziale può restituire:
 #+end_src
 
 È utile distinguere la versione del firmware da quella del protocollo. Un aggiornamento interno non implica necessariamente un cambiamento del contratto.
+
+Nel caso di JSON-RPC, il campo =jsonrpc= con valore =2.0= identifica la versione dello standard JSON-RPC, non la versione dei metodi della nostra applicazione. Per il contratto embedded servono campi separati come =protocol_version=, =schema_version= o =capabilities=.
 
 Alcune regole pratiche:
 
@@ -960,79 +1624,247 @@ motor_fault_detected
 
 Nel collegamento PC–MCU l'approccio RPC è naturale per impartire comandi al firmware, mentre gli eventi si adattano meglio alle notifiche spontanee della scheda. Un protocollo reale può quindi combinare richieste e risposte, eventi e stream senza dover forzare tutto nello stesso modello.
 
-** Un esempio completo
+** Un esempio bidirezionale completo
 
-Supponiamo che una MCU controlli un LED, un sensore di temperatura, un motore PWM e un pulsante. Il contratto espone:
+Supponiamo che una ESP32 controlli un LED, un sensore di temperatura, un motore PWM e un pulsante. Il PC espone inoltre alcuni metodi che il firmware può invocare.
+
+Metodi esposti dalla MCU:
 
 #+begin_src text
 get_protocol_info() -> versione e capability
 get_temperature(sensor_id) -> valore
 set_led(state) -> ok
 set_pwm(channel, value) -> ok
-start_log_stream(level) -> ok
-stop_log_stream() -> ok
+start_log_stream(level) -> stream_id
+stop_log_stream(stream_id) -> ok
+start_calibration() -> operation_id
+get_operation_status(operation_id) -> stato
 reboot(mode) -> ok
 #+end_src
 
-La MCU può produrre anche questi eventi:
+Metodi esposti dal PC:
 
 #+begin_src text
-button_pressed(button_id)
-temperature_alarm(sensor_id, value)
-motor_fault(code)
-log_line(sequence, level, message)
-heartbeat(uptime_ms)
+save_measurement(value, unit, timestamp) -> saved
+get_current_time() -> unix_time
+confirm_user_present(message) -> confirmed
+write_log(level, message) -> ok
 #+end_src
+
+Eventi prodotti dalla MCU:
+
+#+begin_src text
+button_pressed(button_id, sequence)
+temperature_alarm(sensor_id, value, sequence)
+motor_fault(code, sequence)
+log_line(stream_id, sequence, level, message)
+operation_progress(operation_id, progress)
+heartbeat(sequence, uptime_ms, boot_id)
+#+end_src
+
+*** 1. Apertura e negoziazione
 
 Il PC apre la connessione e interroga il dispositivo:
 
-#+begin_src python
-mcu = McuRpcClient("/dev/ttyACM0")
-info = mcu.get_protocol_info()
-#+end_src
-
-La risposta descrive il contratto disponibile:
-
 #+begin_src json
 {
-  "protocol_version": 1,
-  "firmware_version": "1.4.2",
-  "device_id": "CTRL-BOARD-A",
-  "max_payload": 256,
-  "capabilities": [
-    "temperature",
-    "pwm",
-    "events",
-    "log_stream"
-  ]
+  "jsonrpc": "2.0",
+  "id": "pc-1",
+  "method": "get_protocol_info",
+  "params": {}
 }
 #+end_src
 
-Una chiamata sincrona viene correlata tramite l'identificatore:
+La MCU risponde:
 
-#+begin_src text
-REQUEST  id=1 method=SET_LED params={state:true}
-RESPONSE id=1 status=OK
-
-REQUEST  id=2 method=GET_TEMPERATURE params={sensor_id:0}
-RESPONSE id=2 status=OK result={value:24.7, unit:"C"}
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "pc-1",
+  "result": {
+    "protocol_version": 2,
+    "firmware_version": "1.5.0",
+    "device_id": "CTRL-BOARD-A",
+    "session_id": "7f4a9c21",
+    "boot_id": 184,
+    "max_payload": 256,
+    "max_pending_requests": 4,
+    "capabilities": [
+      "temperature",
+      "pwm",
+      "bidirectional_rpc",
+      "reliable_events",
+      "log_stream",
+      "operation_cancel"
+    ]
+  }
+}
 #+end_src
 
-Quando l'utente preme il pulsante, la MCU invia invece:
+Il PC verifica la compatibilità prima di inviare altri comandi.
 
-#+begin_src text
-EVENT event=BUTTON_PRESSED payload={button_id:1}
+*** 2. Il PC accende il LED
+
+Richiesta:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "pc-2",
+  "method": "set_led",
+  "params": {
+    "state": true
+  }
+}
 #+end_src
 
-Se il PC abilita i log, il canale può trasportare uno stream numerato:
+Risposta:
 
-#+begin_src text
-EVENT LOG_LINE seq=1 message="init ok"
-EVENT LOG_LINE seq=2 message="adc ready"
-EVENT LOG_LINE seq=3 message="motor enabled"
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "pc-2",
+  "result": {
+    "ok": true,
+    "state": true
+  }
+}
 #+end_src
 
-Questo esempio contiene i tre modelli principali senza confonderli: chiamate correlate, eventi spontanei e dati continui.
+*** 3. Il pulsante genera un evento
+
+Per un evento non affidabile, la MCU può inviare una notifica JSON-RPC:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "method": "button_pressed",
+  "params": {
+    "button_id": 1,
+    "sequence": 293
+  }
+}
+#+end_src
+
+Il PC non risponde.
+
+Per un evento che non deve essere perso, il protocollo personalizzato può invece usare =notify_id= e ACK:
+
+#+begin_src json
+{
+  "type": "notification",
+  "notify_id": 294,
+  "method": "motor_fault",
+  "params": {
+    "code": "OVERCURRENT"
+  }
+}
+#+end_src
+
+#+begin_src json
+{
+  "type": "notification_ack",
+  "notify_id": 294
+}
+#+end_src
+
+*** 4. La MCU chiede l'ora al PC
+
+La MCU inizia una nuova RPC sullo stesso canale:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "esp-27",
+  "method": "get_current_time",
+  "params": {}
+}
+#+end_src
+
+Il PC risponde:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "esp-27",
+  "result": {
+    "unix_time": 1785330000,
+    "utc_offset_minutes": 120
+  }
+}
+#+end_src
+
+*** 5. Operazione lunga
+
+Il PC avvia una calibrazione:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "pc-3",
+  "method": "start_calibration",
+  "params": {}
+}
+#+end_src
+
+La MCU accetta rapidamente la richiesta:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "id": "pc-3",
+  "result": {
+    "accepted": true,
+    "operation_id": 7
+  }
+}
+#+end_src
+
+L'avanzamento arriva tramite eventi:
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "method": "operation_progress",
+  "params": {
+    "operation_id": 7,
+    "progress": 25
+  }
+}
+#+end_src
+
+#+begin_src json
+{
+  "jsonrpc": "2.0",
+  "method": "operation_completed",
+  "params": {
+    "operation_id": 7,
+    "result": "OK"
+  }
+}
+#+end_src
+
+*** 6. Risposta tardiva
+
+Il PC invia =get_temperature= con timeout di 200 ms. La risposta arriva dopo 350 ms:
+
+#+begin_src text
+TX pc-4 get_temperature
+200 ms -> timeout, pending entry rimossa
+350 ms -> RX response pc-4, classificata come late response
+#+end_src
+
+La libreria registra il dato per il debug, ma non lo consegna a una nuova chiamata che abbia eventualmente riutilizzato l'ID.
+
+Questo esempio contiene i modelli principali senza confonderli:
+
+- richieste PC → MCU;
+- richieste MCU → PC;
+- risposte correlate;
+- notifiche senza risposta;
+- eventi affidabili con ACK personalizzato;
+- operazioni lunghe identificate separatamente;
+- sessioni, timeout e risposte tardive.
 
 ** Payload grandi e frammentazione
 
@@ -1112,7 +1944,17 @@ Il protocollo deve essere verificato anche nei casi non nominali. Tra i test pi�
 - evento ricevuto mentre il PC attende una risposta;
 - stream più rapido del consumatore;
 - disconnessione e riconnessione USB;
-- versione del protocollo non supportata.
+- versione del protocollo non supportata;
+- due richieste simultanee con lo stesso ID nella stessa direzione;
+- stesso ID utilizzato contemporaneamente nelle due direzioni;
+- wrap-around del contatore degli ID;
+- risposta tardiva dopo il riutilizzo potenziale dell'ID;
+- cambio di =session_id= o =boot_id= durante una chiamata;
+- richiesta inversa MCU → PC mentre il PC attende una risposta;
+- ACK perso e ritrasmissione dello stesso evento;
+- duplicato con lo stesso =operation_token=;
+- frammentazione di un messaggio WebSocket in più callback;
+- cancellazione ricevuta prima, durante e dopo il punto non reversibile.
 
 Il parser merita test specifici perché elabora dati esterni. Un fuzzing mirato può inviare sequenze casuali, lunghezze estreme e frame malformati verificando che il firmware non vada in crash, non legga fuori dai buffer e riesca a risincronizzarsi.
 
@@ -1155,6 +1997,88 @@ Parsing, serializzazione e handler applicativi dovrebbero essere eseguiti fuori 
 
 Un protocollo limitato alla sola risposta immediata diventa difficile da estendere con notifiche e operazioni lunghe. Allo stesso modo, l'assenza di una versione rende fragile ogni aggiornamento del firmware.
 
+*** Confondere request ID, operation ID e sequence number
+
+Il =request_id= correla una risposta, l'=operation_id= identifica un'attività lunga e il numero di sequenza ordina eventi o campioni. Riutilizzare un solo campo per tutti questi scopi rende ambiguo il ciclo di vita dei messaggi.
+
+*** Trattare il timeout come un annullamento
+
+Quando il PC smette di attendere, la MCU può continuare a eseguire l'handler. Se l'operazione deve essere interrotta serve un meccanismo di cancellazione esplicito e cooperativo.
+
+*** Bloccare il reader loop
+
+Un reader che esegue handler lenti o attende sincronicamente altre RPC non può più smistare risposte, eventi e richieste inverse. La ricezione deve rimanere indipendente dall'esecuzione applicativa.
+
+*** Assumere che una callback WebSocket contenga un messaggio completo
+
+WebSocket definisce messaggi, ma l'API concreta può consegnarli in più frammenti. Il codice deve seguire offset, lunghezza totale e indicazione di fine messaggio invece di passare ogni callback direttamente al decoder JSON.
+
+** Una configurazione pratica consigliata
+
+Per un primo protocollo tra PC ed ESP32 sceglierei una struttura volutamente semplice:
+
+#+begin_src text
+Application handlers
+        |
+Request / notification dispatcher
+        |
+Pending-request manager
+        |
+Encoder / decoder
+        |
+Framing and validation
+        |
+Single TX queue + RX parser
+        |
+UART / USB CDC / TCP / WebSocket
+#+end_src
+
+Una busta personalizzata potrebbe contenere:
+
+#+begin_src json
+{
+  "protocol_version": 2,
+  "session_id": "7f4a9c21",
+  "type": "request",
+  "id": "pc-100",
+  "method": "set_led",
+  "params": {
+    "state": true
+  }
+}
+#+end_src
+
+Se si decide invece di adottare JSON-RPC 2.0, manterrei la busta standard e sposterei =protocol_version= e =session_id= nell'handshake o in un livello esterno, evitando di mescolare accidentalmente standard e formato proprietario.
+
+Le regole minime che documenterei sono:
+
+- massimo numero di byte per frame e payload;
+- massimo numero di richieste pendenti per direzione;
+- timeout specifico o classe di timeout per metodo;
+- comportamento degli ID dopo timeout, wrap-around e reconnect;
+- distinzione tra richiesta, risposta, notifica, evento affidabile e stream;
+- politica di retry per ogni metodo;
+- deduplica per le operazioni non idempotenti;
+- sessione e =boot_id=;
+- endianness, unità e intervalli dei valori;
+- comportamento per campi, metodi e versioni sconosciute;
+- priorità, backpressure e politica di overflow;
+- autenticazione e autorizzazione dei comandi critici;
+- modalità di debug e redazione dei dati sensibili.
+
+Per una prima implementazione concreta:
+
+- una richiesta pendente per direzione è sufficiente;
+- JSON delimitato da newline è ottimo durante il prototipo;
+- COBS o length-prefix sono più adatti a un protocollo binario;
+- il reader task deve rimanere sempre attivo;
+- gli handler non devono bloccare il parser;
+- tutti i timeout devono usare un clock monotono;
+- le risposte sconosciute o tardive vanno registrate e scartate;
+- le azioni fisiche non idempotenti non devono essere ritentate senza token di deduplica.
+
+Solo dopo aver misurato un limite reale introdurrei pipelining esteso, batch, compressione o più livelli di priorità. Ogni funzione aggiunta aumenta gli stati da verificare e i modi nei quali le due estremità possono divergere.
+
 ** Conclusione
 
 Abbiamo visto come una RPC trasformi una chiamata apparentemente locale in una comunicazione strutturata. Nel caso PC–MCU, il percorso attraversa libreria, sistema operativo, driver, trasporto, parser, dispatcher e infine l'hardware controllato dal firmware.
@@ -1164,6 +2088,8 @@ La qualità dell'interfaccia esposta all'applicazione dipende dalla precisione d
 Una prima implementazione dovrebbe rimanere semplice. Una richiesta alla volta, frame con dimensione massima, parser a stati, codici di errore chiari e metodi prevalentemente idempotenti costituiscono una base più facile da verificare. Concorrenza, streaming e frammentazione possono essere introdotti quando il caso d'uso li richiede davvero.
 
 La considerazione più importante rimane dunque questa: *una RPC può sembrare una funzione locale, ma deve essere progettata come una comunicazione remota*.
+
+In particolare, un ID correla messaggi ma non garantisce l'esecuzione; un timeout interrompe l'attesa ma non annulla automaticamente il comando; una notifica evita la risposta ma non offre conferma; un retry aumenta la disponibilità ma può duplicare gli effetti. Sono queste differenze, più del formato JSON o binario, a definire il comportamento reale del sistema.
 
 Quando il confine viene trattato con la dovuta attenzione, il PC può controllare una scheda embedded tramite un'interfaccia pulita, mentre la MCU continua a gestire il mondo fisico con vincoli e responsabilità ben definiti. In superficie rimane una funzione; sotto, esiste un protocollo preciso.
 
@@ -1184,4 +2110,14 @@ Quando il confine viene trattato con la dovuta attenzione, il PC può controllar
 - [[https://man7.org/linux/man-pages/man2/ioctl.2.html][Linux ioctl manual page]]
 - [[https://www.silabs.com/documents/public/application-notes/an0059.0-uart-flow-control.pdf][Silicon Labs AN0059.0: UART flow control]]
 - [[https://ww1.microchip.com/downloads/en/Appnotes/01148a.pdf][Microchip AN1148: Cyclic Redundancy Check]]
+- [[https://www.rfc-editor.org/rfc/rfc9293.html][RFC 9293: Transmission Control Protocol]]
+- [[https://www.rfc-editor.org/rfc/rfc6455.html][RFC 6455: The WebSocket Protocol]]
+- [[https://grpc.io/docs/guides/deadlines/][gRPC deadlines]]
+- [[https://grpc.io/docs/guides/retry/][gRPC retry]]
+- [[https://docs.espressif.com/projects/esp-protocols/esp_websocket_client/docs/latest/index.html][Espressif ESP WebSocket Client documentation]]
+- [[https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/peripherals/uart.html][ESP-IDF UART driver documentation]]
+- [[https://docs.espressif.com/projects/esp-idf/en/stable/esp32s2/api-reference/peripherals/usb_device.html][ESP-IDF USB Device Stack and CDC-ACM documentation]]
+- [[https://docs.espressif.com/projects/esp-idf/en/stable/esp32/get-started/establish-serial-connection.html][ESP-IDF: serial connection through an external USB-to-UART bridge]]
+- [[https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-guides/usb-serial-jtag-console.html][ESP-IDF: USB Serial/JTAG Controller Console]]
+- [[https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/usb_device.html][ESP-IDF: ESP32-S3 USB Device Stack]]
 - [[https://commons.wikimedia.org/wiki/File:Raspberry_Pi_3_connected_to_Lenovo_ThinkPad_T430_via_DSD_TECH_UART_to_USB_adapter.jpg][Wikimedia Commons: Raspberry Pi 3 connected to Lenovo ThinkPad T430 via DSD TECH UART to USB adapter.jpg]]: immagine di Cirosantilli2, CC BY-SA 4.0, utilizzata come copertina dell'articolo.

@@ -1,0 +1,16 @@
+@startuml
+title A timeout does not say whether the command ran
+
+participant "PC" as PC
+participant "MCU" as MCU
+
+PC -> MCU : request id = 42
+MCU -> MCU : executes the command
+MCU -->x PC : response lost in transit
+PC -> PC : timeout expires
+
+note over PC #FFDDDD
+  The PC only knows it heard nothing. Retrying
+  is safe only if the method is idempotent.
+end note
+@enduml

@@ -1,0 +1,15 @@
+@startuml
+title Acknowledged event: delivery becomes verifiable
+
+participant "ESP32" as MCU
+participant "PC" as PC
+
+MCU -> PC : event notify_id = 81
+PC -> PC : validate and record
+PC --> MCU : ack notify_id = 81
+
+note over MCU, PC
+  The id lets the sender retry a lost event
+  and lets the receiver drop a duplicate.
+end note
+@enduml

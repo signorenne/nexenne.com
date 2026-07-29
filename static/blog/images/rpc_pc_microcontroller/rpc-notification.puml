@@ -1,0 +1,13 @@
+@startuml
+title Notification: no response, no correlation id
+
+participant "ESP32" as MCU
+participant "PC" as PC
+
+MCU ->> PC : notification button_pressed
+
+note right of PC
+  Nothing is sent back. The sender cannot
+  tell whether the message arrived.
+end note
+@enduml

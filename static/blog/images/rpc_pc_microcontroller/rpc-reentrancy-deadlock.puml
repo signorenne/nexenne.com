@@ -1,0 +1,24 @@
+@startuml
+title Re-entrancy deadlock: both sides wait for the other
+
+participant "PC" as PC
+participant "MCU" as MCU
+
+PC -> MCU : request start_calibration
+activate PC
+activate MCU
+PC -> PC : waits for the response
+MCU -> PC : request confirm_user_present
+note right of PC
+  Nobody reads this: the PC thread
+  is blocked on the first response.
+end note
+MCU -> MCU : waits for the response
+deactivate MCU
+deactivate PC
+
+note over PC, MCU #FFDDDD
+  Both ends are blocked. A handler must never
+  wait on a call it issued itself.
+end note
+@enduml
