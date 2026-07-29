@@ -1,0 +1,20 @@
+@startuml firmware_layers_en
+top to bottom direction
+
+rectangle "Application domain\nConfirm, cancel, error, alarm" as DOMAIN
+rectangle "Sequencer\nNotes, BPM, ticks, gate, queue, priority, loop" as SEQUENCER
+rectangle "Buzzer driver\nGPIO, LEDC, frequency, duty, safe stop" as DRIVER
+rectangle "Electrical stage\nTransistor, push-pull, protection" as ELECTRICAL
+rectangle "Transducer\nPiezoelectric or magnetic" as HARDWARE
+
+DOMAIN --> SEQUENCER : sound intent
+SEQUENCER --> DRIVER : tone and duration
+DRIVER --> ELECTRICAL : waveform
+ELECTRICAL --> HARDWARE : voltage and current
+
+note right of DOMAIN
+  The application should not
+  know about MIDI, LEDC,
+  or circuit polarity.
+end note
+@enduml

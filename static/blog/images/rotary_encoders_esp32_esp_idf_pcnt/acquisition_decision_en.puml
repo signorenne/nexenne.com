@@ -1,0 +1,23 @@
+@startuml acquisition_decision_en
+start
+
+if (Is the output A/B quadrature?) then (yes)
+  if (Is PCNT available on the target?) then (yes)
+    :Decode x4 with PCNT;
+    if (Is precise period measurement required?) then (yes)
+      :Add MCPWM Capture;
+    endif
+  else (no)
+    if (Can software handle the maximum edge rate?) then (yes)
+      :Use GPIO ISRs or GPTimer\nwith a state machine;
+    else (no)
+      :Choose a target with PCNT\nor an external decoder;
+    endif
+  endif
+else (no)
+  :Decode the absolute interface:\nSPI, SSI, BiSS, or PWM;
+endif
+
+:Expose position, delta,\nspeed, and diagnostics;
+stop
+@enduml

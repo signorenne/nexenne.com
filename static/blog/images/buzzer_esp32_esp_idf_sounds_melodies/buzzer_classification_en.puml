@@ -1,0 +1,28 @@
+@startuml buzzer_classification_en
+top to bottom direction
+
+rectangle "Buzzer" as BUZZER
+
+package "Technology: how sound is produced" as TECHNOLOGY {
+  rectangle "Piezoelectric\nDeformation of a ceramic element" as PIEZO
+  rectangle "Magnetic\nCoil, magnetic field, and diaphragm" as MAGNETIC
+}
+
+package "Drive method: who creates the oscillation" as DRIVE {
+  rectangle "Active indicator\nInternal oscillator" as ACTIVE
+  rectangle "Passive transducer\nExternal signal" as PASSIVE
+}
+
+BUZZER --> TECHNOLOGY
+BUZZER --> DRIVE
+TECHNOLOGY --> PIEZO
+TECHNOLOGY --> MAGNETIC
+DRIVE --> ACTIVE
+DRIVE --> PASSIVE
+
+note bottom of BUZZER
+  The two axes are independent:
+  the technology does not
+  automatically determine the drive.
+end note
+@enduml

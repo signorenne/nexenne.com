@@ -1,0 +1,19 @@
+@startuml note_gate_timing_en
+start
+
+:Read the note, duration in ticks,\nand gate_percent;
+:Convert the ticks into total duration;
+:sound_ms = duration × gate_percent / 100;
+:rest_ms = duration - sound_ms;
+
+if (Is the event a rest?) then (yes)
+  :Keep duty = 0\nfor the entire duration;
+else (no)
+  :Convert the MIDI note\nto a frequency;
+  :Start the tone for sound_ms;
+  :Set duty = 0\nfor rest_ms;
+endif
+
+:Move to the next event;
+stop
+@enduml

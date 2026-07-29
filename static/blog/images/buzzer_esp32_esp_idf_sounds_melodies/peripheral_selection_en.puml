@@ -1,0 +1,23 @@
+@startuml peripheral_selection_en
+start
+
+if (Does the component have\nan internal oscillator?) then (yes)
+  :Use GPIO to turn it on and off;
+else (no)
+  if (Are monophonic tones\nand sweeps sufficient?) then (yes)
+    :Use LEDC for frequency and duty cycle;
+    if (Do note events need\nmore precise timing?) then (yes)
+      :Add a dedicated task,\nGPTimer, or esp_timer;
+    endif
+  else (no)
+    if (Is simple sampled audio sufficient?) then (yes)
+      :Use PWM Audio;
+    else (no)
+      :Use I2S with a codec or amplifier\nfor voice and richer audio;
+    endif
+  endif
+endif
+
+:Always verify voltage, current,\nand the drive stage;
+stop
+@enduml

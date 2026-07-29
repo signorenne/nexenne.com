@@ -1,0 +1,26 @@
+@startuml player_priority_en
+start
+
+:Receive a command from the queue;
+
+if (Is the command STOP?) then (yes)
+  :Interrupt the sequence;\nset duty to zero;
+else (no)
+  if (Is a sequence already active?) then (no)
+    :Start the new sequence;
+  else (yes)
+    if (New priority > current priority?) then (yes)
+      :Interrupt and replace\nthe current sequence;
+    else (no)
+      if (New priority = current priority?) then (yes)
+        :Replace according to\nthe application policy;
+      else (no)
+        :Ignore or queue according to\nthe application policy;
+      endif
+    endif
+  endif
+endif
+
+:Only the buzzer task controls LEDC;
+stop
+@enduml

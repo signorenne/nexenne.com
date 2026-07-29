@@ -1,0 +1,14 @@
+@startuml firmware_layers
+top to bottom direction
+
+rectangle "Applicazione\nUI, setpoint, controllo" as APP
+rectangle "Dominio\nDetent, homing, limiti, fault" as DOMAIN
+rectangle "Misura\nPosizione, delta, velocità, diagnostica" as MEASURE
+rectangle "Hardware e driver\nGPIO, PCNT, SPI, MCPWM Capture" as DRIVER
+rectangle "Encoder e cablaggio\nA/B/Z o posizione assoluta" as HARDWARE
+
+HARDWARE --> DRIVER : segnali elettrici
+DRIVER --> MEASURE : conteggi e timestamp
+MEASURE --> DOMAIN : encoder_sample_t
+DOMAIN --> APP : eventi e stato validato
+@enduml

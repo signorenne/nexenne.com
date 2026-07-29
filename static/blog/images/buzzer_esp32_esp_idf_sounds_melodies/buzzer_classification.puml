@@ -1,0 +1,28 @@
+@startuml buzzer_classification
+top to bottom direction
+
+rectangle "Buzzer" as BUZZER
+
+package "Tecnologia: come nasce il suono" as TECHNOLOGY {
+  rectangle "Piezoelettrico\nDeformazione di un elemento ceramico" as PIEZO
+  rectangle "Magnetico\nBobina, campo magnetico e membrana" as MAGNETIC
+}
+
+package "Pilotaggio: chi genera l'oscillazione" as DRIVE {
+  rectangle "Indicatore attivo\nOscillatore interno" as ACTIVE
+  rectangle "Trasduttore passivo\nSegnale esterno" as PASSIVE
+}
+
+BUZZER --> TECHNOLOGY
+BUZZER --> DRIVE
+TECHNOLOGY --> PIEZO
+TECHNOLOGY --> MAGNETIC
+DRIVE --> ACTIVE
+DRIVE --> PASSIVE
+
+note bottom of BUZZER
+  I due assi sono indipendenti:
+  la tecnologia non determina
+  automaticamente il pilotaggio.
+end note
+@enduml

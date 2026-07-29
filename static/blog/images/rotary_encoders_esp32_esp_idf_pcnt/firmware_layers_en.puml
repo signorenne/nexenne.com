@@ -1,0 +1,14 @@
+@startuml firmware_layers_en
+top to bottom direction
+
+rectangle "Application\nUI, setpoint, control" as APP
+rectangle "Domain\nDetents, homing, limits, faults" as DOMAIN
+rectangle "Measurement\nPosition, delta, speed, diagnostics" as MEASURE
+rectangle "Hardware and drivers\nGPIO, PCNT, SPI, MCPWM Capture" as DRIVER
+rectangle "Encoder and wiring\nA/B/Z or absolute position" as HARDWARE
+
+HARDWARE --> DRIVER : electrical signals
+DRIVER --> MEASURE : counts and timestamps
+MEASURE --> DOMAIN : encoder_sample_t
+DOMAIN --> APP : validated events and state
+@enduml

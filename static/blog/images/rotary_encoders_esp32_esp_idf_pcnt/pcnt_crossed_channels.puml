@@ -1,0 +1,18 @@
+@startuml pcnt_crossed_channels
+left to right direction
+
+rectangle "Segnale A" as A
+rectangle "Segnale B" as B
+component "Canale PCNT 0" as C0
+component "Canale PCNT 1" as C1
+rectangle "Unità PCNT\ncontatore x4" as U
+rectangle "Posizione estesa\ne watch point" as OUT
+
+A --> C0 : edge
+B --> C0 : level
+B --> C1 : edge
+A --> C1 : level
+C0 --> U : incremento / decremento
+C1 --> U : incremento / decremento
+U --> OUT
+@enduml

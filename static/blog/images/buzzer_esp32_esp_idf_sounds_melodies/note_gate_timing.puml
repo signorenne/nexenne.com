@@ -1,0 +1,19 @@
+@startuml note_gate_timing
+start
+
+:Leggi nota, durata in tick\ne gate_percent;
+:Converti i tick in durata totale;
+:sound_ms = durata × gate_percent / 100;
+:rest_ms = durata - sound_ms;
+
+if (La nota è una pausa?) then (sì)
+  :Mantieni duty = 0\nper tutta la durata;
+else (no)
+  :Converti la nota MIDI\nin frequenza;
+  :Avvia il tono per sound_ms;
+  :Imposta duty = 0\nper rest_ms;
+endif
+
+:Passa all'evento successivo;
+stop
+@enduml

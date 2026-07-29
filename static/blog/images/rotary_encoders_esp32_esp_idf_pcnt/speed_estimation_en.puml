@@ -1,0 +1,19 @@
+@startuml speed_estimation_en
+start
+
+:Acquire count and timestamp;
+if (Are edges frequent?) then (yes)
+  :Count pulses in a\ntime window;
+  :Calculate Δcount / Δt;
+else (no)
+  :Measure the period\nbetween two edges;
+  :Calculate 1 / period;
+endif
+
+:Apply direction, CPR,\nand mechanical ratio;
+if (No edge before the timeout?) then (yes)
+  :Set speed to zero\nand update diagnostics;
+endif
+:Publish RPM and validity;
+stop
+@enduml

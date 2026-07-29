@@ -1,0 +1,23 @@
+@startuml quadrature_state_cycle
+hide empty description
+
+state "AB = 00" as S00
+state "AB = 01" as S01
+state "AB = 11" as S11
+state "AB = 10" as S10
+
+S00 -right-> S01 : +1
+S01 -down-> S11 : +1
+S11 -left-> S10 : +1
+S10 -up-> S00 : +1
+
+S01 -[dashed]-> S00 : -1
+S11 -[dashed]-> S01 : -1
+S10 -[dashed]-> S11 : -1
+S00 -[dashed]-> S10 : -1
+
+note right of S11
+  Una transizione valida
+  cambia un solo bit.
+end note
+@enduml

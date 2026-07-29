@@ -1,0 +1,20 @@
+@startuml firmware_layers
+top to bottom direction
+
+rectangle "Dominio applicativo\nConferma, annulla, errore, allarme" as DOMAIN
+rectangle "Sequencer\nNote, BPM, tick, gate, queue, priorità, loop" as SEQUENCER
+rectangle "Driver buzzer\nGPIO, LEDC, frequenza, duty, stop sicuro" as DRIVER
+rectangle "Stadio elettrico\nTransistor, push-pull, protezioni" as ELECTRICAL
+rectangle "Trasduttore\nPiezoelettrico o magnetico" as HARDWARE
+
+DOMAIN --> SEQUENCER : intento sonoro
+SEQUENCER --> DRIVER : tono e durata
+DRIVER --> ELECTRICAL : forma d'onda
+ELECTRICAL --> HARDWARE : tensione e corrente
+
+note right of DOMAIN
+  L'applicazione non deve
+  conoscere MIDI, LEDC
+  o la polarità del circuito.
+end note
+@enduml

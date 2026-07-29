@@ -1,0 +1,20 @@
+@startuml ledc_tone_path_en
+actor "Application task" as APP
+participant "Buzzer driver" as DRIVER
+participant "LEDC timer" as TIMER
+participant "LEDC channel" as CHANNEL
+participant "GPIO and\ndrive stage" as OUTPUT
+participant "Transducer" as BUZZER
+
+APP -> DRIVER : buzzer_play_tone(frequency, duty)
+DRIVER -> TIMER : set the frequency
+TIMER --> DRIVER : actual frequency
+DRIVER -> CHANNEL : set and update the duty
+CHANNEL -> OUTPUT : square wave
+OUTPUT -> BUZZER : suitable voltage and current
+BUZZER --> APP : acoustic tone
+
+APP -> DRIVER : buzzer_stop()
+DRIVER -> CHANNEL : duty = 0
+CHANNEL -> OUTPUT : idle level
+@enduml

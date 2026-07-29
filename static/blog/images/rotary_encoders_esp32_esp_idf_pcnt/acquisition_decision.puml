@@ -1,0 +1,23 @@
+@startuml acquisition_decision
+start
+
+if (L'uscita è una quadratura A/B?) then (sì)
+  if (PCNT è disponibile sul target?) then (sì)
+    :Decodifica x4 con PCNT;
+    if (Serve una misura precisa del periodo?) then (sì)
+      :Aggiungi MCPWM Capture;
+    endif
+  else (no)
+    if (La frequenza massima è gestibile in software?) then (sì)
+      :GPIO ISR o GPTimer\ncon macchina a stati;
+    else (no)
+      :Scegli un target con PCNT\no un decoder esterno;
+    endif
+  endif
+else (no)
+  :Decodifica l'interfaccia assoluta\nSPI, SSI, BiSS o PWM;
+endif
+
+:Esponi posizione, delta,\nvelocità e diagnostica;
+stop
+@enduml

@@ -1,0 +1,23 @@
+@startuml peripheral_selection
+start
+
+if (Il componente ha\nun oscillatore interno?) then (sì)
+  :GPIO per accensione e spegnimento;
+else (no)
+  if (Servono solo toni\nmonofonici e sweep?) then (sì)
+    :LEDC per frequenza e duty cycle;
+    if (Serve una temporizzazione\npiù precisa delle note?) then (sì)
+      :Aggiungi un task dedicato,\nGPTimer o esp_timer;
+    endif
+  else (no)
+    if (Bastano campioni audio semplici?) then (sì)
+      :PWM Audio;
+    else (no)
+      :I2S con codec o amplificatore\nper voce e audio più completo;
+    endif
+  endif
+endif
+
+:Verifica sempre tensione, corrente\ne stadio di pilotaggio;
+stop
+@enduml

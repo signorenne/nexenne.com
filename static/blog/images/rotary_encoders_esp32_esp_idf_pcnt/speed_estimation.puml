@@ -1,0 +1,19 @@
+@startuml speed_estimation
+start
+
+:Acquisisci conteggio e timestamp;
+if (I fronti sono frequenti?) then (sì)
+  :Conta gli impulsi in una\nfinestra temporale;
+  :Calcola Δcount / Δt;
+else (no)
+  :Misura il periodo\ntra due fronti;
+  :Calcola 1 / periodo;
+endif
+
+:Applica segno, CPR\ne rapporto meccanico;
+if (Nessun fronte entro il timeout?) then (sì)
+  :Imposta velocità a zero\ne aggiorna la diagnostica;
+endif
+:Pubblica RPM e validità;
+stop
+@enduml
