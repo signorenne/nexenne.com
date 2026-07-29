@@ -3898,6 +3898,18 @@ html.is-transitioning {
 	text-transform: uppercase;
 	color: var(--muted);
 	white-space: nowrap;
+	/* The overlay clips at the viewport, and the destination path is the one part
+	   with no length bound: a long slug under /it/ runs past 700px and loses its
+	   ends off both sides. Bound the row and let the path itself give way. */
+	max-width: min(90vw, 760px);
+	padding: 0 var(--page-x);
+	box-sizing: border-box;
+}
+.pt-frame {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	flex: none;
 }
 .pt-readout .pt-k {
 	color: var(--muted);
@@ -3914,6 +3926,20 @@ html.is-transitioning {
 }
 .pt-readout .pt-target {
 	color: var(--accent-2, var(--ink));
+	/* min-width: 0 is what actually lets a flex child shrink below its content. */
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+@media (max-width: 560px) {
+	/* Give the whole row to the path: the frame counter is decoration. */
+	.pt-frame {
+		display: none;
+	}
+	.pt-readout {
+		font-size: 10px;
+		letter-spacing: 0.1em;
+	}
 }
 
 .pt-bar {

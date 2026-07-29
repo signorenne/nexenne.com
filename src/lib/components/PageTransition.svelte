@@ -137,9 +137,11 @@
 			</div>
 		</div>
 		<div class="pt-readout">
-			<span class="pt-k">FRAME</span>
-			<span class="pt-v pt-hex">{frame}</span>
-			<span class="pt-sep">·</span>
+			<span class="pt-frame">
+				<span class="pt-k">FRAME</span>
+				<span class="pt-v pt-hex">{frame}</span>
+				<span class="pt-sep">·</span>
+			</span>
 			<span class="pt-k">→</span>
 			<span class="pt-v pt-target">{target}</span>
 		</div>
