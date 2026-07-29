@@ -1024,23 +1024,22 @@ A robust BLE server firmware can follow this flow:
 Pseudocode:
 
 #+begin_src c
-void app_main(void)
-{
-    init_nvs();
+void app_main(void) {
+  init_nvs();
 
-    init_ble_controller();
-    init_ble_host(); // NimBLE or Bluedroid
+  init_ble_controller();
+  init_ble_host();  // NimBLE or Bluedroid
 
-    configure_device_name("ESP32-Device");
-    configure_privacy_if_needed();
+  configure_device_name("ESP32-Device");
+  configure_privacy_if_needed();
 
-    configure_smp_security();
-    create_gatt_database_with_secure_permissions();
+  configure_smp_security();
+  create_gatt_database_with_secure_permissions();
 
-    configure_advertising_payload_minimal();
-    start_advertising();
+  configure_advertising_payload_minimal();
+  start_advertising();
 
-    // From here on: GAP/GATT callbacks
+  // From here on: GAP/GATT callbacks
 }
 #+end_src
 

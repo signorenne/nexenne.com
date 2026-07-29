@@ -51,12 +51,7 @@ A generic lambda, however, puts every case in the same branch.
 
 ```cpp
 auto handle(event const& value) -> void {
-  std::visit(
-    [](auto const& current) {
-      handle_event(current);
-    },
-    value
-  );
+  std::visit([](auto const& current) { handle_event(current); }, value);
 }
 ```
 
@@ -99,18 +94,10 @@ With `overloaded`, the branches stay isolated.
 auto describe(event const& value) -> std::string {
   return std::visit(
     overloaded{
-      [](click const& current) {
-        return std::format("click at ({}, {})", current.x, current.y);
-      },
-      [](key_press const& current) {
-        return std::format("key '{}' pressed", current.key);
-      },
+      [](click const& current) { return std::format("click at ({}, {})", current.x, current.y); },
+      [](key_press const& current) { return std::format("key '{}' pressed", current.key); },
       [](resize const& current) {
-        return std::format(
-          "resize to {}x{}",
-          current.width,
-          current.height
-        );
+        return std::format("resize to {}x{}", current.width, current.height);
       },
     },
     value
@@ -133,12 +120,8 @@ That is useful when one or two types need dedicated handling while the others sh
 auto category(event const& value) -> std::string {
   return std::visit(
     overloaded{
-      [](resize const&) {
-        return std::string{"layout"};
-      },
-      [](auto const&) {
-        return std::string{"input"};
-      },
+      [](resize const&) { return std::string{"layout"}; },
+      [](auto const&) { return std::string{"input"}; },
     },
     value
   );

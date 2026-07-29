@@ -77,23 +77,18 @@ public:
 
   static_assert(std::is_nothrow_move_constructible_v<resource_type>);
   static_assert(std::is_nothrow_move_constructible_v<deleter_type>);
-  static_assert(
-      std::is_nothrow_invocable_v<deleter_type&, resource_type&>);
+  static_assert(std::is_nothrow_invocable_v<deleter_type&, resource_type&>);
 
-  unique_resource(resource_type resource,
-                  deleter_type deleter,
-                  bool owns = true) noexcept
-      : m_resource{std::move(resource)},
-        m_deleter{std::move(deleter)},
-        m_owns{owns} {}
+  unique_resource(resource_type resource, deleter_type deleter, bool owns = true) noexcept
+      : m_resource{std::move(resource)}, m_deleter{std::move(deleter)}, m_owns{owns} {}
 
   unique_resource(unique_resource const&) = delete;
   auto operator=(unique_resource const&) -> unique_resource& = delete;
 
   unique_resource(unique_resource&& other) noexcept
-      : m_resource{std::move(other.m_resource)},
-        m_deleter{std::move(other.m_deleter)},
-        m_owns{std::exchange(other.m_owns, false)} {}
+      : m_resource{std::move(other.m_resource)}
+      , m_deleter{std::move(other.m_deleter)}
+      , m_owns{std::exchange(other.m_owns, false)} {}
 
   auto operator=(unique_resource&&) -> unique_resource& = delete;
 
@@ -141,30 +136,24 @@ Molte API usano un valore sentinella: `-1` per alcuni file descriptor, `nullptr`
 
 ```cpp
 template <typename Resource, typename Invalid, typename Deleter>
-  requires
-    std::is_nothrow_constructible_v<
-        std::remove_cvref_t<Resource>, Resource&&> &&
-    std::is_nothrow_constructible_v<
-        std::remove_cvref_t<Deleter>, Deleter&&> &&
-    requires(std::remove_reference_t<Resource> const& resource,
-             Invalid const& invalid) {
-      { resource != invalid } noexcept -> std::convertible_to<bool>;
-    }
+  requires std::is_nothrow_constructible_v<std::remove_cvref_t<Resource>, Resource&&>
+           && std::is_nothrow_constructible_v<std::remove_cvref_t<Deleter>, Deleter&&>
+           && requires(std::remove_reference_t<Resource> const& resource, Invalid const& invalid) {
+                { resource != invalid } noexcept -> std::convertible_to<bool>;
+              }
 [[nodiscard]] auto make_unique_resource_checked(
-    Resource&& resource,
-    Invalid const& invalid,
-    Deleter&& deleter) noexcept
-    -> unique_resource<std::remove_cvref_t<Resource>,
-                       std::remove_cvref_t<Deleter>> {
+  Resource&& resource, Invalid const& invalid, Deleter&& deleter
+) noexcept -> unique_resource<std::remove_cvref_t<Resource>, std::remove_cvref_t<Deleter>> {
   using resource_type = std::remove_cvref_t<Resource>;
   using deleter_type = std::remove_cvref_t<Deleter>;
 
   auto const owns{resource != invalid};
 
   return unique_resource<resource_type, deleter_type>{
-      resource_type{std::forward<Resource>(resource)},
-      deleter_type{std::forward<Deleter>(deleter)},
-      owns};
+    resource_type{std::forward<Resource>(resource)},
+    deleter_type{std::forward<Deleter>(deleter)},
+    owns
+  };
 }
 ```
 
@@ -178,12 +167,9 @@ Definiamo quindi il deleter prima di chiamare `open_sensor()`.
 
 ```cpp
 auto use_sensor(char const* path) -> bool {
-  auto const close{[](int& fd) noexcept {
-    close_sensor(fd);
-  }};
+  auto const close{[](int& fd) noexcept { close_sensor(fd); }};
 
-  auto sensor{
-      make_unique_resource_checked(open_sensor(path), -1, close)};
+  auto sensor{make_unique_resource_checked(open_sensor(path), -1, close)};
 
   if (!sensor.owns()) {
     return false;
@@ -209,7 +195,7 @@ Il nome può trarre in inganno. `release()` non esegue il deleter: rimuove la re
 
 ```cpp
 auto fd{sensor.release()};
-register_sensor(fd); // da qui, un altro owner deve chiudere fd
+register_sensor(fd);  // da qui, un altro owner deve chiudere fd
 ```
 
 Questa operazione serve soltanto quando l'ownership viene trasferita davvero. Se chi riceve l'handle non assume chiaramente la responsabilità del cleanup, `release()` reintroduce la gestione manuale che RAII aveva eliminato.

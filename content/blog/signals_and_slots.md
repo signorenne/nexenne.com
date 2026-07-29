@@ -47,25 +47,29 @@ typedef std::size_t IDType;
  * ISignal can access private and protected regions for design purposes.
  */
 class ISlotConnection {
- private:
+private:
   friend class ISignal;
 
   IDType id_;         ///< identifier and index into the signal slots vector.
   bool isConnected_;  ///< slot connection status.
   bool isBlocked_;    ///< slot connection block status.
 
- protected:
+protected:
   /**
    * @brief Getter for the identifier
    * @return id_
    */
-  IDType id() const noexcept { return id_; }
+  IDType id() const noexcept {
+    return id_;
+  }
 
   /**
    * @brief Getter/Setter for the identifier
    * @return a reference to id_
    */
-  IDType &id() noexcept { return id_; }
+  IDType& id() noexcept {
+    return id_;
+  }
 
   /**
    * @brief Clears the slot connection
@@ -75,7 +79,7 @@ class ISlotConnection {
    */
   virtual void clear() noexcept = 0;
 
- public:
+public:
   ISlotConnection() = delete;  // not needed but better for compilation error
 
   /**
@@ -84,8 +88,9 @@ class ISlotConnection {
    * @post isConnected__ == isConnected
    * @post isBlocked_ == isBlocked
    */
-  explicit ISlotConnection(const IDType id, const bool isConnected = true,
-                           const bool isBlocked = false) noexcept
+  explicit ISlotConnection(
+    IDType const id, bool const isConnected = true, bool const isBlocked = false
+  ) noexcept
       : id_(id), isConnected_(isConnected), isBlocked_(isBlocked) {}
 
   /**
@@ -93,32 +98,40 @@ class ISlotConnection {
    */
   virtual ~ISlotConnection() {}
 
- public:
+public:
   /**
    * @brief Checks the connection status
    * Used to see if a slot is still connected to a Signal
    */
-  virtual bool isConnected() const noexcept { return isConnected_; }
+  virtual bool isConnected() const noexcept {
+    return isConnected_;
+  }
 
   /**
    * @brief Checks if the connection is blocked
    * Used to temporarily disable slot invocation.
    * @return true if the slot invocation is blocked else false.
    */
-  bool isBlocked() const noexcept { return isBlocked_; }
+  bool isBlocked() const noexcept {
+    return isBlocked_;
+  }
 
- public:
+public:
   /**
    * @brief Blocks the slot invocation
    * @post isBlocked_ == true
    */
-  void block() noexcept { isBlocked_ = true; }
+  void block() noexcept {
+    isBlocked_ = true;
+  }
 
   /**
    * @brief Unblocks the slot invocation
    * @post isBlocked_ == false
    */
-  void unblock() noexcept { isBlocked_ = false; }
+  void unblock() noexcept {
+    isBlocked_ = false;
+  }
 
   /**
    * @brief Disconnects the slot from the signal
@@ -140,30 +153,32 @@ class ISlotConnection {
  * such object to keep the signal-slot connection alive.
  */
 class Connection {
- private:
+private:
   std::weak_ptr<ISlotConnection> slot_;  ///< the slot to manipulate and query
 
- public:
+public:
   Connection() = delete;  // not needed but better for compilation error
 
   /**
    * @brief Primary constructor
    * @param slot that will be handled by this connection
    */
-  explicit Connection(std::weak_ptr<ISlotConnection> &&slot) : slot_(slot) {}
+  explicit Connection(std::weak_ptr<ISlotConnection>&& slot) : slot_(slot) {}
 
   /**
    * @brief Destructor
    */
   virtual ~Connection() {}
 
- public:
+public:
   /**
    * @brief Checks if this connection is still valid
    * To have this information just see if the std::weak_ptr is expired
    * @return true if the connection is valid else false
    */
-  bool isValid() const noexcept { return !slot_.expired(); }
+  bool isValid() const noexcept {
+    return !slot_.expired();
+  }
 
   /**
    * @brief Checks if the slot is still connected to its signal
@@ -191,7 +206,8 @@ class Connection {
    */
   void block() noexcept {
     std::shared_ptr<ISlotConnection> d = slot_.lock();
-    if (d) d->block();
+    if (d)
+      d->block();
   }
 
   /**
@@ -200,7 +216,8 @@ class Connection {
    */
   void unblock() noexcept {
     std::shared_ptr<ISlotConnection> d = slot_.lock();
-    if (d) d->unblock();
+    if (d)
+      d->unblock();
   }
 
   /**
@@ -209,7 +226,8 @@ class Connection {
    */
   void disconnect() {
     std::shared_ptr<ISlotConnection> d = slot_.lock();
-    if (d) d->disconnect();
+    if (d)
+      d->disconnect();
   }
 };
 
@@ -221,12 +239,12 @@ class Connection {
  * functions.
  */
 class ISignal {
- protected:
+protected:
   /**
    * @brief Getter for specified ISlotConnection identifier
    * @return id of the specified slot
    */
-  IDType idOf(ISlotConnection *const slotPtr) const noexcept {
+  IDType idOf(ISlotConnection* const slotPtr) const noexcept {
     return slotPtr->id();
   }
 
@@ -234,11 +252,11 @@ class ISignal {
    * @brief Getter/Setter for specified ISlotConnection identifier
    * @return a reference to id of the specified slot
    */
-  IDType &idOf(ISlotConnection *const slotPtr) noexcept {
+  IDType& idOf(ISlotConnection* const slotPtr) noexcept {
     return slotPtr->id();
   }
 
- public:
+public:
   /**
    * @brief Destructor
    */
@@ -248,7 +266,7 @@ class ISignal {
    * @brief Disconnect the slot from this signal
    * @param slot a pointer to the slot to disconnect from
    */
-  virtual void disconnect(ISlotConnection *const slot) = 0;
+  virtual void disconnect(ISlotConnection* const slot) = 0;
 };
 
 /**
@@ -259,14 +277,16 @@ class ISignal {
  */
 template <typename... Args>
 class ISlot : public ISlotConnection {
- private:
-  ISignal &signal_;  ///< reference to the signal
+private:
+  ISignal& signal_;  ///< reference to the signal
 
- protected:
+protected:
   /**
    * @brief Clears the slot connection
    */
-  virtual void clear() noexcept override { signal_.disconnect(this); }
+  virtual void clear() noexcept override {
+    signal_.disconnect(this);
+  }
 
   /**
    * @brief Invokes the function
@@ -277,7 +297,7 @@ class ISlot : public ISlotConnection {
    */
   virtual void invoke(Args... args) = 0;
 
- public:
+public:
   ISlot() = delete;  // not needed but better for compilation error
 
   /**
@@ -289,8 +309,7 @@ class ISlot : public ISlotConnection {
    * @post signal_ points to the signal connected to this slot
    * @see ISlotConnection
    */
-  ISlot(const IDType id, ISignal &signal) noexcept
-      : ISlotConnection(id), signal_(signal) {}
+  ISlot(IDType const id, ISignal& signal) noexcept : ISlotConnection(id), signal_(signal) {}
 
   /**
    * @brief Invokes the function
@@ -304,7 +323,7 @@ class ISlot : public ISlotConnection {
    * @tparam ...Params types of the parameters of the function to call
    */
   template <typename... Params>
-  void operator()(Params &&...params) {
+  void operator()(Params&&... params) {
     if (ISlotConnection::isConnected() && !ISlotConnection::isBlocked())
       invoke(std::forward<Params>(params)...);
   }
@@ -319,11 +338,10 @@ class ISlot : public ISlotConnection {
  */
 template <typename... Args>
 class SimpleSlot final : public ISlot<Args...> {
- private:
-  std::function<void(Args...)>
-      function_;  ///< function to be invoked by this slot
+private:
+  std::function<void(Args...)> function_;  ///< function to be invoked by this slot
 
- protected:
+protected:
   /**
    * @copydoc ISlot::invoke()
    */
@@ -331,7 +349,7 @@ class SimpleSlot final : public ISlot<Args...> {
     function_(std::forward<Args>(args)...);
   }
 
- public:
+public:
   SimpleSlot() = delete;  // not needed but better for compilation error
 
   /**
@@ -341,10 +359,9 @@ class SimpleSlot final : public ISlot<Args...> {
    * @param signal the reference to the signal this slot is connected to
    * @see ISlot
    */
-  SimpleSlot(const IDType id, std::function<void(Args...)> &&function,
-             ISignal &signal) noexcept
-      : ISlot<Args...>(id, signal),
-        function_(std::forward<std::function<void(Args...)>>(function)) {}
+  SimpleSlot(IDType const id, std::function<void(Args...)>&& function, ISignal& signal) noexcept
+      : ISlot<Args...>(id, signal)
+      , function_(std::forward<std::function<void(Args...)>>(function)) {}
 };
 
 /**
@@ -357,13 +374,11 @@ class SimpleSlot final : public ISlot<Args...> {
  */
 template <typename T, typename... Args>
 class TrackingSlot final : public ISlot<Args...> {
- private:
-  std::function<void(Args...)>
-      function_;  ///< function to be invoked by this slot
-  std::weak_ptr<T>
-      objectPtr_;  ///< the pointer to the object this slot is tracking
+private:
+  std::function<void(Args...)> function_;  ///< function to be invoked by this slot
+  std::weak_ptr<T> objectPtr_;             ///< the pointer to the object this slot is tracking
 
- protected:
+protected:
   /**
    * @copydoc ISlot::invoke()
    */
@@ -379,7 +394,7 @@ class TrackingSlot final : public ISlot<Args...> {
     }
   }
 
- public:
+public:
   TrackingSlot() = delete;  // not needed but better for compilation error
 
   /**
@@ -390,14 +405,17 @@ class TrackingSlot final : public ISlot<Args...> {
    * @param signal the reference to the signal this slot is connected to
    * @see ISlot
    */
-  TrackingSlot(const IDType id, std::weak_ptr<T> &&objectPtr,
-               std::function<void(Args...)> &&function,
-               ISignal &signal) noexcept
-      : ISlot<Args...>(id, signal),
-        function_(std::forward<std::function<void(Args...)>>(function)),
-        objectPtr_(std::forward<std::weak_ptr<T>>(objectPtr)) {}
+  TrackingSlot(
+    IDType const id,
+    std::weak_ptr<T>&& objectPtr,
+    std::function<void(Args...)>&& function,
+    ISignal& signal
+  ) noexcept
+      : ISlot<Args...>(id, signal)
+      , function_(std::forward<std::function<void(Args...)>>(function))
+      , objectPtr_(std::forward<std::weak_ptr<T>>(objectPtr)) {}
 
- public:
+public:
   /**
    * @brief Checks if the connection still there
    */
@@ -414,16 +432,15 @@ class TrackingSlot final : public ISlot<Args...> {
  */
 template <typename R, typename... Args>
 class Signal final : public ISignal {
- private:
-  std::vector<std::shared_ptr<ISlot<Args...>>>
-      slots_;  ///< slots connected to this Signal
+private:
+  std::vector<std::shared_ptr<ISlot<Args...>>> slots_;  ///< slots connected to this Signal
 
   /**
    * @brief Disconnects the specified slot
    * @param slot the pointer to the slot to disconnect from
    * @post slots_.size() decremented by one
    */
-  void disconnect(ISlotConnection *const slot) noexcept override final {
+  void disconnect(ISlotConnection* const slot) noexcept override final {
     IDType index = idOf(slot);
     if (!slots_.empty()) {
       std::swap(slots_[index], slots_.back());
@@ -432,7 +449,7 @@ class Signal final : public ISignal {
     }
   }
 
- public:
+public:
   /**
    * @brief Default constructor
    * @post slots_.size() == 0
@@ -442,20 +459,24 @@ class Signal final : public ISignal {
   /**
    * @brief Destructor
    */
-  virtual ~Signal() noexcept { disconnectAll(); }
+  virtual ~Signal() noexcept {
+    disconnectAll();
+  }
 
   /**
    * @brief Move constructor
    * @see Signal::operator=()
    */
-  Signal(Signal &&other) noexcept : slots_() { *this = std::move(other); }
+  Signal(Signal&& other) noexcept : slots_() {
+    *this = std::move(other);
+  }
 
   /**
    * @brief Move assignment operator
    * @return a reference to this
    * @post slots_ == other.slots_
    */
-  Signal &operator=(Signal &&other) noexcept {
+  Signal& operator=(Signal&& other) noexcept {
     if (this != &other) {
       slots_ = std::move(other.slots_);
     }
@@ -469,11 +490,11 @@ class Signal final : public ISignal {
    * @return a Connection instance for managment purposes
    * @post slots_.size() incremented by one
    */
-  Connection connect(std::function<R(Args...)> &&function) noexcept {
+  Connection connect(std::function<R(Args...)>&& function) noexcept {
     IDType id = slots_.size();
-    std::shared_ptr<ISlot<Args...>> slot =
-        std::make_shared<SimpleSlot<Args...>>(
-            id, std::forward<std::function<R(Args...)>>(function), *this);
+    std::shared_ptr<ISlot<Args...>> slot = std::make_shared<SimpleSlot<Args...>>(
+      id, std::forward<std::function<R(Args...)>>(function), *this
+    );
     slots_.push_back(slot);
     return Connection(std::weak_ptr(slots_[id]));
   }
@@ -490,13 +511,14 @@ class Signal final : public ISignal {
    * @post slots_.size() incremented by one
    */
   template <typename T>
-  Connection connect(std::weak_ptr<T> &&objectPtr,
-                     std::function<R(Args...)> &&function) noexcept {
+  Connection connect(std::weak_ptr<T>&& objectPtr, std::function<R(Args...)>&& function) noexcept {
     IDType id = slots_.size();
-    std::shared_ptr<ISlot<Args...>> slot =
-        std::make_shared<TrackingSlot<T, Args...>>(
-            id, std::forward<std::weak_ptr<T>>(objectPtr),
-            std::forward<std::function<R(Args...)>>(function), *this);
+    std::shared_ptr<ISlot<Args...>> slot = std::make_shared<TrackingSlot<T, Args...>>(
+      id,
+      std::forward<std::weak_ptr<T>>(objectPtr),
+      std::forward<std::function<R(Args...)>>(function),
+      *this
+    );
     slots_.push_back(slot);
     return Connection(std::weak_ptr(slots_[id]));
   }
@@ -515,13 +537,11 @@ class Signal final : public ISignal {
    * @post slots_.size() incremented by one
    */
   template <typename T>
-  Connection connect(std::shared_ptr<T> &objectPtr,
-                     R (T::*function)(Args...)) noexcept {
-    T *const ptr = objectPtr.get();
-    return connect(std::weak_ptr<T>(objectPtr),
-                   [ptr, function](Args... args) -> R {
-                     return (ptr->*function)(args...);
-                   });
+  Connection connect(std::shared_ptr<T>& objectPtr, R (T::*function)(Args...)) noexcept {
+    T* const ptr = objectPtr.get();
+    return connect(std::weak_ptr<T>(objectPtr), [ptr, function](Args... args) -> R {
+      return (ptr->*function)(args...);
+    });
   }
 
   /**
@@ -538,13 +558,11 @@ class Signal final : public ISignal {
    * @post slots_.size() incremented by one
    */
   template <typename T>
-  Connection connect(std::shared_ptr<T> &objectPtr,
-                     R (T::*function)(Args...) const) noexcept {
-    T *const ptr = objectPtr.get();
-    return connect(std::weak_ptr<T>(objectPtr),
-                   [ptr, function](Args... args) -> R {
-                     return (ptr->*function)(args...);
-                   });
+  Connection connect(std::shared_ptr<T>& objectPtr, R (T::*function)(Args...) const) noexcept {
+    T* const ptr = objectPtr.get();
+    return connect(std::weak_ptr<T>(objectPtr), [ptr, function](Args... args) -> R {
+      return (ptr->*function)(args...);
+    });
   }
 
   /**
@@ -552,7 +570,9 @@ class Signal final : public ISignal {
    * Disconnects all the slots this signal is connected to.
    * @post slots_.empty() == true
    */
-  void disconnectAll() noexcept { slots_.clear(); }
+  void disconnectAll() noexcept {
+    slots_.clear();
+  }
 
   /**
    * @brief Emits the signal
@@ -571,7 +591,7 @@ class Signal final : public ISignal {
    */
   template <typename... Params>
   void emit(Params... params) {
-    for (auto const &it : slots_) {
+    for (auto const& it : slots_) {
       it->operator()(params...);
     }
   }
@@ -580,7 +600,9 @@ class Signal final : public ISignal {
    * @brief Gets the number of connected slots
    * @return slots.size()
    */
-  std::size_t connectedSlots() const noexcept { return slots_.size(); }
+  std::size_t connectedSlots() const noexcept {
+    return slots_.size();
+  }
 };
 
 }  // namespace sigslotpp
@@ -592,28 +614,37 @@ class Signal final : public ISignal {
 Per comprendere come utilizzare la soluzione implementata vi mostro gli unit tests che ho scritto.
 
 ```cpp
-const std::string ff = "free function";
-const std::string mf = "member function";
-const std::string smf = "static member function";
-const std::string mo = "member operator";
-const std::string l = "lambda";
-const std::string gl = "generic lambda";
+std::string const ff = "free function";
+std::string const mf = "member function";
+std::string const smf = "static member function";
+std::string const mo = "member operator";
+std::string const l = "lambda";
+std::string const gl = "generic lambda";
 
-void f() { fmt::print("{}\n", ff); }
+void f() {
+  fmt::print("{}\n", ff);
+}
 
 struct s {
-  void m() { fmt::print("{}\n", mf); }
-  static void sm() { fmt::print("{}\n", smf); }
+  void m() {
+    fmt::print("{}\n", mf);
+  }
+
+  static void sm() {
+    fmt::print("{}\n", smf);
+  }
 };
 
 struct o {
-  void operator()() { fmt::print("{}\n, mo"); }
+  void operator()() {
+    fmt::print("{}\n, mo");
+  }
 };
 
 TEST_CASE("slots can be added and removed from the signal") {
   std::shared_ptr<s> d;
   auto lambda = []() { fmt::print("{}\n", l); };
-  auto gen_lambda = [](auto &&...a) { fmt::print("{}\n", gl); };
+  auto gen_lambda = [](auto&&... a) { fmt::print("{}\n", gl); };
 
   sigslotpp::Signal<void> sig;
 
@@ -661,8 +692,11 @@ TEST_CASE("signal can be emitted") {
 }
 
 int sum = 0;
+
 struct x {
-  void f(int i) { sum += i; }
+  void f(int i) {
+    sum += i;
+  }
 };
 
 TEST_CASE("signal can be automatically disconnected") {
@@ -766,38 +800,38 @@ Aggiungiamo una classe ExtendedSlot.
 ```cpp
 template <typename... Args>
 class ExtendedSlot final : public ISlot<Args...> {
- private:
-  std::function<void(Args...)>
-      function_;  ///< function to be invoked by this slot
-Connection connection_ ///< connection handle injected into the slot
+private:
+  std::function<void(Args...)> function_;  ///< function to be invoked by this slot
 
- protected:
+Connection connection_  ///< connection handle injected into the slot
 
-  void invoke(Args... args) override final {
+  protected
+    :
+
+    void invoke(Args... args) override final {
     function_(connection_, std::forward<Args>(args)...);
   }
 
- public:
-
-  ExtendedSlot(const IDType id, std::function<void(Args...)> &&function,
-             ISignal &signal) noexcept
-      : ISlot<Args...>(id, signal),
-        function_(std::forward<std::function<void(Args...)>>(function)) {}
+public:
+  ExtendedSlot(IDType const id, std::function<void(Args...)>&& function, ISignal& signal) noexcept
+      : ISlot<Args...>(id, signal)
+      , function_(std::forward<std::function<void(Args...)>>(function)) {}
 
   // Not ideal, but enough for this implementation.
-  void setConnection(Connection connection) { connection_ = connection }
-
+  void setConnection(Connection connection) {
+    connection_ = connection
+  }
 };
 ```
 
 Modifichiamo Signal e aggiungiamo un metodo connectExtended.
 
 ```cpp
- Connection connectExtended(std::function<R(Args...)> &&function) noexcept {
+Connection connectExtended(std::function<R(Args...)>&& function) noexcept {
   IDType id = slots_.size();
-  std::shared_ptr<ISlot<Args...>> slot =
-      std::make_shared<ExtendedSlot<Args...>>(
-          id, std::forward<std::function<R(Args...)>>(function), *this);
+  std::shared_ptr<ISlot<Args...>> slot = std::make_shared<ExtendedSlot<Args...>>(
+    id, std::forward<std::function<R(Args...)>>(function), *this
+  );
   slots_.push_back(slot);
   auto c = Connection(std::weak_ptr(slots_[id]));
   slots_[id]->setConnection(c);
@@ -812,7 +846,7 @@ int main() {
   int i = 0;
   sigslot::signal<void> sig;
 
-  auto f = [](auto &con) {
+  auto f = [](auto& con) {
     i += 1;
     con.disconnect();
   };
@@ -828,13 +862,13 @@ Aggiungendo le seguenti funzioni di supporto possiamo risolvere anche questo cas
 
 ```cpp
 template <typename T, typename R, typename... Args>
-constexpr auto overload(R(I::*ptr)(Args...)) {
-    return ptr;
+constexpr auto overload(R (I::*ptr)(Args...)) {
+  return ptr;
 }
 
 template <typename R, typename... Args>
-constexpr auto overload(R(*ptr)(Args...)) {
-    return ptr;
+constexpr auto overload(R (*ptr)(Args...)) {
+  return ptr;
 }
 ```
 
@@ -843,18 +877,22 @@ Il parameter pack, una volta espanso, permette di identificare il metodo corrett
 ```cpp
 struct obj {
   void operator()(int) const {}
+
   void operator()() {}
 };
 
 struct foo {
   void bar(int) {}
+
   void bar() {}
 
   static void baz(int) {}
+
   static void baz() {}
 };
 
 void moo(int) {}
+
 void moo() {}
 
 int main() {

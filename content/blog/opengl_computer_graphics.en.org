@@ -458,11 +458,7 @@ Draw a triangle primitive.
 In a highly simplified form, the vertices might be:
 
 #+begin_src cpp
-float vertices[] = {
-    -0.5f, -0.5f, 0.0f,
-     0.5f, -0.5f, 0.0f,
-     0.0f,  0.5f, 0.0f
-};
+float vertices[] = {-0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.0f, 0.5f, 0.0f};
 #+end_src
 
 These three points describe the triangle.

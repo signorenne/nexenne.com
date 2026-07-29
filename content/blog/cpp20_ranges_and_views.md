@@ -26,23 +26,23 @@ La tabella seguente mostra alcuni esempi di input e output.
 ### Soluzione pre C++20
 ```cpp
 #include <algorithm>
-#include <vector>
 #include <iostream>
+#include <vector>
 
 auto main() -> int {
-    const std::vector<int> numbers{3, 0, 10, 9, 12, 7, 30, 14, 6};
+  std::vector<int> const numbers{3, 0, 10, 9, 12, 7, 30, 14, 6};
 
-    auto isDivisibleByThree = [](int const i) { return i % 3 == 0; };
+  auto isDivisibleByThree = [](int const i) { return i % 3 == 0; };
 
-    std::vector<int> tmp{};
+  std::vector<int> tmp{};
 
-    std::copy_if(numbers.begin(), numbers.end(), std::back_inserter(tmp), isDivisibleByThree);
-    std::reverse(tmp.begin(), tmp.end());
+  std::copy_if(numbers.begin(), numbers.end(), std::back_inserter(tmp), isDivisibleByThree);
+  std::reverse(tmp.begin(), tmp.end());
 
-    for (auto const& i : tmp)
-        std::cout << i << " ";
+  for (auto const& i : tmp)
+    std::cout << i << " ";
 
-    return 0;
+  return 0;
 }
 ```
 
@@ -57,21 +57,21 @@ La soluzione funziona, ma richiede un contenitore temporaneo e più passaggi sep
 ### Soluzione con std::ranges
 ```cpp
 #include <algorithm>
-#include <vector>
 #include <iostream>
 #include <ranges>
+#include <vector>
 
 auto main() -> int {
-    const std::vector<int> numbers{3, 0, 10, 9, 12, 7, 30, 14, 6};
+  std::vector<int> const numbers{3, 0, 10, 9, 12, 7, 30, 14, 6};
 
-    auto isDivisibleByThree = [](int const i) { return i % 3 == 0; };
+  auto isDivisibleByThree = [](int const i) { return i % 3 == 0; };
 
-    auto result{std::views::reverse(std::views::filter(numbers, isDivisibleByThree))};
+  auto result{std::views::reverse(std::views::filter(numbers, isDivisibleByThree))};
 
-    for (auto const& i : result)
-        std::cout << i << " ";
+  for (auto const& i : result)
+    std::cout << i << " ";
 
-    return 0;
+  return 0;
 }
 ```
 
@@ -122,17 +122,17 @@ Questo ha due implicazioni:
 <!--listend-->
 
 ```cpp
-#include<iostream>
-#include<vector>
-#include<ranges>
+#include <iostream>
+#include <ranges>
+#include <vector>
 
 auto main() -> int {
-    std::vector numbers{1, 2, 3, 4, 5};
-    auto v{std::views::reverse(numbers)};
+  std::vector numbers{1, 2, 3, 4, 5};
+  auto v{std::views::reverse(numbers)};
 
-    for (auto const& i : numbers)
-        std::cout << i << " ";
-    return 0;
+  for (auto const& i : numbers)
+    std::cout << i << " ";
+  return 0;
 }
 
 // Output: 1 2 3 4 5
@@ -144,26 +144,26 @@ Come si può notare, la view non ha modificato il range `numbers`.
 Avremo pertanto
 
 ```cpp
-#include<iostream>
-#include<vector>
-#include<ranges>
+#include <iostream>
+#include <ranges>
+#include <vector>
 
 auto main() -> int {
-    std::vector numbers{1, 2, 3, 4, 5};
-    auto v{std::views::reverse(numbers)};
+  std::vector numbers{1, 2, 3, 4, 5};
+  auto v{std::views::reverse(numbers)};
 
-    for (auto const& i : v)
-        std::cout << i << " ";
+  for (auto const& i : v)
+    std::cout << i << " ";
 
-    std::cout << std::endl;
+  std::cout << std::endl;
 
-    numbers[2] = 100;
-    numbers[4] = 77;
+  numbers[2] = 100;
+  numbers[4] = 77;
 
-    for (auto const& i : v)
-        std::cout << i << " ";
+  for (auto const& i : v)
+    std::cout << i << " ";
 
-    return 0;
+  return 0;
 }
 
 // Output: 5 4 3 2 1
@@ -174,15 +174,15 @@ auto main() -> int {
 Una view applica le trasformazioni quando gli elementi vengono richiesti, non necessariamente nel momento in cui viene creata. Questa valutazione differita evita elaborazioni e copie non necessarie.
 
 ```cpp
-#include<iostream>
-#include<vector>
-#include<ranges>
+#include <iostream>
+#include <ranges>
+#include <vector>
 
 auto main() -> int {
-    std::vector numbers{1, 2, 3, 4, 5};
-    auto v{std::views::reverse(numbers)};
-    std::cout << *v.begin() << std::endl; // la view viene valutata qua
-    return 0;
+  std::vector numbers{1, 2, 3, 4, 5};
+  auto v{std::views::reverse(numbers)};
+  std::cout << *v.begin() << std::endl;  // la view viene valutata qua
+  return 0;
 }
 
 // Output: 5
@@ -221,16 +221,16 @@ auto v{numbers | std::views::filter(isDivisibleByThree) | std::views::reverse};
 Vogliamo creare una view dei primi 5 elementi di un std::vector e stampare il risultato.
 
 ```cpp
-#include<iostream>
-#include<vector>
-#include<ranges>
+#include <iostream>
+#include <ranges>
+#include <vector>
 
 auto main() -> int {
-    std::vector numbers{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    auto v{numbers | std::views::take(5)};
+  std::vector numbers{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto v{numbers | std::views::take(5)};
 
-    for (auto const& i : v)
-        std::cout << i << " ";
+  for (auto const& i : v)
+    std::cout << i << " ";
 }
 
 // Output: 1 2 3 4 5
@@ -245,15 +245,11 @@ Vogliamo sfruttare un algoritmo range based per stampare un std::vector invertit
 #include <vector>
 
 auto main() -> int {
-    std::vector numbers{-1, 3, -100, -4, 0, 3, -7, 1};
-    auto predicate = [](int const i) -> bool {
-        return i >= 0;
-    };
-    auto printer = [](int const i) {
-        std::cout << i << " ";
-    };
+  std::vector numbers{-1, 3, -100, -4, 0, 3, -7, 1};
+  auto predicate = [](int const i) -> bool { return i >= 0; };
+  auto printer = [](int const i) { std::cout << i << " "; };
 
-    std::ranges::for_each(numbers | std::views::reverse | std::views::filter(predicate), printer);
+  std::ranges::for_each(numbers | std::views::reverse | std::views::filter(predicate), printer);
 }
 
 // Output: 1 3 0 3
@@ -270,9 +266,9 @@ Una tra le svariate è std::views::iota, che crea una view incrementale di inter
 #include <ranges>
 
 auto main() -> int {
-    for (int const i : std::views::iota(1, 7)) {
-        std::cout << i << " ";
-    }
+  for (int const i : std::views::iota(1, 7)) {
+    std::cout << i << " ";
+  }
 }
 
 // Output: 1 2 3 4 5 6
@@ -289,18 +285,15 @@ Cerchiamo di capire meglio con un esempio.
 #include <vector>
 
 auto main() -> int {
+  std::vector numbers{1, 2, 3, 4};
+  std::vector english{"cat", "dog", "table", "sun"};
+  std::vector italian{"gatto", "cane", "tavolo", "sole"};
 
-    std::vector numbers{1, 2, 3, 4};
-    std::vector english{"cat", "dog", "table", "sun"};
-    std::vector italian{"gatto", "cane", "tavolo", "sole"};
+  for (auto const& i : std::views::zip(numbers, english, italian)) {
+    std::cout << std::get<0>(i) << ". " << std::get<1>(i) << ": " << std::get<2>(i) << '\n';
+  }
 
-    for (const auto& i : std::views::zip(numbers, english, italian)) {
-        std::cout << std::get<0>(i) << ". "
-                  << std::get<1>(i) << ": "
-                  << std::get<2>(i) << '\n';
-    }
-
-    return 0;
+  return 0;
 }
 ```
 

@@ -115,17 +115,17 @@ The MCU implements the corresponding component. Its *dispatcher* interprets the 
 
 #+begin_src c
 switch (request.method_id) {
-    case RPC_GET_TEMPERATURE:
-        handle_get_temperature(&request, &response);
-        break;
+  case RPC_GET_TEMPERATURE:
+    handle_get_temperature(&request, &response);
+    break;
 
-    case RPC_SET_LED:
-        handle_set_led(&request, &response);
-        break;
+  case RPC_SET_LED:
+    handle_set_led(&request, &response);
+    break;
 
-    default:
-        rpc_set_error(&response, RPC_ERR_UNKNOWN_METHOD);
-        break;
+  default:
+    rpc_set_error(&response, RPC_ERR_UNKNOWN_METHOD);
+    break;
 }
 #+end_src
 
@@ -292,10 +292,10 @@ In this example:
 Message types can be defined as follows:
 
 #+begin_src c
-#define RPC_TYPE_REQUEST   0x01
-#define RPC_TYPE_RESPONSE  0x02
-#define RPC_TYPE_ERROR     0x03
-#define RPC_TYPE_EVENT     0x04
+#define RPC_TYPE_REQUEST 0x01
+#define RPC_TYPE_RESPONSE 0x02
+#define RPC_TYPE_ERROR 0x03
+#define RPC_TYPE_EVENT 0x04
 #+end_src
 
 The request payload contains at least a method and its parameters:
@@ -311,11 +311,11 @@ The request payload contains at least a method and its parameters:
 For example:
 
 #+begin_src c
-#define RPC_GET_VERSION       0x0001
-#define RPC_GET_TEMPERATURE   0x0002
-#define RPC_SET_LED           0x0003
-#define RPC_SET_PWM           0x0004
-#define RPC_REBOOT            0x0005
+#define RPC_GET_VERSION 0x0001
+#define RPC_GET_TEMPERATURE 0x0002
+#define RPC_SET_LED 0x0003
+#define RPC_SET_PWM 0x0004
+#define RPC_REBOOT 0x0005
 #+end_src
 
 A request and its response could be represented as:
@@ -427,8 +427,8 @@ The receiver recalculates the CRC over the bytes defined by the protocol and com
 
 #+begin_src c
 if (crc_received != crc_calculated) {
-    discard_packet();
-    rpc_record_transport_error(RPC_ERR_BAD_CRC);
+  discard_packet();
+  rpc_record_transport_error(RPC_ERR_BAD_CRC);
 }
 #+end_src
 
@@ -514,11 +514,11 @@ Sending a C structure directly is fragile:
 
 #+begin_src c
 typedef struct {
-    uint8_t id;
-    uint32_t value;
+  uint8_t id;
+  uint32_t value;
 } packet_t;
 
-uart_write((uint8_t *)&packet, sizeof(packet));
+uart_write((uint8_t*)&packet, sizeof(packet));
 #+end_src
 
 The compiler may insert padding, alignment can change between architectures, and byte order may differ. Uninitialized bytes can also be transmitted accidentally.
@@ -555,10 +555,10 @@ A state machine is well suited to a stream that may arrive in fragments:
 
 #+begin_src c
 typedef enum {
-    WAIT_MAGIC,
-    READ_LENGTH,
-    READ_BODY,
-    READ_CRC
+  WAIT_MAGIC,
+  READ_LENGTH,
+  READ_BODY,
+  READ_CRC
 } parser_state_t;
 #+end_src
 
@@ -582,25 +582,24 @@ Every length must be validated before memory is reserved or copied, and the pars
 The dispatcher maps a =method_id= to an application function:
 
 #+begin_src c
-void rpc_dispatch(const rpc_request_t *req, rpc_response_t *res)
-{
-    switch (req->method_id) {
-        case RPC_GET_VERSION:
-            handle_get_version(req, res);
-            break;
+void rpc_dispatch(rpc_request_t const* req, rpc_response_t* res) {
+  switch (req->method_id) {
+    case RPC_GET_VERSION:
+      handle_get_version(req, res);
+      break;
 
-        case RPC_GET_TEMPERATURE:
-            handle_get_temperature(req, res);
-            break;
+    case RPC_GET_TEMPERATURE:
+      handle_get_temperature(req, res);
+      break;
 
-        case RPC_SET_LED:
-            handle_set_led(req, res);
-            break;
+    case RPC_SET_LED:
+      handle_set_led(req, res);
+      break;
 
-        default:
-            rpc_set_error(res, RPC_ERR_UNKNOWN_METHOD);
-            break;
-    }
+    default:
+      rpc_set_error(res, RPC_ERR_UNKNOWN_METHOD);
+      break;
+  }
 }
 #+end_src
 
@@ -764,16 +763,16 @@ Whenever possible, methods should describe the desired state, such as =set_motor
 “Operation failed” does not provide enough information to diagnose a protocol. It is useful to distinguish at least:
 
 #+begin_src c
-#define RPC_OK                     0x00
-#define RPC_ERR_BAD_FRAME          0x01
-#define RPC_ERR_BAD_CRC            0x02
-#define RPC_ERR_UNKNOWN_METHOD     0x03
-#define RPC_ERR_INVALID_ARGUMENT   0x04
-#define RPC_ERR_BUSY               0x05
-#define RPC_ERR_TIMEOUT            0x06
-#define RPC_ERR_NOT_ALLOWED        0x07
-#define RPC_ERR_UNSUPPORTED_VER    0x08
-#define RPC_ERR_INTERNAL           0x09
+#define RPC_OK 0x00
+#define RPC_ERR_BAD_FRAME 0x01
+#define RPC_ERR_BAD_CRC 0x02
+#define RPC_ERR_UNKNOWN_METHOD 0x03
+#define RPC_ERR_INVALID_ARGUMENT 0x04
+#define RPC_ERR_BUSY 0x05
+#define RPC_ERR_TIMEOUT 0x06
+#define RPC_ERR_NOT_ALLOWED 0x07
+#define RPC_ERR_UNSUPPORTED_VER 0x08
+#define RPC_ERR_INTERNAL 0x09
 #+end_src
 
 These errors do not all belong to the same layer:
@@ -853,10 +852,9 @@ The RPC parser must not interfere with motor control, ADC acquisition, CAN commu
 A handler that blocks for several seconds is problematic:
 
 #+begin_src c
-void handle_rpc_request(void)
-{
-    perform_slow_measurement();
-    wait_until_complete();
+void handle_rpc_request(void) {
+  perform_slow_measurement();
+  wait_until_complete();
 }
 #+end_src
 

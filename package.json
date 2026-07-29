@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write \"src/**/*.{ts,js,svelte,css,html}\" \"*.{ts,js,mjs,json,md}\"",
+    "format:snippets": "node scripts/format-snippets.mjs",
     "format:check": "prettier --check \"src/**/*.{ts,js,svelte,css,html}\" \"*.{ts,js,mjs,json,md}\"",
     "lint": "eslint . --ext .ts,.js,.svelte",
     "prepare": "husky"

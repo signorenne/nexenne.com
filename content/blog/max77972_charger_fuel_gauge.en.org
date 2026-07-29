@@ -219,20 +219,19 @@ The register pointer is 8 bit, but the logical register can live in two differen
 For that reason, I prefer to validate the register number, I2C address, and pointer in one place:
 
 #+begin_src c
-#define MAX77972_I2C_FUNC   0x36
-#define MAX77972_I2C_DEBUG  0x37
+#define MAX77972_I2C_FUNC 0x36
+#define MAX77972_I2C_DEBUG 0x37
 
-static int max77972_map_reg(uint16_t reg, uint8_t *addr, uint8_t *ptr)
-{
-    if (reg <= 0x0ff)
-        *addr = MAX77972_I2C_FUNC;
-    else if (reg >= 0x180 && reg <= 0x1ff)
-        *addr = MAX77972_I2C_DEBUG;
-    else
-        return -EINVAL;
+static int max77972_map_reg(uint16_t reg, uint8_t* addr, uint8_t* ptr) {
+  if (reg <= 0x0ff)
+    *addr = MAX77972_I2C_FUNC;
+  else if (reg >= 0x180 && reg <= 0x1ff)
+    *addr = MAX77972_I2C_DEBUG;
+  else
+    return -EINVAL;
 
-    *ptr = (uint8_t)(reg & 0xff);
-    return 0;
+  *ptr = (uint8_t)(reg & 0xff);
+  return 0;
 }
 #+end_src
 
@@ -249,48 +248,43 @@ In real debugging, use write-and-verify:
 Example:
 
 #+begin_src c
-int max77972_write16(struct max77972 *m, uint16_t reg, uint16_t val)
-{
-    uint8_t addr;
-    uint8_t ptr;
-    int ret;
+int max77972_write16(struct max77972* m, uint16_t reg, uint16_t val) {
+  uint8_t addr;
+  uint8_t ptr;
+  int ret;
 
-    ret = max77972_map_reg(reg, &addr, &ptr);
-    if (ret)
-        return ret;
+  ret = max77972_map_reg(reg, &addr, &ptr);
+  if (ret)
+    return ret;
 
-    uint8_t buf[3] = {
-        ptr,
-        (uint8_t)(val & 0xff),        // LSB
-        (uint8_t)((val >> 8) & 0xff)  // MSB
-    };
+  uint8_t buf[3] = {
+    ptr,
+    (uint8_t)(val & 0xff),        // LSB
+    (uint8_t)((val >> 8) & 0xff)  // MSB
+  };
 
-    return i2c_write(addr, buf, sizeof(buf));
+  return i2c_write(addr, buf, sizeof(buf));
 }
 
-int max77972_update_bits16(struct max77972 *m,
-                           uint16_t reg,
-                           uint16_t mask,
-                           uint16_t value)
-{
-    uint16_t oldv;
-    uint16_t newv;
-    int ret;
+int max77972_update_bits16(struct max77972* m, uint16_t reg, uint16_t mask, uint16_t value) {
+  uint16_t oldv;
+  uint16_t newv;
+  int ret;
 
-    ret = max77972_read16(m, reg, &oldv);
-    if (ret)
-        return ret;
+  ret = max77972_read16(m, reg, &oldv);
+  if (ret)
+    return ret;
 
-    newv = (oldv & ~mask) | (value & mask);
+  newv = (oldv & ~mask) | (value & mask);
 
-    if (newv == oldv)
-        return 0;
+  if (newv == oldv)
+    return 0;
 
-    ret = max77972_write16(m, reg, newv);
-    if (ret)
-        return ret;
+  ret = max77972_write16(m, reg, newv);
+  if (ret)
+    return ret;
 
-    return max77972_verify_bits16(m, reg, mask, value);
+  return max77972_verify_bits16(m, reg, mask, value);
 }
 #+end_src
 
@@ -317,34 +311,28 @@ The =Cycles= conversion is easy to get wrong. In the datasheet, the =Cycles= reg
 Example:
 
 #+begin_src c
-static float repsoc_percent(uint16_t raw)
-{
-    return raw / 256.0f;
+static float repsoc_percent(uint16_t raw) {
+  return raw / 256.0f;
 }
 
-static float repcap_mah(uint16_t raw)
-{
-    return raw * 0.5f;
+static float repcap_mah(uint16_t raw) {
+  return raw * 0.5f;
 }
 
-static float vcell_mv(uint16_t raw)
-{
-    return raw * 0.078125f;
+static float vcell_mv(uint16_t raw) {
+  return raw * 0.078125f;
 }
 
-static float current_ma(uint16_t raw)
-{
-    return (int16_t)raw * 0.15625f;
+static float current_ma(uint16_t raw) {
+  return (int16_t)raw * 0.15625f;
 }
 
-static float temperature_c(uint16_t raw)
-{
-    return (int16_t)raw / 256.0f;
+static float temperature_c(uint16_t raw) {
+  return (int16_t)raw / 256.0f;
 }
 
-static float cycles_count(uint16_t raw)
-{
-    return raw / 4.0f;
+static float cycles_count(uint16_t raw) {
+  return raw / 4.0f;
 }
 #+end_src
 
@@ -667,43 +655,43 @@ When something goes wrong, do not read one random register. Take a consistent sn
 
 #+begin_src c
 struct max77972_debug_snapshot {
-    uint16_t status;
-    uint16_t fstat;
-    uint16_t chg_mask_sts;
-    uint16_t chg_details00;
-    uint16_t chg_details01;
-    uint16_t usb_details;
+  uint16_t status;
+  uint16_t fstat;
+  uint16_t chg_mask_sts;
+  uint16_t chg_details00;
+  uint16_t chg_details01;
+  uint16_t usb_details;
 
-    uint16_t rep_soc;
-    uint16_t rep_cap;
-    uint16_t full_cap_rep;
-    uint16_t full_cap_nom;
-    uint16_t design_cap;
+  uint16_t rep_soc;
+  uint16_t rep_cap;
+  uint16_t full_cap_rep;
+  uint16_t full_cap_nom;
+  uint16_t design_cap;
 
-    uint16_t vcell;
-    uint16_t avg_vcell;
-    int16_t  current;
-    int16_t  avg_current;
-    int16_t  temp;
-    int16_t  avg_ta;
+  uint16_t vcell;
+  uint16_t avg_vcell;
+  int16_t current;
+  int16_t avg_current;
+  int16_t temp;
+  int16_t avg_ta;
 
-    uint16_t charging_current;
-    uint16_t charging_voltage;
-    uint16_t ichg_term;
+  uint16_t charging_current;
+  uint16_t charging_voltage;
+  uint16_t ichg_term;
 
-    uint16_t n_chg_config0;
-    uint16_t n_chg_config2;
-    uint16_t n_chg_config3;
-    uint16_t n_chg_config4;
-    uint16_t n_chg_config5;
+  uint16_t n_chg_config0;
+  uint16_t n_chg_config2;
+  uint16_t n_chg_config3;
+  uint16_t n_chg_config4;
+  uint16_t n_chg_config5;
 
-    uint16_t n_adc_cfg;
-    uint16_t n_therm_cfg;
-    uint16_t config;
-    uint16_t soc_hold;
-    uint16_t prot_status;
-    uint16_t fprot_stat;
-    uint16_t qh;
+  uint16_t n_adc_cfg;
+  uint16_t n_therm_cfg;
+  uint16_t config;
+  uint16_t soc_hold;
+  uint16_t prot_status;
+  uint16_t fprot_stat;
+  uint16_t qh;
 };
 #+end_src
 

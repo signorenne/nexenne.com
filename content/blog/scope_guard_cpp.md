@@ -23,8 +23,7 @@ Uno scope guard porta la regola nel punto in cui nasce. Si dichiara subito come 
 Supponiamo di voler aggiungere un batch di valori a un log. Il contratto è preciso: se tutti i valori sono validi, il batch viene accettato; se qualcosa fallisce, il log deve tornare alla dimensione iniziale.
 
 ```cpp
-auto commit_batch(std::vector<int>& log,
-                  std::vector<int> const& batch) -> bool {
+auto commit_batch(std::vector<int>& log, std::vector<int> const& batch) -> bool {
   auto const mark{log.size()};
 
   for (auto const value : batch) {
@@ -68,8 +67,9 @@ class [[nodiscard]] scope_guard final {
 public:
   using function_type = Fn;
 
-  explicit scope_guard(function_type fn)
-      noexcept(std::is_nothrow_move_constructible_v<function_type>)
+  explicit scope_guard(
+    function_type fn
+  ) noexcept(std::is_nothrow_move_constructible_v<function_type>)
       : m_fn{std::move(fn)} {}
 
   scope_guard(scope_guard const&) = delete;
@@ -107,13 +107,10 @@ Il distruttore è `noexcept` per scelta. Di conseguenza, l'azione registrata non
 Possiamo ora spostare il rollback accanto al punto in cui salviamo lo stato iniziale.
 
 ```cpp
-auto commit_batch(std::vector<int>& log,
-                  std::vector<int> const& batch) -> bool {
+auto commit_batch(std::vector<int>& log, std::vector<int> const& batch) -> bool {
   auto const mark{log.size()};
 
-  auto rollback{scope_guard{[&] {
-    log.resize(mark);
-  }}};
+  auto rollback{scope_guard{[&] { log.resize(mark); }}};
 
   for (auto const value : batch) {
     if (value < 0) {

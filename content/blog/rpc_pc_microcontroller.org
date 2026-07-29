@@ -115,17 +115,17 @@ Sulla MCU opera il componente speculare. Il *dispatcher* interpreta il metodo ri
 
 #+begin_src c
 switch (request.method_id) {
-    case RPC_GET_TEMPERATURE:
-        handle_get_temperature(&request, &response);
-        break;
+  case RPC_GET_TEMPERATURE:
+    handle_get_temperature(&request, &response);
+    break;
 
-    case RPC_SET_LED:
-        handle_set_led(&request, &response);
-        break;
+  case RPC_SET_LED:
+    handle_set_led(&request, &response);
+    break;
 
-    default:
-        rpc_set_error(&response, RPC_ERR_UNKNOWN_METHOD);
-        break;
+  default:
+    rpc_set_error(&response, RPC_ERR_UNKNOWN_METHOD);
+    break;
 }
 #+end_src
 
@@ -292,10 +292,10 @@ In questo esempio:
 I tipi di messaggio possono essere definiti in questo modo:
 
 #+begin_src c
-#define RPC_TYPE_REQUEST   0x01
-#define RPC_TYPE_RESPONSE  0x02
-#define RPC_TYPE_ERROR     0x03
-#define RPC_TYPE_EVENT     0x04
+#define RPC_TYPE_REQUEST 0x01
+#define RPC_TYPE_RESPONSE 0x02
+#define RPC_TYPE_ERROR 0x03
+#define RPC_TYPE_EVENT 0x04
 #+end_src
 
 Il payload di una richiesta contiene almeno il metodo e i relativi parametri:
@@ -311,11 +311,11 @@ Il payload di una richiesta contiene almeno il metodo e i relativi parametri:
 Ad esempio:
 
 #+begin_src c
-#define RPC_GET_VERSION       0x0001
-#define RPC_GET_TEMPERATURE   0x0002
-#define RPC_SET_LED           0x0003
-#define RPC_SET_PWM           0x0004
-#define RPC_REBOOT            0x0005
+#define RPC_GET_VERSION 0x0001
+#define RPC_GET_TEMPERATURE 0x0002
+#define RPC_SET_LED 0x0003
+#define RPC_SET_PWM 0x0004
+#define RPC_REBOOT 0x0005
 #+end_src
 
 Una richiesta e la relativa risposta potrebbero essere rappresentate così:
@@ -427,8 +427,8 @@ Il ricevente ricalcola il CRC sui byte definiti dal protocollo e confronta il ri
 
 #+begin_src c
 if (crc_received != crc_calculated) {
-    discard_packet();
-    rpc_record_transport_error(RPC_ERR_BAD_CRC);
+  discard_packet();
+  rpc_record_transport_error(RPC_ERR_BAD_CRC);
 }
 #+end_src
 
@@ -514,11 +514,11 @@ Inviare direttamente una struttura C è fragile:
 
 #+begin_src c
 typedef struct {
-    uint8_t id;
-    uint32_t value;
+  uint8_t id;
+  uint32_t value;
 } packet_t;
 
-uart_write((uint8_t *)&packet, sizeof(packet));
+uart_write((uint8_t*)&packet, sizeof(packet));
 #+end_src
 
 Il compilatore può inserire padding, l'allineamento può cambiare tra architetture e l'endianness può differire. Anche eventuali byte non inizializzati rischiano di essere trasmessi.
@@ -555,10 +555,10 @@ Una macchina a stati si adatta bene a un flusso che può arrivare in frammenti:
 
 #+begin_src c
 typedef enum {
-    WAIT_MAGIC,
-    READ_LENGTH,
-    READ_BODY,
-    READ_CRC
+  WAIT_MAGIC,
+  READ_LENGTH,
+  READ_BODY,
+  READ_CRC
 } parser_state_t;
 #+end_src
 
@@ -582,25 +582,24 @@ Il parser deve controllare ogni lunghezza prima di riservare o copiare memoria e
 Il dispatcher associa il =method_id= a una funzione applicativa:
 
 #+begin_src c
-void rpc_dispatch(const rpc_request_t *req, rpc_response_t *res)
-{
-    switch (req->method_id) {
-        case RPC_GET_VERSION:
-            handle_get_version(req, res);
-            break;
+void rpc_dispatch(rpc_request_t const* req, rpc_response_t* res) {
+  switch (req->method_id) {
+    case RPC_GET_VERSION:
+      handle_get_version(req, res);
+      break;
 
-        case RPC_GET_TEMPERATURE:
-            handle_get_temperature(req, res);
-            break;
+    case RPC_GET_TEMPERATURE:
+      handle_get_temperature(req, res);
+      break;
 
-        case RPC_SET_LED:
-            handle_set_led(req, res);
-            break;
+    case RPC_SET_LED:
+      handle_set_led(req, res);
+      break;
 
-        default:
-            rpc_set_error(res, RPC_ERR_UNKNOWN_METHOD);
-            break;
-    }
+    default:
+      rpc_set_error(res, RPC_ERR_UNKNOWN_METHOD);
+      break;
+  }
 }
 #+end_src
 
@@ -764,16 +763,16 @@ Quando possibile, è preferibile esporre operazioni che descrivano lo stato desi
 “Operazione fallita” non contiene informazioni sufficienti per diagnosticare un protocollo. Conviene distinguere almeno:
 
 #+begin_src c
-#define RPC_OK                     0x00
-#define RPC_ERR_BAD_FRAME          0x01
-#define RPC_ERR_BAD_CRC            0x02
-#define RPC_ERR_UNKNOWN_METHOD     0x03
-#define RPC_ERR_INVALID_ARGUMENT   0x04
-#define RPC_ERR_BUSY               0x05
-#define RPC_ERR_TIMEOUT            0x06
-#define RPC_ERR_NOT_ALLOWED        0x07
-#define RPC_ERR_UNSUPPORTED_VER    0x08
-#define RPC_ERR_INTERNAL           0x09
+#define RPC_OK 0x00
+#define RPC_ERR_BAD_FRAME 0x01
+#define RPC_ERR_BAD_CRC 0x02
+#define RPC_ERR_UNKNOWN_METHOD 0x03
+#define RPC_ERR_INVALID_ARGUMENT 0x04
+#define RPC_ERR_BUSY 0x05
+#define RPC_ERR_TIMEOUT 0x06
+#define RPC_ERR_NOT_ALLOWED 0x07
+#define RPC_ERR_UNSUPPORTED_VER 0x08
+#define RPC_ERR_INTERNAL 0x09
 #+end_src
 
 Gli errori non appartengono tutti allo stesso livello:
@@ -853,10 +852,9 @@ Il parser RPC non deve compromettere attività come controllo motore, acquisizio
 Un handler bloccante di diversi secondi è problematico:
 
 #+begin_src c
-void handle_rpc_request(void)
-{
-    perform_slow_measurement();
-    wait_until_complete();
+void handle_rpc_request(void) {
+  perform_slow_measurement();
+  wait_until_complete();
 }
 #+end_src
 

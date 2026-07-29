@@ -296,11 +296,7 @@ C = ( 0.0,  0.5, 0.0)
 In C++:
 
 #+begin_src cpp
-float vertices[] = {
-    -0.5f, -0.5f, 0.0f,
-     0.5f, -0.5f, 0.0f,
-     0.0f,  0.5f, 0.0f
-};
+float vertices[] = {-0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.0f, 0.5f, 0.0f};
 #+end_src
 
 Per disegnarlo come triangolo:
@@ -372,15 +368,27 @@ In codice, senza indici, potremmo scrivere:
 
 #+begin_src cpp
 float vertices[] = {
-    // primo triangolo
-    -0.5f,  0.5f, 0.0f, // A
-    -0.5f, -0.5f, 0.0f, // D
-     0.5f,  0.5f, 0.0f, // B
+  // primo triangolo
+  -0.5f,
+  0.5f,
+  0.0f,  // A
+  -0.5f,
+  -0.5f,
+  0.0f,  // D
+  0.5f,
+  0.5f,
+  0.0f,  // B
 
-    // secondo triangolo
-     0.5f,  0.5f, 0.0f, // B
-    -0.5f, -0.5f, 0.0f, // D
-     0.5f, -0.5f, 0.0f  // C
+  // secondo triangolo
+  0.5f,
+  0.5f,
+  0.0f,  // B
+  -0.5f,
+  -0.5f,
+  0.0f,  // D
+  0.5f,
+  -0.5f,
+  0.0f  // C
 };
 #+end_src
 
@@ -410,20 +418,25 @@ Vertici:
 
 #+begin_src cpp
 float vertices[] = {
-    -0.5f,  0.5f, 0.0f, // 0: A
-     0.5f,  0.5f, 0.0f, // 1: B
-     0.5f, -0.5f, 0.0f, // 2: C
-    -0.5f, -0.5f, 0.0f  // 3: D
+  -0.5f,
+  0.5f,
+  0.0f,  // 0: A
+  0.5f,
+  0.5f,
+  0.0f,  // 1: B
+  0.5f,
+  -0.5f,
+  0.0f,  // 2: C
+  -0.5f,
+  -0.5f,
+  0.0f  // 3: D
 };
 #+end_src
 
 Indici:
 
 #+begin_src cpp
-unsigned int indices[] = {
-    0, 3, 1,
-    1, 3, 2
-};
+unsigned int indices[] = {0, 3, 1, 1, 3, 2};
 #+end_src
 
 Ora i triangoli sono:
@@ -698,10 +711,25 @@ Esempio:
 
 #+begin_src cpp
 float vertices[] = {
-    // posizione          // colore
-    -0.5f, -0.5f, 0.0f,   1.0f, 0.0f, 0.0f,
-     0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,
-     0.0f,  0.5f, 0.0f,   0.0f, 0.0f, 1.0f
+  // posizione          // colore
+  -0.5f,
+  -0.5f,
+  0.0f,
+  1.0f,
+  0.0f,
+  0.0f,
+  0.5f,
+  -0.5f,
+  0.0f,
+  0.0f,
+  1.0f,
+  0.0f,
+  0.0f,
+  0.5f,
+  0.0f,
+  0.0f,
+  0.0f,
+  1.0f
 };
 #+end_src
 
@@ -955,11 +983,7 @@ Questa distinzione aiuta anche a capire alcuni problemi di performance: a volte 
 Immaginiamo di avere tre vertici:
 
 #+begin_src cpp
-float vertices[] = {
-    -0.5f, -0.5f, 0.0f,
-     0.5f, -0.5f, 0.0f,
-     0.0f,  0.5f, 0.0f
-};
+float vertices[] = {-0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.0f, 0.5f, 0.0f};
 #+end_src
 
 Con gli stessi dati possiamo ottenere risultati diversi cambiando il parametro =mode= della draw call.

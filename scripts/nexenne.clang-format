@@ -1,0 +1,112 @@
+---
+Language:        Cpp
+BasedOnStyle:    LLVM
+Standard:        Latest
+ColumnLimit:     100
+LineEnding:      LF
+InsertNewlineAtEOF: true
+IndentWidth:                       2
+TabWidth:                          2
+UseTab:                            Never
+ContinuationIndentWidth:           2
+ConstructorInitializerIndentWidth: 4
+AccessModifierOffset:             -2
+IndentAccessModifiers:             false
+IndentCaseLabels:                  true
+IndentCaseBlocks:                  false
+IndentExternBlock:                 NoIndent
+IndentGotoLabels:                  true
+IndentPPDirectives:                AfterHash
+IndentRequiresClause:              true
+IndentWrappedFunctionNames:        false
+NamespaceIndentation:              None
+LambdaBodyIndentation:             Signature
+QualifierAlignment:                Right
+PointerAlignment:                  Left
+ReferenceAlignment:                Left
+DerivePointerAlignment:            false
+BreakBeforeBraces:                   Attach
+Cpp11BracedListStyle:                true
+InsertBraces:                        false
+RemoveBracesLLVM:                    false
+AllowShortBlocksOnASingleLine:       Empty
+AllowShortCaseLabelsOnASingleLine:   false
+AllowShortEnumsOnASingleLine:        false
+AllowShortFunctionsOnASingleLine:    Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine:      All
+AllowShortLoopsOnASingleLine:        false
+AllowShortCompoundRequirementOnASingleLine: true
+AlignAfterOpenBracket:                     BlockIndent
+AlwaysBreakTemplateDeclarations:           Yes
+BreakBeforeConceptDeclarations:            Always
+RequiresClausePosition:                    OwnLine
+BreakBeforeBinaryOperators:                NonAssignment
+BreakBeforeTernaryOperators:               true
+BreakConstructorInitializers:              BeforeComma
+BreakInheritanceList:                      BeforeComma
+BreakAfterAttributes:                      Leave
+PackConstructorInitializers:               NextLine
+AllowAllArgumentsOnNextLine:               true
+AllowAllParametersOfDeclarationOnNextLine: true
+BinPackArguments:                          false
+BinPackParameters:                         false
+AlwaysBreakAfterReturnType:                None
+AlwaysBreakBeforeMultilineStrings:         false
+BreakStringLiterals:                       true
+CompactNamespaces:                         false
+AlignConsecutiveAssignments:   None
+AlignConsecutiveDeclarations:  None
+AlignConsecutiveMacros:        None
+AlignConsecutiveBitFields:     None
+AlignArrayOfStructures:        None
+AlignEscapedNewlines:          Right
+AlignOperands:                 Align
+AlignTrailingComments:
+  Kind:                        Always
+  OverEmptyLines:              0
+EmptyLineAfterAccessModifier:     Never
+EmptyLineBeforeAccessModifier:    LogicalBlock
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep:              1
+SeparateDefinitionBlocks:         Always
+SpaceAfterCStyleCast:              false
+SpaceAfterLogicalNot:              false
+SpaceAfterTemplateKeyword:         true
+SpaceBeforeAssignmentOperators:    true
+SpaceBeforeCaseColon:              false
+SpaceBeforeCpp11BracedList:        false
+SpaceBeforeCtorInitializerColon:   true
+SpaceBeforeInheritanceColon:       true
+SpaceBeforeParens:                 ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceBeforeSquareBrackets:         false
+SpaceInEmptyBlock:                 false
+SpacesBeforeTrailingComments:      2
+SpacesInAngles:                    Never
+SpacesInContainerLiterals:         false
+SpacesInLineCommentPrefix:
+  Minimum:                         1
+  Maximum:                         1
+SpacesInParens:                    Never
+SpacesInSquareBrackets:            false
+BitFieldColonSpacing:              Both
+SortIncludes:   CaseSensitive
+IncludeBlocks:  Regroup
+IncludeCategories:
+  - Regex:    '<doctest/.*>'
+    Priority: 1
+  - Regex:    '<[a-z_]+>'
+    Priority: 2
+  - Regex:    '<.+\.h(pp)?>'
+    Priority: 3
+  - Regex:    '<nexenne/.*>'
+    Priority: 4
+  - Regex:    '.*'
+    Priority: 5
+FixNamespaceComments:   true
+ShortNamespaceLines:    0
+ReflowComments:         true
+RemoveSemicolon:        true
+SortUsingDeclarations:  LexicographicNumeric
+InsertTrailingCommas:   None

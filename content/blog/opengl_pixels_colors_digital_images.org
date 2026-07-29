@@ -690,13 +690,12 @@ Immaginiamo di avere già una finestra OpenGL funzionante.
 Dentro il render loop potremmo scrivere:
 
 #+begin_src cpp
-while (!glfwWindowShouldClose(window))
-{
-    glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+while (!glfwWindowShouldClose(window)) {
+  glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
 
-    glfwSwapBuffers(window);
-    glfwPollEvents();
+  glfwSwapBuffers(window);
+  glfwPollEvents();
 }
 #+end_src
 
@@ -771,9 +770,8 @@ Se il framebuffer cambia dimensione ma la viewport non viene aggiornata, il rend
 Per questo spesso si registra una callback:
 
 #+begin_src cpp
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    glViewport(0, 0, width, height);
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+  glViewport(0, 0, width, height);
 }
 #+end_src
 

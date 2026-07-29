@@ -452,11 +452,7 @@ Disegna una primitiva di tipo triangolo.
 In forma molto semplificata, i vertici potrebbero essere:
 
 #+begin_src cpp
-float vertices[] = {
-    -0.5f, -0.5f, 0.0f,
-     0.5f, -0.5f, 0.0f,
-     0.0f,  0.5f, 0.0f
-};
+float vertices[] = {-0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.0f, 0.5f, 0.0f};
 #+end_src
 
 Questi tre punti descrivono il triangolo.

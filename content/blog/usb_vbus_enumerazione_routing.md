@@ -384,9 +384,8 @@ Per una policy che deve sapere se l'host abbia realmente completato il percorso 
 Combina `tud_mounted()` con l'assenza di suspend:[^tinyusb-api]
 
 ```cpp
-bool tud_ready()
-{
-    return tud_mounted() && !tud_suspended();
+bool tud_ready() {
+  return tud_mounted() && !tud_suspended();
 }
 ```
 
@@ -490,10 +489,9 @@ Una policy più robusta richiede una **nuova evidenza** prodotta durante il prob
 ```cpp
 static uint32_t mount_sequence;
 
-void tud_mount_cb()
-{
-    ++mount_sequence;
-    on_usb_mounted();
+void tud_mount_cb() {
+  ++mount_sequence;
+  on_usb_mounted();
 }
 ```
 
@@ -506,10 +504,8 @@ probe.mount_sequence_at_start = mount_sequence;
 Il commit è autorizzato soltanto se:
 
 ```cpp
-bool probe_has_fresh_mount()
-{
-    return tud_mounted()
-        && mount_sequence != probe.mount_sequence_at_start;
+bool probe_has_fresh_mount() {
+  return tud_mounted() && mount_sequence != probe.mount_sequence_at_start;
 }
 ```
 
@@ -564,25 +560,23 @@ Una possibile implementazione mantiene almeno questi stati:
 
 ```cpp
 struct UsbRouteState {
-    bool vbus_present;
-    bool probe_active;
-    bool route_active;
+  bool vbus_present;
+  bool probe_active;
+  bool route_active;
 };
 ```
 
 La presentazione sul bus può essere riconciliata con una regola simile:
 
 ```cpp
-void reconcile_usb_presentation(const UsbRouteState& state)
-{
-    const bool should_present =
-        state.vbus_present && (state.probe_active || state.route_active);
+void reconcile_usb_presentation(UsbRouteState const& state) {
+  bool const should_present = state.vbus_present && (state.probe_active || state.route_active);
 
-    if (should_present) {
-        tud_connect();
-    } else {
-        tud_disconnect();
-    }
+  if (should_present) {
+    tud_connect();
+  } else {
+    tud_disconnect();
+  }
 }
 ```
 
@@ -599,11 +593,8 @@ Durante il probe il device è visibile sul bus, ma la route rimane ancora su BLE
 Il percorso di invio deve quindi essere protetto indipendentemente dalla presentazione elettrica:
 
 ```cpp
-bool can_send_usb_report()
-{
-    return usb_route_active()
-        && tud_mounted()
-        && !tud_suspended();
+bool can_send_usb_report() {
+  return usb_route_active() && tud_mounted() && !tud_suspended();
 }
 ```
 
@@ -638,44 +629,43 @@ Una macchina a stati semplificata può essere descritta così:
 Una possibile implementazione in pseudocodice:
 
 ```cpp
-void evaluate_usb_policy()
-{
-    switch (usb_state) {
+void evaluate_usb_policy() {
+  switch (usb_state) {
     case UsbState::Idle:
-        if (confirmed_vbus_attach()) {
-            ensure_usb_initialized();
-            begin_usb_probe();
-            probe_deadline = now() + probe_timeout;
-            usb_state = UsbState::Probing;
-        }
-        break;
+      if (confirmed_vbus_attach()) {
+        ensure_usb_initialized();
+        begin_usb_probe();
+        probe_deadline = now() + probe_timeout;
+        usb_state = UsbState::Probing;
+      }
+      break;
 
     case UsbState::Probing:
-        if (!vbus_present() || usb_disabled() || entering_standby()) {
-            end_usb_probe();
-            usb_state = UsbState::Idle;
-            break;
-        }
-
-        if (probe_has_fresh_mount()) {
-            commit_usb_route_transaction();
-            usb_state = UsbState::Active;
-            break;
-        }
-
-        if (now() >= probe_deadline) {
-            end_usb_probe();
-            usb_state = UsbState::Idle;
-        }
+      if (!vbus_present() || usb_disabled() || entering_standby()) {
+        end_usb_probe();
+        usb_state = UsbState::Idle;
         break;
+      }
+
+      if (probe_has_fresh_mount()) {
+        commit_usb_route_transaction();
+        usb_state = UsbState::Active;
+        break;
+      }
+
+      if (now() >= probe_deadline) {
+        end_usb_probe();
+        usb_state = UsbState::Idle;
+      }
+      break;
 
     case UsbState::Active:
-        if (!vbus_present() || !tud_mounted()) {
-            fallback_to_previous_route();
-            usb_state = UsbState::Idle;
-        }
-        break;
-    }
+      if (!vbus_present() || !tud_mounted()) {
+        fallback_to_previous_route();
+        usb_state = UsbState::Idle;
+      }
+      break;
+  }
 }
 ```
 

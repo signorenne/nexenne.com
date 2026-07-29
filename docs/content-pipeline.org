@@ -70,6 +70,27 @@ rather than a grid position, because the order is newest-first and shifts as wor
 is published; an earlier version keyed the large cards to nth-child and handed
 the big slot to whichever project drifted into it.
 
+* Code Snippets
+
+Snippets inside articles should read like the library they describe, so the C and
+C++ blocks follow the nexenne C++ style rather than however they were pasted in.
+That style is =scripts/nexenne.clang-format=, the same clang-format config the
+library uses.
+
+Prettier does not reach inside a Markdown fence or an Org src block, so the
+snippets are formatted separately:
+
+#+begin_src sh
+node scripts/format-snippets.mjs          # report drift, non-zero exit
+node scripts/format-snippets.mjs --write  # reformat in place
+#+end_src
+
+It needs =clang-format= on PATH. The visible effects are two-space indentation,
+attached braces, east const (=int const=), pointers binding left (=int* p=), and
+a 100 column limit, so a block written in another house style changes noticeably.
+The same style is applied to C blocks, which keeps one voice across the articles
+even though the library itself is C++.
+
 * Parser
 
 =src/lib/content/parser.server.ts= handles both formats:

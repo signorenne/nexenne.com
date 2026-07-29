@@ -49,12 +49,7 @@ Una lambda generica, però, mette tutti i casi nello stesso ramo.
 
 ```cpp
 auto handle(event const& value) -> void {
-  std::visit(
-    [](auto const& current) {
-      handle_event(current);
-    },
-    value
-  );
+  std::visit([](auto const& current) { handle_event(current); }, value);
 }
 ```
 
@@ -97,18 +92,10 @@ Con `overloaded`, i rami restano isolati.
 auto describe(event const& value) -> std::string {
   return std::visit(
     overloaded{
-      [](click const& current) {
-        return std::format("click at ({}, {})", current.x, current.y);
-      },
-      [](key_press const& current) {
-        return std::format("key '{}' pressed", current.key);
-      },
+      [](click const& current) { return std::format("click at ({}, {})", current.x, current.y); },
+      [](key_press const& current) { return std::format("key '{}' pressed", current.key); },
       [](resize const& current) {
-        return std::format(
-          "resize to {}x{}",
-          current.width,
-          current.height
-        );
+        return std::format("resize to {}x{}", current.width, current.height);
       },
     },
     value
@@ -131,12 +118,8 @@ Si possono combinare rami specifici e fallback generici.
 auto category(event const& value) -> std::string {
   return std::visit(
     overloaded{
-      [](resize const&) {
-        return std::string{"layout"};
-      },
-      [](auto const&) {
-        return std::string{"input"};
-      },
+      [](resize const&) { return std::string{"layout"}; },
+      [](auto const&) { return std::string{"input"}; },
     },
     value
   );

@@ -35,7 +35,7 @@ I nomi dei parametri aiutano dentro la dichiarazione, ma non partecipano alla ri
 ```cpp
 struct circle {
   explicit circle(double radius);
-  explicit circle(double diameter); // stessa firma: circle(double)
+  explicit circle(double diameter);  // stessa firma: circle(double)
 };
 ```
 
@@ -72,8 +72,7 @@ public:
   using value_type = T;
   using tag_type = Tag;
 
-  constexpr explicit strong_type(T value)
-      noexcept(std::is_nothrow_move_constructible_v<T>)
+  constexpr explicit strong_type(T value) noexcept(std::is_nothrow_move_constructible_v<T>)
       : m_value{std::move(value)} {}
 
   [[nodiscard]] constexpr auto value() & noexcept -> T& {
@@ -88,10 +87,8 @@ public:
     return std::move(m_value);
   }
 
-  friend constexpr auto operator==(strong_type const&,
-                                   strong_type const&) -> bool = default;
-  friend constexpr auto operator<=>(strong_type const&,
-                                    strong_type const&) = default;
+  friend constexpr auto operator==(strong_type const&, strong_type const&) -> bool = default;
+  friend constexpr auto operator<=>(strong_type const&, strong_type const&) = default;
 
 private:
   T m_value;
@@ -108,6 +105,7 @@ Definiamo ora tag differenti per larghezza e altezza.
 
 ```cpp
 struct width_tag {};
+
 struct height_tag {};
 
 using width = strong_type<double, width_tag>;
@@ -115,8 +113,7 @@ using height = strong_type<double, height_tag>;
 
 class rectangle final {
 public:
-  constexpr rectangle(width w, height h) noexcept
-      : m_width{w}, m_height{h} {}
+  constexpr rectangle(width w, height h) noexcept : m_width{w}, m_height{h} {}
 
   [[nodiscard]] constexpr auto area() const noexcept -> double {
     return m_width.value() * m_height.value();
@@ -140,6 +137,7 @@ Il punto di chiamata ora dichiara l'intento e l'inversione dei parametri diventa
 
 ```cpp
 struct radius_tag {};
+
 struct diameter_tag {};
 
 using radius = strong_type<double, radius_tag>;
@@ -149,8 +147,7 @@ class circle final {
 public:
   constexpr explicit circle(radius r) noexcept : m_radius{r} {}
 
-  constexpr explicit circle(diameter d) noexcept
-      : m_radius{radius{d.value() / 2.0}} {}
+  constexpr explicit circle(diameter d) noexcept : m_radius{radius{d.value() / 2.0}} {}
 
 private:
   radius m_radius;
@@ -165,10 +162,10 @@ Supponiamo di voler sommare due distanze. Possiamo definire l'operatore per quel
 
 ```cpp
 struct meters_tag {};
+
 using meters = strong_type<double, meters_tag>;
 
-[[nodiscard]] constexpr auto operator+(meters lhs, meters rhs) noexcept
-    -> meters {
+[[nodiscard]] constexpr auto operator+(meters lhs, meters rhs) noexcept -> meters {
   return meters{lhs.value() + rhs.value()};
 }
 

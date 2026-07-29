@@ -49,6 +49,7 @@ The preprocessor, once the relevant substitutions are done, produces the followi
 
 ```cpp
 struct foo {};
+
 struct foo {};
 ```
 
@@ -82,7 +83,7 @@ File alpha.hpp
 
 struct foo {};
 
-#endif // ALPHA_HPP
+#endif  // ALPHA_HPP
 ```
 
 File bravo.hpp
@@ -93,7 +94,7 @@ File bravo.hpp
 
 #include "alpha.hpp"
 
-#endif // BRAVO_HPP
+#endif  // BRAVO_HPP
 ```
 
 File charlie.hpp
@@ -105,7 +106,7 @@ File charlie.hpp
 #include "alpha.hpp"
 #include "bravo.hpp"
 
-#endif // CHARLIE_HPP
+#endif  // CHARLIE_HPP
 ```
 
 After the relevant substitutions, the preprocessor produces the following result.

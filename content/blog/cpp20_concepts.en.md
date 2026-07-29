@@ -33,18 +33,18 @@ In C++, this abstraction is expressed with templates. A template can be instanti
 Suppose we have an algorithm that, given two values of the same type, wants to perform a binary addition and return the result.
 
 ```cpp
-#include <iostream>
 #include <format>
+#include <iostream>
 
 template <typename T>
 auto add(T const& a, T const& b) -> T {
-    return a + b;
+  return a + b;
 }
 
 auto main() -> int {
-    std::cout << std::format("{}\n", add(1, 2));
-    // std::cout << std::format("{}\n", add("foo", "bar")); -> compilation error
-    return 0;
+  std::cout << std::format("{}\n", add(1, 2));
+  // std::cout << std::format("{}\n", add("foo", "bar")); -> compilation error
+  return 0;
 }
 ```
 
@@ -98,9 +98,9 @@ Very useful when you have multiple constraints to enforce.
 
 ```cpp
 template <typename T, typename Q>
-    requires std::integral<T> and std::integral<Q>
+  requires std::integral<T> and std::integral<Q>
 auto add(T const t, Q const q) {
-    return t + q;
+  return t + q;
 }
 ```
 
@@ -108,14 +108,14 @@ auto add(T const t, Q const q) {
 ```cpp
 template <std::integral T, std::integral Q>
 auto add(T const t, Q const q) {
-    return t + q;
+  return t + q;
 }
 ```
 
 ### Compact declaration
 ```cpp
 auto add(std::integral auto const t, std::integral auto const q) {
-    return t + q;
+  return t + q;
 }
 ```
 
@@ -123,21 +123,22 @@ auto add(std::integral auto const t, std::integral auto const q) {
 To solve the problem, we declare the `Addable` concept and apply it to the parameters of `add`. In this case we use the compact form.
 
 ```cpp
-#include <iostream>
 #include <concepts>
+#include <iostream>
 
-template <typename T> concept Addable = requires(T a, T b) {
- a + b; // requirement 1
+template <typename T>
+concept Addable = requires(T a, T b) {
+  a + b;  // requirement 1
 };
 
 auto add(Addable auto const t, Addable auto const q) {
-    return t + q;
+  return t + q;
 }
 
 auto main() -> int {
-    std::cout << add(5, 6) << std::endl;
-    //std::cout << add("foo", "bar") << std::endl;  -> compilation error
-    return 0;
+  std::cout << add(5, 6) << std::endl;
+  // std::cout << add("foo", "bar") << std::endl;  -> compilation error
+  return 0;
 }
 ```
 

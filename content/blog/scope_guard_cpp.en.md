@@ -25,8 +25,7 @@ A scope guard places that rule where it begins. The code declares the rollback i
 Suppose a function appends a batch of values to a log. Its contract is precise: accept the entire batch if every value is valid; otherwise restore the log to its original size.
 
 ```cpp
-auto commit_batch(std::vector<int>& log,
-                  std::vector<int> const& batch) -> bool {
+auto commit_batch(std::vector<int>& log, std::vector<int> const& batch) -> bool {
   auto const mark{log.size()};
 
   for (auto const value : batch) {
@@ -70,8 +69,9 @@ class [[nodiscard]] scope_guard final {
 public:
   using function_type = Fn;
 
-  explicit scope_guard(function_type fn)
-      noexcept(std::is_nothrow_move_constructible_v<function_type>)
+  explicit scope_guard(
+    function_type fn
+  ) noexcept(std::is_nothrow_move_constructible_v<function_type>)
       : m_fn{std::move(fn)} {}
 
   scope_guard(scope_guard const&) = delete;
@@ -109,13 +109,10 @@ The destructor is explicitly `noexcept`. The registered action must therefore ne
 Rollback can now sit beside the point where the original state is recorded.
 
 ```cpp
-auto commit_batch(std::vector<int>& log,
-                  std::vector<int> const& batch) -> bool {
+auto commit_batch(std::vector<int>& log, std::vector<int> const& batch) -> bool {
   auto const mark{log.size()};
 
-  auto rollback{scope_guard{[&] {
-    log.resize(mark);
-  }}};
+  auto rollback{scope_guard{[&] { log.resize(mark); }}};
 
   for (auto const value : batch) {
     if (value < 0) {
