@@ -1,0 +1,24 @@
+@startuml
+title A deliberately simple layer stack for a first protocol
+
+rectangle "Application handlers" as L1
+rectangle "Request / notification dispatcher" as L2
+rectangle "Pending-request manager" as L3
+rectangle "Encoder / decoder" as L4
+rectangle "Framing and validation" as L5
+rectangle "Single TX queue + RX parser" as L6
+rectangle "UART / USB CDC / TCP / WebSocket" as L7
+
+L1 --> L2
+L2 --> L3
+L3 --> L4
+L4 --> L5
+L5 --> L6
+L6 --> L7
+
+note right of L3
+  Each layer only knows the one below it,
+  so a transport can be swapped without
+  touching the handlers.
+end note
+@enduml

@@ -2017,21 +2017,9 @@ WebSocket definisce messaggi, ma l'API concreta può consegnarli in più frammen
 
 Per un primo protocollo tra PC ed ESP32 sceglierei una struttura volutamente semplice:
 
-#+begin_src text
-Application handlers
-        |
-Request / notification dispatcher
-        |
-Pending-request manager
-        |
-Encoder / decoder
-        |
-Framing and validation
-        |
-Single TX queue + RX parser
-        |
-UART / USB CDC / TCP / WebSocket
-#+end_src
+[[/blog/images/rpc_pc_microcontroller/rpc-protocol-layers.svg]]
+
+/Ogni livello conosce solo quello sotto di sé, così il trasporto può cambiare senza toccare gli handler./
 
 Una busta personalizzata potrebbe contenere:
 
