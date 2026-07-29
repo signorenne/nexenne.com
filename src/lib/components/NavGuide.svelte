@@ -160,10 +160,19 @@
 		font-weight: 700;
 		line-height: 1;
 		box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.5);
+		/* Hold the button on its own compositing layer. Without this the browser
+		   promotes it when the transform starts and drops it again when it ends,
+		   and the re-raster snaps the glyph a fraction of a pixel at both edges of
+		   the hover. */
+		will-change: transform;
+		/* --ease-out is an entrance curve: it covers 97% of the travel in the first
+		   half of the duration, so on a 12deg rotation the motion reads as an
+		   instant jump followed by an invisible crawl. Hover feedback wants a short
+		   symmetric curve instead, so enter and leave feel the same. */
 		transition:
-			transform var(--t-med) var(--ease-out),
-			border-color var(--t-med) var(--ease-out),
-			color var(--t-med) var(--ease-out);
+			transform var(--t-fast) var(--ease),
+			border-color var(--t-fast) var(--ease),
+			color var(--t-fast) var(--ease);
 	}
 	/* Mouse-only, like the tweaks gear: avoids a stuck rotation on touch. */
 	@media (hover: hover) {

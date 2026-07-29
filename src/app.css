@@ -7036,10 +7036,13 @@ main[data-page="uses"] .uses-box h3 {
 	box-shadow:
 		0 8px 24px -8px color-mix(in oklab, var(--accent), transparent 60%),
 		0 0 0 4px color-mix(in oklab, var(--accent), transparent 88%);
+	/* Same layer pin and hover curve as the other two FABs: see NavGuide.svelte
+	   for why --ease-out is wrong here and why the layer has to be held. */
+	will-change: transform;
 	transition:
-		transform var(--t-med) var(--ease-out),
-		box-shadow var(--t-med) var(--ease-out),
-		filter var(--t-med) var(--ease-out);
+		transform var(--t-fast) var(--ease),
+		box-shadow var(--t-fast) var(--ease),
+		filter var(--t-fast) var(--ease);
 }
 /* Mouse-only: on touch the :hover state sticks after a tap, leaving the gear
    frozen at a slight rotation. Gate the hover transform to hover-capable devices. */

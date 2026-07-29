@@ -5,7 +5,9 @@
 	 * by hand from the foot of one is slow, so this offers a single jump.
 	 *
 	 * It only appears once there is something to come back from: showing it at the
-	 * top of a short page would add chrome that does nothing.
+	 * top of a short page would add chrome that does nothing. It stays mounted and
+	 * fades rather than being toggled with `{#if}`, so crossing the threshold does
+	 * not tear the button down and rebuild it mid-scroll.
 	 */
 	import { onMount } from 'svelte';
 	import { t } from '$lib/i18n';
@@ -37,18 +39,17 @@
 	});
 </script>
 
-{#if visible}
-	<button
-		type="button"
-		class="totop-fab"
-		on:click={toTop}
-		aria-label={$t('a11y.toTop')}
-		title={$t('a11y.toTop')}
-		data-hover
-	>
-		<span aria-hidden="true">↑</span>
-	</button>
-{/if}
+<button
+	type="button"
+	class="totop-fab"
+	class:is-visible={visible}
+	on:click={toTop}
+	aria-label={$t('a11y.toTop')}
+	title={$t('a11y.toTop')}
+	data-hover
+>
+	<span aria-hidden="true">↑</span>
+</button>
 
 <style>
 	.totop-fab {
@@ -73,16 +74,34 @@
 		font-weight: 700;
 		line-height: 1;
 		box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.5);
-		animation: totop-in var(--t-med) var(--ease-out) both;
+		/* Same layer pin and hover curve as the other two FABs: see NavGuide.svelte
+		   for why --ease-out is wrong here and why the layer has to be held. */
+		will-change: transform;
 		transition:
-			transform var(--t-med) var(--ease-out),
-			border-color var(--t-med) var(--ease-out),
-			color var(--t-med) var(--ease-out);
+			opacity var(--t-fast) var(--ease),
+			visibility var(--t-fast) var(--ease),
+			transform var(--t-fast) var(--ease),
+			border-color var(--t-fast) var(--ease),
+			color var(--t-fast) var(--ease);
+		/* Hidden state. `visibility` also keeps the button out of the tab order and
+		   the accessibility tree while it is not offered, and it interpolates as
+		   "visible" for the whole duration, so the fade plays in both directions. */
+		opacity: 0;
+		visibility: hidden;
+		transform: translateY(6px);
 	}
-	/* Mouse-only, like the gear and the "?": avoids a stuck transform on touch. */
+	.totop-fab.is-visible {
+		opacity: 1;
+		visibility: visible;
+		transform: none;
+	}
+	/* Mouse-only, like the gear and the "?": avoids a stuck transform on touch.
+	   Scale rather than lift: a button that moves up slides out from under a
+	   pointer resting near its lower edge, which drops the hover, springs it back
+	   down under the pointer and starts the whole thing again. */
 	@media (hover: hover) {
-		.totop-fab:hover {
-			transform: translateY(-2px);
+		.totop-fab.is-visible:hover {
+			transform: scale(1.05);
 			border-color: var(--accent);
 			color: var(--accent);
 		}
@@ -91,18 +110,7 @@
 		outline: 2px solid var(--accent);
 		outline-offset: 3px;
 	}
-	@keyframes totop-in {
-		from {
-			opacity: 0;
-			transform: translateY(6px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
 	:global(.motion-off) .totop-fab {
-		animation: none;
 		transition: none;
 	}
 </style>
