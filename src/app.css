@@ -2740,14 +2740,19 @@ a.chip:hover,
  * layout: icon centred in the collapsed 56px column, label revealed on expand.
  */
 .an-share {
+	position: relative;
 	display: grid;
 	grid-template-columns: var(--an-slot-w) 1fr;
 	align-items: center;
-	min-height: var(--an-station-h);
-	padding: 8px 12px 8px 0;
+	/* Centred the same way a station row is: no vertical padding, so the row
+	   stretches to the min-height and the icon and label centre inside it. The
+	   separator is drawn as a pseudo-element because a real border-top sits
+	   inside the box and pushes the contents a pixel down, which is what made
+	   this row read as off-centre next to the stations above it. */
+	min-height: calc(var(--an-station-h) + 6px);
+	padding: 0 12px 0 0;
 	margin-top: 2px;
 	border: 0;
-	border-top: 1px dashed var(--line);
 	background: transparent;
 	color: var(--muted);
 	font-family: var(--font-mono);
@@ -2759,6 +2764,13 @@ a.chip:hover,
 	transition:
 		color var(--t-fast) var(--ease),
 		background var(--t-fast) var(--ease);
+}
+.an-share::before {
+	content: "";
+	position: absolute;
+	inset: 0 0 auto 0;
+	border-top: 1px dashed var(--line);
+	pointer-events: none;
 }
 .an-share:hover {
 	color: var(--accent);
