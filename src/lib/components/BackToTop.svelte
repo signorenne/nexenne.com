@@ -19,6 +19,11 @@
 
 	function update() {
 		visible = window.scrollY > window.innerHeight * REVEAL_AFTER;
+		// The Tweaks and guide panels open above the whole stack, but they live in
+		// their own components, so the presence of this button travels as a root
+		// class their slot variable reads (--fab-slot-panel in app.css). Without it
+		// they clear a slot that holds nothing until the first viewport is passed.
+		document.documentElement.classList.toggle('has-totop', visible);
 	}
 
 	function toTop() {
@@ -35,6 +40,7 @@
 		return () => {
 			window.removeEventListener('scroll', update);
 			window.removeEventListener('resize', update);
+			document.documentElement.classList.remove('has-totop');
 		};
 	});
 </script>

@@ -98,7 +98,12 @@
 	   above all three. Named slots so adding a button means changing one value
 	   here rather than hunting calc() chains across three files. */
 	--fab-slot-top: calc(var(--fab-edge) + 2 * (var(--fab-size) + var(--fab-gap)));
-	--fab-slot-panel: calc(var(--fab-edge) + 3 * (var(--fab-size) + var(--fab-gap)));
+	/* The panels clear the buttons actually on screen. Back-to-top only appears
+	   past the first viewport, so its slot is counted by the .has-totop class
+	   BackToTop.svelte holds while the button is visible; without it the panels
+	   would float over an empty slot, which is what the guide did when it
+	   auto-opened at the top of a page. */
+	--fab-slot-panel: calc(var(--fab-edge) + 2 * (var(--fab-size) + var(--fab-gap)));
 
 	--b-hair: 1px;
 
@@ -111,6 +116,11 @@
 	--accent: oklch(67% 0.22 285);
 	--accent-2: oklch(82% 0.16 220);
 	--accent-ink: #ffffff;
+}
+
+/* Back-to-top on screen: the panels move up one slot to clear it. */
+:root.has-totop {
+	--fab-slot-panel: calc(var(--fab-edge) + 3 * (var(--fab-size) + var(--fab-gap)));
 }
 
 [data-density="compact"] {
@@ -7294,6 +7304,11 @@ main[data-page="uses"] .uses-box h3 {
 @media (hover: none), (pointer: coarse) {
 	:root {
 		--fab-slot-top: calc(var(--fab-edge) + var(--fab-size) + var(--fab-gap));
+		--fab-slot-panel: calc(var(--fab-edge) + var(--fab-size) + var(--fab-gap));
+	}
+	/* Same specificity as the rule near the top of the file, so this one wins by
+	   coming later; a plain :root here would lose to it and leave the gap back. */
+	:root.has-totop {
 		--fab-slot-panel: calc(var(--fab-edge) + 2 * (var(--fab-size) + var(--fab-gap)));
 	}
 }
