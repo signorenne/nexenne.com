@@ -78,7 +78,19 @@
 			lastFlashId = req.id;
 			startFlash(req.midAction);
 		});
-		return unsub;
+		// A page restored from the back/forward cache comes back exactly as it was
+		// left, pending timers and all. If the overlay was up when the document was
+		// frozen, clear it now instead of waiting out whatever timer was mid-flight.
+		const onPageShow = (e: PageTransitionEvent) => {
+			if (!e.persisted) return;
+			reset();
+			dismiss();
+		};
+		window.addEventListener('pageshow', onPageShow);
+		return () => {
+			unsub();
+			window.removeEventListener('pageshow', onPageShow);
+		};
 	});
 
 	function snapToTop() {
@@ -88,11 +100,17 @@
 		document.documentElement.style.scrollBehavior = prev;
 	}
 
-	beforeNavigate(({ type, to, from }) => {
+	beforeNavigate(({ type, to, from, willUnload }) => {
 		const sameDoc =
 			!!from && !!to && from.url.pathname === to.url.pathname && from.url.search === to.url.search;
 		if (sameDoc) return;
 		if (type !== 'link' && type !== 'goto' && type !== 'popstate') return;
+		// External links fire type 'link' too, but they unload the document, so
+		// afterNavigate never runs to dismiss the loader. Worse, the browser can
+		// restore this page from the back/forward cache with the overlay still up
+		// and its timers frozen mid-flight. Never show the loader for a navigation
+		// that leaves the app.
+		if (willUnload) return;
 		reset();
 		target = to?.url?.pathname ?? '/';
 		frame = randHex();
