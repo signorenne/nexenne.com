@@ -3,8 +3,12 @@ import { DICT, type Lang } from '$lib/i18n';
 import {
 	BANNER_PRESETS,
 	bannerFilename,
+	carriesMotto,
 	fitSlogan,
+	isTransparent,
 	layoutBanner,
+	MARK_PAINT,
+	MARK_VARIANTS,
 	measureLine,
 	safeBox,
 	sloganBox,
@@ -27,6 +31,11 @@ function motto(lang: Lang): string[] {
 const LANGS: Lang[] = ['en', 'it'];
 /** Sub-pixel slack, so exact-fit layouts are not failed by float error. */
 const EPSILON = 0.5;
+
+/** The presets that draw the motto. Every text assertion below is about these. */
+const MOTTO_PRESETS = BANNER_PRESETS.filter(carriesMotto);
+/** The mascot-only presets: avatars, which carry no wording at any size. */
+const MARK_PRESETS = BANNER_PRESETS.filter((preset) => !carriesMotto(preset));
 
 function contains(outer: ReturnType<typeof safeBox>, inner: ReturnType<typeof safeBox>): boolean {
 	return (
@@ -89,11 +98,15 @@ describe('banner presets', () => {
 	});
 
 	it('splits wide canvases and stacks square or portrait ones', () => {
-		for (const preset of BANNER_PRESETS) {
+		for (const preset of MOTTO_PRESETS) {
 			const box = safeBox(preset);
 			const ratio = box.width / box.height;
 			expect(preset.composition).toBe(ratio >= 2 ? 'split' : 'stacked');
 		}
+	});
+
+	it('offers a mascot-only asset for the avatars', () => {
+		expect(MARK_PRESETS.map((preset) => preset.key)).toEqual(['githubOrg']);
 	});
 });
 
@@ -102,7 +115,7 @@ describe('layoutBanner', () => {
 	// noticeably longer than the English one, and a fixed size overflows on the
 	// narrow strips (LinkedIn, X) long before it does on the square formats.
 	it('keeps the mascot and the motto inside the safe area, in both languages', () => {
-		for (const preset of BANNER_PRESETS) {
+		for (const preset of MOTTO_PRESETS) {
 			for (const lang of LANGS) {
 				const lines = motto(lang);
 				const layout = layoutBanner(preset, lines);
@@ -115,7 +128,7 @@ describe('layoutBanner', () => {
 	});
 
 	it('keeps the motto legible once the asset is scaled down', () => {
-		for (const preset of BANNER_PRESETS) {
+		for (const preset of MOTTO_PRESETS) {
 			for (const lang of LANGS) {
 				const layout = layoutBanner(preset, motto(lang));
 				// At least 2% of the smaller edge, so the text survives a feed thumbnail.
@@ -126,7 +139,7 @@ describe('layoutBanner', () => {
 	});
 
 	it('centres a split layout as one block and a stacked layout on the axis', () => {
-		for (const preset of BANNER_PRESETS) {
+		for (const preset of MOTTO_PRESETS) {
 			const lines = motto('en');
 			const layout = layoutBanner(preset, lines);
 			const box = layout.safe;
@@ -169,6 +182,40 @@ describe('layoutBanner', () => {
 	});
 });
 
+describe('the mark layout', () => {
+	it('centres the mascot in the safe area and draws no motto', () => {
+		for (const preset of MARK_PRESETS) {
+			const lines = motto('en');
+			const layout = layoutBanner(preset, lines);
+			const box = layout.safe;
+			const ink = mascotBox(preset, lines);
+
+			expect(contains(box, ink), preset.key).toBe(true);
+			// Sub-pixel slack: the measured centre of the outline and the middle of
+			// its viewBox differ by a thousandth of a pixel at this size.
+			expect(Math.abs(ink.x + ink.width / 2 - (box.x + box.width / 2))).toBeLessThan(EPSILON);
+			expect(Math.abs(ink.y + ink.height / 2 - (box.y + box.height / 2))).toBeLessThan(EPSILON);
+			// Nothing is written on it, so every box derived from the motto is empty.
+			expect(layout.sloganSize).toBe(0);
+			expect(sloganBox(layout, lines).width).toBe(0);
+			expect(sweepBar(layout, lines[3], '', 'do it', 3).width).toBe(0);
+		}
+	});
+
+	it('ignores the motto, so both languages export the same file', () => {
+		for (const preset of MARK_PRESETS) {
+			expect(layoutBanner(preset, motto('it'))).toEqual(layoutBanner(preset, motto('en')));
+		}
+	});
+
+	it('fills the safe area rather than floating a small mark in it', () => {
+		for (const preset of MARK_PRESETS) {
+			const ink = mascotBox(preset, motto('en'));
+			expect(ink.height / safeBox(preset).height).toBeGreaterThan(0.8);
+		}
+	});
+});
+
 describe('fitSlogan', () => {
 	it('never returns more than the desired size', () => {
 		expect(fitSlogan(['short'], 10000, 10000, 42)).toBe(42);
@@ -206,7 +253,7 @@ describe('sweepBar', () => {
 	}
 
 	it('underlines a run that is inside the safe area on every preset', () => {
-		for (const preset of BANNER_PRESETS) {
+		for (const preset of MOTTO_PRESETS) {
 			for (const lang of LANGS) {
 				const { bar, layout } = sweepFor(preset, lang);
 				const label = `${preset.key}/${lang}`;
@@ -220,7 +267,7 @@ describe('sweepBar', () => {
 	});
 
 	it('sits on the last line and straddles its baseline, as the hero bar does', () => {
-		for (const preset of BANNER_PRESETS) {
+		for (const preset of MOTTO_PRESETS) {
 			const { bar, layout } = sweepFor(preset, 'en');
 			const baseline = layout.sloganY + layout.sloganStep * 3;
 			expect(bar.y).toBeLessThan(baseline);
@@ -260,8 +307,44 @@ describe('bannerFilename', () => {
 	});
 
 	it('produces a unique filename per preset', () => {
-		const names = BANNER_PRESETS.map(bannerFilename);
+		const names = BANNER_PRESETS.map((preset) => bannerFilename(preset));
 		expect(names).toEqual([...new Set(names)]);
+	});
+
+	it('names the variant only when it is transparent', () => {
+		for (const preset of MARK_PRESETS) {
+			const stem = bannerFilename(preset);
+			expect(bannerFilename(preset, 'gradient')).toBe(stem);
+			expect(bannerFilename(preset, 'light')).toBe(`${stem}-transparent-light`);
+			expect(bannerFilename(preset, 'dark')).toBe(`${stem}-transparent-dark`);
+		}
+	});
+});
+
+describe('mark variants', () => {
+	it('offers the gradient plus a light and a dark transparent mark', () => {
+		expect(MARK_VARIANTS.map((variant) => variant.key)).toEqual(['gradient', 'light', 'dark']);
+	});
+
+	it('labels every variant in both languages', () => {
+		const missing = MARK_VARIANTS.flatMap((variant) =>
+			LANGS.filter((lang) => !DICT[lang][variant.labelKey]).map((lang) => `${lang}:${variant.key}`)
+		);
+		expect(missing).toEqual([]);
+	});
+
+	it('drops the background for every variant but the gradient', () => {
+		expect(isTransparent('gradient')).toBe(false);
+		expect(isTransparent('light')).toBe(true);
+		expect(isTransparent('dark')).toBe(true);
+	});
+
+	it('paints the transparent marks in opposite inks, so one suits any surface', () => {
+		// Literals, never theme colours: an export cannot depend on who is looking.
+		expect(MARK_PAINT.gradient).toBe('#ffffff');
+		expect(MARK_PAINT.light).toBe('#ffffff');
+		expect(MARK_PAINT.dark).toBe('#0d0e12');
+		expect(MARK_PAINT.light).not.toBe(MARK_PAINT.dark);
 	});
 });
 
@@ -294,6 +377,26 @@ describe('platform specs', () => {
 		expect(box.y).toBeGreaterThanOrEqual(50);
 		expect(p.width - (box.x + box.width)).toBeGreaterThanOrEqual(50);
 		expect(p.height - (box.y + box.height)).toBeGreaterThanOrEqual(50);
+	});
+
+	it('the GitHub organization avatar is square and survives a round crop', () => {
+		const p = preset('githubOrg');
+		expect([p.width, p.height]).toEqual([1024, 1024]);
+		// GitHub asks for at least 500x500 and never enlarges what it is given.
+		expect(p.width).toBeGreaterThanOrEqual(500);
+
+		// Every corner of the drawing stays inside the circle a round crop leaves.
+		const ink = mascotBox(p, motto('en'));
+		const radius = p.width / 2;
+		const corners = [
+			[ink.x, ink.y],
+			[ink.x + ink.width, ink.y],
+			[ink.x, ink.y + ink.height],
+			[ink.x + ink.width, ink.y + ink.height]
+		];
+		for (const [x, y] of corners) {
+			expect(Math.hypot(x - p.width / 2, y - p.height / 2)).toBeLessThanOrEqual(radius);
+		}
 	});
 
 	it('the link preview keeps the 1.91:1 ratio unfurlers crop to', () => {

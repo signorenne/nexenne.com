@@ -35,9 +35,10 @@ full routing picture, and always build internal links through =src/lib/paths.ts=
 - =brand/+page.svelte= brand asset library for print, channel, developer, and
   social graphics. The presets live in =src/lib/brand/banners.ts=: each one
   declares its canvas, the safe area that stays clear of the platform's own
-  chrome and crops, whether the mascot sits beside the motto or above it, and
-  for the profile covers whether the lockup anchors to the safe area's left edge
-  instead of centring in it (the avatar is an obstacle there, not a margin).
+  chrome and crops, whether the mascot sits beside the motto, above it, or alone
+  (an avatar is read at 20px, where wording is a smudge), and for the profile
+  covers whether the lockup anchors to the safe area's left edge instead of
+  centring in it (the avatar is an obstacle there, not a margin).
   Adding a channel is one preset plus its label, group, and note keys in both
   languages; the layout maths and the containment tests come for free. All of it
   measures the mascot's drawn outline, never the square box around it, which is

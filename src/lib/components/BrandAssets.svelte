@@ -4,11 +4,16 @@
 	import {
 		BANNER_PRESETS,
 		bannerFilename,
+		carriesMotto,
+		isTransparent,
 		layoutBanner,
+		MARK_PAINT,
+		MARK_VARIANTS,
 		sweepBar,
 		type BannerKey,
 		type BannerLayout,
-		type Box
+		type Box,
+		type MarkVariant
 	} from '$lib/brand/banners';
 	import { CARD_SIZES } from '$lib/brand/cards';
 	import { BRAND_FONT_STACK, downloadPng, downloadSvg, readThemeColor } from '$lib/brand/export';
@@ -52,9 +57,15 @@
 	let showSafeArea = false;
 	let exporting = false;
 	let sweep: Box = { x: 0, y: 0, width: 0, height: 0 };
+	// Only a mascot-only asset offers this, so it never applies to the selection.
+	let markVariant: MarkVariant = 'gradient';
 
 	$: isCard = selectedKey === 'card';
 	$: preset = BANNER_PRESETS.find((item) => item.key === selectedKey) ?? BANNER_PRESETS[0];
+	$: hasMotto = carriesMotto(preset);
+	$: variant = hasMotto ? 'gradient' : markVariant;
+	$: clear = isTransparent(variant);
+	$: markPaint = MARK_PAINT[variant];
 	$: assetCount = BANNER_PRESETS.length + 1;
 
 	/**
@@ -102,10 +113,14 @@
 	$: glowX = `${((layout.mascotX + layout.mascotSize / 2) / preset.width) * 100}%`;
 	$: glowY = `${((layout.mascotY + layout.mascotSize / 2) / preset.height) * 100}%`;
 
-	$: resetSweep(layout, mottoLines);
+	$: resetSweep(layout, mottoLines, hasMotto);
 
 	/** Start from the estimate, then refine it against the text actually drawn. */
-	function resetSweep(current: BannerLayout, lines: MottoLine[]) {
+	function resetSweep(current: BannerLayout, lines: MottoLine[], motto: boolean) {
+		if (!motto) {
+			sweep = { x: 0, y: 0, width: 0, height: 0 };
+			return;
+		}
 		const line = lines[SWEEP_LINE];
 		sweep = sweepBar(current, line.text, line.before, line.run, SWEEP_LINE);
 		void measureSweep();
@@ -118,7 +133,7 @@
 	 * serialize whatever is in the DOM, so the measured value is what ships.
 	 */
 	async function measureSweep() {
-		if (!browser) return;
+		if (!browser || !hasMotto) return;
 		// Before the display face loads, the fallback would be measured instead.
 		await document.fonts?.ready;
 		await tick();
@@ -160,7 +175,7 @@
 		return {
 			width: preset.width,
 			height: preset.height,
-			filename: bannerFilename(preset)
+			filename: bannerFilename(preset, variant)
 		};
 	}
 
@@ -235,6 +250,21 @@
 						<p>{$t(isCard ? CARD_ASSET.noteKey : preset.noteKey)}</p>
 					</div>
 					<div class="brand-export-actions">
+						<!-- Only an avatar offers this: it is uploaded once and then shown on
+						     surfaces this site does not control. -->
+						{#if !isCard && !hasMotto}
+							<div class="brand-variants" role="group" aria-label={$t('brand.variant')}>
+								{#each MARK_VARIANTS as option (option.key)}
+									<button
+										type="button"
+										class:is-active={markVariant === option.key}
+										on:click={() => (markVariant = option.key)}
+										aria-pressed={markVariant === option.key}
+										data-hover>{$t(option.labelKey)}</button
+									>
+								{/each}
+							</div>
+						{/if}
 						<!-- One toggle for the whole workspace: a card's print margin and a
 						     banner's platform safe area are the same idea. -->
 						<label class="brand-safe-toggle">
@@ -268,48 +298,57 @@
 					<div class="brand-preview-stage" class:is-portrait={portrait} class:is-wide={wide}>
 						<div class="brand-preview-meta">
 							<span>{$t('brand.preview')}</span>
-							<span>{preset.width} × {preset.height} px</span>
+							<span
+								>{preset.width} × {preset.height} px{clear
+									? ` · ${$t('brand.variant.clear')}`
+									: ''}</span
+							>
 						</div>
 						<svg
 							bind:this={bannerEl}
 							class="brand-canvas"
+							class:is-clear={clear}
 							viewBox="0 0 {preset.width} {preset.height}"
 							style="aspect-ratio: {preset.width} / {preset.height};"
 							xmlns="http://www.w3.org/2000/svg"
 							role="img"
 							aria-label={$t(preset.labelKey)}
 						>
-							<defs>
-								<linearGradient id="bannerBase" x1="0" y1="0" x2="1" y2="1">
-									<stop offset="0%" stop-color="#0d0e13" />
-									<stop offset="52%" stop-color="#0a0b0f" />
-									<stop offset="100%" stop-color="#08090c" />
-								</linearGradient>
-								<radialGradient id="bannerGlow" cx={glowX} cy={glowY} r="82%">
-									<stop offset="0%" stop-color={accent} stop-opacity="0.34" />
-									<stop offset="55%" stop-color={accent} stop-opacity="0.08" />
-									<stop offset="100%" stop-color={accent} stop-opacity="0" />
-								</radialGradient>
-								<filter id="bannerGrain" x="0" y="0" width="100%" height="100%">
-									<feTurbulence
-										type="fractalNoise"
-										baseFrequency="0.9"
-										numOctaves="2"
-										stitchTiles="stitch"
-										result="noise"
-									/>
-									<feColorMatrix in="noise" type="saturate" values="0" />
-								</filter>
-							</defs>
+							<!-- A transparent export ships no background at all, so the gradients
+							     and the grain that paint it are not defined either. -->
+							{#if !clear}
+								<defs>
+									<linearGradient id="bannerBase" x1="0" y1="0" x2="1" y2="1">
+										<stop offset="0%" stop-color="#0d0e13" />
+										<stop offset="52%" stop-color="#0a0b0f" />
+										<stop offset="100%" stop-color="#08090c" />
+									</linearGradient>
+									<radialGradient id="bannerGlow" cx={glowX} cy={glowY} r="82%">
+										<stop offset="0%" stop-color={accent} stop-opacity="0.34" />
+										<stop offset="55%" stop-color={accent} stop-opacity="0.08" />
+										<stop offset="100%" stop-color={accent} stop-opacity="0" />
+									</radialGradient>
+									<filter id="bannerGrain" x="0" y="0" width="100%" height="100%">
+										<feTurbulence
+											type="fractalNoise"
+											baseFrequency="0.9"
+											numOctaves="2"
+											stitchTiles="stitch"
+											result="noise"
+										/>
+										<feColorMatrix in="noise" type="saturate" values="0" />
+									</filter>
+								</defs>
 
-							<rect width={preset.width} height={preset.height} fill="url(#bannerBase)" />
-							<rect width={preset.width} height={preset.height} fill="url(#bannerGlow)" />
-							<rect
-								width={preset.width}
-								height={preset.height}
-								filter="url(#bannerGrain)"
-								opacity="0.035"
-							/>
+								<rect width={preset.width} height={preset.height} fill="url(#bannerBase)" />
+								<rect width={preset.width} height={preset.height} fill="url(#bannerGlow)" />
+								<rect
+									width={preset.width}
+									height={preset.height}
+									filter="url(#bannerGrain)"
+									opacity="0.035"
+								/>
+							{/if}
 
 							<LogoMark
 								embedded
@@ -317,42 +356,45 @@
 								y={layout.mascotY}
 								width={layout.mascotSize}
 								height={layout.mascotSize}
-								paint="#ffffff"
+								paint={markPaint}
 							/>
 
-							<!-- The hero's .sweep highlight, drawn before the text so it sits behind it. -->
-							{#if sweep.width > 0}
-								<rect
-									x={sweep.x}
-									y={sweep.y}
-									width={sweep.width}
-									height={sweep.height}
-									fill={accent}
-								/>
-							{/if}
+							<!-- An avatar is the mascot and the background, nothing else. -->
+							{#if hasMotto}
+								<!-- The hero's .sweep highlight, drawn before the text so it sits behind it. -->
+								{#if sweep.width > 0}
+									<rect
+										x={sweep.x}
+										y={sweep.y}
+										width={sweep.width}
+										height={sweep.height}
+										fill={accent}
+									/>
+								{/if}
 
-							{#each mottoLines as motto, index (index)}
-								<text
-									bind:this={lineEls[index]}
-									x={layout.sloganX}
-									y={layout.sloganY + layout.sloganStep * index}
-									text-anchor={layout.sloganAnchor}
-									font-family={BRAND_FONT_STACK}
-									font-size={layout.sloganSize}
-									font-weight="600"
-									font-style="italic"
-									fill="#ffffff"
-									letter-spacing={-layout.sloganSize * 0.04}
-								>
-									{#if motto.mark === 'accent'}
-										<tspan>{motto.before}</tspan><tspan fill={accent} font-weight="700"
-											>{motto.run}</tspan
-										><tspan>{motto.after}</tspan>
-									{:else}
-										{motto.text}
-									{/if}
-								</text>
-							{/each}
+								{#each mottoLines as motto, index (index)}
+									<text
+										bind:this={lineEls[index]}
+										x={layout.sloganX}
+										y={layout.sloganY + layout.sloganStep * index}
+										text-anchor={layout.sloganAnchor}
+										font-family={BRAND_FONT_STACK}
+										font-size={layout.sloganSize}
+										font-weight="600"
+										font-style="italic"
+										fill="#ffffff"
+										letter-spacing={-layout.sloganSize * 0.04}
+									>
+										{#if motto.mark === 'accent'}
+											<tspan>{motto.before}</tspan><tspan fill={accent} font-weight="700"
+												>{motto.run}</tspan
+											><tspan>{motto.after}</tspan>
+										{:else}
+											{motto.text}
+										{/if}
+									</text>
+								{/each}
+							{/if}
 
 							<!-- Preview-only guide: serializeSvg drops every data-noexport node. -->
 							{#if showSafeArea}
@@ -549,6 +591,37 @@
 	.brand-safe-toggle:hover {
 		color: var(--ink-2);
 	}
+	.brand-variants {
+		display: inline-flex;
+		overflow: hidden;
+		border: 1px solid var(--line);
+		border-radius: var(--r-sm);
+	}
+	.brand-variants button {
+		padding: 7px 10px;
+		border: 0;
+		border-left: 1px solid var(--line);
+		background: transparent;
+		color: var(--muted);
+		font-family: var(--font-mono);
+		font-size: 9px;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		cursor: pointer;
+		transition: background var(--t-fast) var(--ease);
+	}
+	.brand-variants button:first-child {
+		border-left: 0;
+	}
+	.brand-variants button:hover,
+	.brand-variants button:focus-visible {
+		background: color-mix(in oklab, var(--accent), transparent 92%);
+		color: var(--ink);
+	}
+	.brand-variants button.is-active {
+		background: color-mix(in oklab, var(--accent), transparent 86%);
+		color: var(--ink);
+	}
 	.brand-preview-stage {
 		min-width: 0;
 		min-height: 520px;
@@ -583,6 +656,24 @@
 		overflow: hidden;
 		border-radius: 14px;
 		box-shadow: 0 30px 80px -40px rgba(0, 0, 0, 0.75);
+	}
+	/**
+	 * A transparent asset needs something behind it in the preview or there is
+	 * nothing to look at. The checkerboard is mid-grey so the light mark and the
+	 * dark one are both legible on it, and it is a background of the preview only:
+	 * the SVG itself stays empty, which is what an export serializes.
+	 */
+	.brand-canvas.is-clear {
+		--check: 24px;
+		background-color: #9aa0a6;
+		background-image:
+			linear-gradient(45deg, #babec4 25%, transparent 25%, transparent 75%, #babec4 75%),
+			linear-gradient(45deg, #babec4 25%, transparent 25%, transparent 75%, #babec4 75%);
+		background-position:
+			0 0,
+			calc(var(--check) / 2) calc(var(--check) / 2);
+		background-size: var(--check) var(--check);
+		box-shadow: none;
 	}
 	.brand-preview-stage.is-portrait .brand-canvas {
 		width: min(100%, 440px);

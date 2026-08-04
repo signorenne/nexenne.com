@@ -45,7 +45,14 @@ route until another page needs it.
 - =BrandAssets.svelte= the /brand workspace: picks an asset, draws the selected
   banner live, and exports it. A banner carries the mascot and the site motto and
   nothing else; the motto is read from the =hero.motto.*= keys so a banner can
-  never disagree with the home page
+  never disagree with the home page. The =mark= presets (avatars) drop the motto
+  and centre the mascot on the background alone, so ask =carriesMotto= before
+  drawing or measuring any text. They also pick a variant: the gradient, or a
+  transparent file with the mark light or dark, since an avatar is uploaded once
+  and then shown on surfaces this site does not control. A transparent variant
+  omits the background nodes entirely rather than hiding them, so the export
+  really is empty behind the mascot, and the preview draws a checkerboard behind
+  the canvas to show it
 - =BusinessCardGenerator.svelte= print-card layouts and front/back exports used
   inside the brand assets route
 

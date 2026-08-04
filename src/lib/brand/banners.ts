@@ -3,8 +3,9 @@
  *
  * A banner carries the mascot and the site motto and nothing else, so the only
  * real problem here is fitting those two elements inside each platform's safe
- * area. Every preset declares the canvas size, the fraction of it that stays
- * clear of platform chrome and crops, and which of the two compositions to use.
+ * area. An avatar carries the mascot alone. Every preset declares the canvas
+ * size, the fraction of it that stays clear of platform chrome and crops, and
+ * which composition to use.
  * Everything in this module is pure, so the layouts are unit tested against the
  * real motto in both languages rather than eyeballed in a browser.
  */
@@ -14,6 +15,7 @@ import { MASCOT_BBOX, MASCOT_VIEWBOX_SIZE } from './mascot';
 export type BannerKey =
 	| 'youtube'
 	| 'github'
+	| 'githubOrg'
 	| 'og'
 	| 'linkedin'
 	| 'x'
@@ -25,9 +27,11 @@ export type BannerKey =
 /**
  * How the mascot and the motto sit together. Wide canvases put them side by
  * side, because stacking them in a 3:1 strip leaves the motto unreadably small;
- * square and portrait canvases stack them.
+ * square and portrait canvases stack them. An avatar drops the motto entirely:
+ * it is displayed at 20px in a listing, where any wording is a smudge, so it
+ * carries the mascot alone.
  */
-export type Composition = 'split' | 'stacked';
+export type Composition = 'split' | 'stacked' | 'mark';
 
 /**
  * Where a split composition sits inside its safe area.
@@ -124,6 +128,20 @@ export const BANNER_PRESETS: readonly BannerPreset[] = [
 		// edge; this is comfortably inside that.
 		safe: { left: 0.07, right: 0.93, top: 0.1, bottom: 0.9 },
 		composition: 'split'
+	},
+	{
+		key: 'githubOrg',
+		labelKey: 'brand.asset.githubOrg',
+		groupKey: 'brand.group.developer',
+		noteKey: 'brand.note.githubOrg',
+		width: 1024,
+		height: 1024,
+		// GitHub shows an organization avatar as a rounded square, but the same file
+		// gets a circular crop elsewhere (commit rows, contributor lists, other
+		// platforms). The safe area is the square inscribed in that circle, side
+		// 1/sqrt(2) of the canvas, so the mascot survives either treatment.
+		safe: { left: 0.1465, right: 0.8535, top: 0.1465, bottom: 0.8535 },
+		composition: 'mark'
 	},
 	{
 		key: 'og',
@@ -384,6 +402,79 @@ function stackedLayout(preset: BannerPreset, lines: readonly string[]): BannerLa
 	};
 }
 
+/** How much of the safe area the mark fills, leaving it room to breathe. */
+const MARK_FILL = 0.88;
+
+/** The mascot alone, centred in the safe area, with no motto to balance against. */
+function markLayout(preset: BannerPreset): BannerLayout {
+	const box = safeBox(preset);
+	// The ink is taller than it is wide, so on a square canvas the height binds.
+	const mascotSize = Math.min(
+		(box.height * MARK_FILL) / INK_HEIGHT,
+		(box.width * MARK_FILL) / INK_WIDTH
+	);
+	const centerX = box.x + box.width / 2;
+	const centerY = box.y + box.height / 2;
+
+	return {
+		// The ink is centred in its box on both axes, so centring the box centres it.
+		mascotX: centerX - mascotSize * LOGO_CENTER_X,
+		mascotY: centerY - mascotSize / 2,
+		mascotSize,
+		// No motto: the size is zero, which makes every derived box empty rather
+		// than a stray point somewhere on the canvas.
+		sloganX: centerX,
+		sloganY: centerY,
+		sloganSize: 0,
+		sloganStep: 0,
+		sloganAnchor: 'middle',
+		safe: box
+	};
+}
+
+/**
+ * Whether a preset carries the motto. The avatars are mascot-only, so a caller
+ * that draws or measures text has to ask before it does either.
+ *
+ * @param preset The banner preset.
+ * @return True when the composition includes the motto.
+ */
+export function carriesMotto(preset: BannerPreset): boolean {
+	return preset.composition !== 'mark';
+}
+
+/**
+ * How a mark-only asset is painted.
+ *
+ * An avatar is uploaded once and then shown on surfaces this repo does not own,
+ * so the background it ships with is a real choice rather than a preference. A
+ * transparent file needs the mark in two inks, because one of them is invisible
+ * on half the places the file lands.
+ */
+export type MarkVariant = 'gradient' | 'light' | 'dark';
+
+export const MARK_VARIANTS: readonly { key: MarkVariant; labelKey: string }[] = [
+	{ key: 'gradient', labelKey: 'brand.variant.gradient' },
+	{ key: 'light', labelKey: 'brand.variant.light' },
+	{ key: 'dark', labelKey: 'brand.variant.dark' }
+];
+
+/**
+ * The ink each variant draws the mascot in. The dark one is the light theme's
+ * --ink, so a transparent mark on a page matches the type it sits beside; both
+ * are literals because an export must not depend on the visitor's theme.
+ */
+export const MARK_PAINT: Record<MarkVariant, string> = {
+	gradient: '#ffffff',
+	light: '#ffffff',
+	dark: '#0d0e12'
+};
+
+/** Whether a variant drops the background entirely. */
+export function isTransparent(variant: MarkVariant): boolean {
+	return variant !== 'gradient';
+}
+
 /**
  * Lay out one banner for a motto.
  *
@@ -392,6 +483,7 @@ function stackedLayout(preset: BannerPreset, lines: readonly string[]): BannerLa
  * @return Positions and sizes in canvas coordinates.
  */
 export function layoutBanner(preset: BannerPreset, lines: readonly string[]): BannerLayout {
+	if (preset.composition === 'mark') return markLayout(preset);
 	const layout =
 		preset.composition === 'split' ? splitLayout(preset, lines) : stackedLayout(preset, lines);
 	return preset.composition === 'stacked' ? { ...layout, sloganAnchor: 'middle' } : layout;
@@ -468,9 +560,14 @@ export function sweepBar(
 /**
  * Build the export filename for a banner.
  *
- * @param preset The banner preset.
+ * The variant is named in the file because the transparent avatars are told
+ * apart by nothing else once they are sitting in a downloads folder.
+ *
+ * @param preset  The banner preset.
+ * @param variant The mark variant, for a mascot-only asset.
  * @return A filename stem such as nexenne-youtube-2560x1440.
  */
-export function bannerFilename(preset: BannerPreset): string {
-	return `nexenne-${preset.key.toLowerCase()}-${preset.width}x${preset.height}`;
+export function bannerFilename(preset: BannerPreset, variant: MarkVariant = 'gradient'): string {
+	const stem = `nexenne-${preset.key.toLowerCase()}-${preset.width}x${preset.height}`;
+	return isTransparent(variant) ? `${stem}-transparent-${variant}` : stem;
 }
