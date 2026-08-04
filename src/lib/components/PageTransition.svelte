@@ -2,7 +2,7 @@
 	import { beforeNavigate, afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import LogoMark from './LogoMark.svelte';
-	import { pageFlash } from '$lib/stores/pageFlash';
+	import { pageFlash, transitionVisible } from '$lib/stores/pageFlash';
 
 	let active = false;
 	let outgoing = false;
@@ -25,10 +25,22 @@
 		return !document.documentElement.classList.contains('motion-off');
 	}
 
+	/**
+	 * Raise the overlay and hand the page underneath to it: it covers the whole
+	 * viewport, so it takes the pointer, and the app is marked inert so it takes
+	 * the keyboard too. Only ever called once the motion check has passed, since
+	 * the overlay is not rendered at all when motion is off.
+	 */
+	function cover() {
+		document.documentElement.classList.add('is-transitioning');
+		transitionVisible.set(true);
+	}
+
 	function dismiss() {
 		active = false;
 		outgoing = false;
 		document.documentElement.classList.remove('is-transitioning');
+		transitionVisible.set(false);
 	}
 
 	function reset() {
@@ -62,7 +74,7 @@
 		target = '·';
 		outgoing = false;
 		active = true;
-		document.documentElement.classList.add('is-transitioning');
+		cover();
 		midTimer = setTimeout(() => {
 			midAction?.(); // runs while the overlay fully covers the screen
 			outTimer = setTimeout(() => {
@@ -117,9 +129,7 @@
 		isPopstate = type === 'popstate';
 		outgoing = false;
 		active = true;
-		if (motionEnabled()) {
-			document.documentElement.classList.add('is-transitioning');
-		}
+		if (motionEnabled()) cover();
 		// The loader is normally dismissed by afterNavigate, once the destination
 		// has actually loaded. This is only a last-resort fallback so the overlay
 		// can't get stuck forever if a navigation never completes. Kept long so

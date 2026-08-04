@@ -13,7 +13,13 @@ route until another page needs it.
 - =SideMap.svelte= left-side route map
 - =Footer.svelte= footer
 - =PageStamp.svelte= route/status stamp
-- =PageTransition.svelte= animated navigation overlay
+- =PageTransition.svelte= animated navigation overlay. While it is up it is also
+  a modal barrier: the layer itself takes the pointer, and it publishes
+  =transitionVisible= from =src/lib/stores/pageFlash.ts= so the layout can mark
+  =.app= inert and take the keyboard with it. A covered page must not be
+  clickable or tabbable, or a stray click during a navigation starts a second
+  one. The flag stays false when motion is off, because the overlay is not
+  rendered then and there would be nothing to explain a dead page
 
 * Home And Visual Components
 

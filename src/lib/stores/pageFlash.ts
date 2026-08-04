@@ -14,6 +14,20 @@ export interface FlashRequest {
 
 export const pageFlash = writable<FlashRequest | null>(null);
 
+/**
+ * Whether the transition overlay is on screen and covering the page.
+ *
+ * The overlay swallows pointer input on its own, by being a full-viewport layer
+ * above everything. The keyboard is not stopped by a layer, so the layout reads
+ * this to mark the app inert while the overlay is up: without it a visitor can
+ * still tab into the covered page and activate a link they cannot see.
+ *
+ * It is false whenever motion is off, because the overlay is not rendered then
+ * and marking the app inert would take the site away with nothing to show for
+ * it. PageTransition.svelte owns every write.
+ */
+export const transitionVisible = writable(false);
+
 let counter = 0;
 
 /**

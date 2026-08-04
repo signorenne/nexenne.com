@@ -3677,13 +3677,22 @@ html.is-transitioning {
 	scroll-behavior: auto;
 }
 
+/* The loader covers the viewport while a navigation is in flight, so it also
+   swallows the input aimed at it. Without this the page underneath is opaque but
+   still live: a click during the transition lands on whatever happens to sit at
+   those coordinates (a side map entry, a nav link) and starts a second
+   navigation the visitor never asked for. .app opens its own stacking context at
+   z-index 1, so this single fixed layer is above every one of its children. The
+   app is also marked inert while it is up, which is what stops the keyboard from
+   reaching the page below. */
 .page-transition {
 	position: fixed;
 	inset: 0;
 	z-index: 999;
 	display: grid;
 	place-items: center;
-	pointer-events: none;
+	pointer-events: auto;
+	touch-action: none;
 	overflow: hidden;
 }
 

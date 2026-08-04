@@ -34,6 +34,7 @@
 	import { cycleTheme } from '$lib/tweaks';
 	import { lang, t } from '$lib/i18n';
 	import { showToast } from '$lib/stores/toast';
+	import { transitionVisible } from '$lib/stores/pageFlash';
 	import { langFromPath, stripLang } from '$lib/paths';
 	import { SITE, SITE_URL, DEFAULT_OG_IMAGE } from '$lib/data';
 	import type { ContentLang } from '$lib/content/types';
@@ -357,7 +358,12 @@
 <PageTransition />
 <BackToTop />
 <a href="#main-content" class="skip-link">{$t('a11y.skip')}</a>
-<div class="app" data-page={route}>
+<!-- Inert while the transition overlay covers the screen: the overlay already
+     takes every click, and this takes the keyboard and the screen reader with
+     it, so a covered page cannot be tabbed into or activated. Written as
+     `|| undefined` so the attribute is absent rather than inert="false", which
+     would make the app inert for good. -->
+<div class="app" data-page={route} inert={$transitionVisible || undefined}>
 	<SideMap />
 	<Nav on:openPalette={() => (paletteOpen = true)} />
 	<main id="main-content" data-page={route} bind:this={mainEl}>
