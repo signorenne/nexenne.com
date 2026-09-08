@@ -64,6 +64,24 @@ const AwardSchema = z.object({
 	body: z.string()
 });
 
+// Headings for the ATS variant at /resume/ats/. They are deliberately separate
+// from the styled resume labels: applicant tracking systems map sections by their
+// title, so this set must stay on the conventional wording (Work Experience,
+// Skills, Education) even when the styled page prefers a more personal voice.
+const AtsLabelsSchema = z.object({
+	title: z.string(),
+	link: z.string(),
+	back: z.string(),
+	summary: z.string(),
+	experience: z.string(),
+	projects: z.string(),
+	skills: z.string(),
+	education: z.string(),
+	languages: z.string(),
+	awards: z.string(),
+	tags: z.string()
+});
+
 // UI labels for the resume page, co-located with the resume content so the whole
 // document (data + section headings) lives in one per-language file. Required, so
 // a missing label fails the build (stronger than the old i18n parity check).
@@ -82,7 +100,8 @@ const LabelsSchema = z.object({
 	languages: z.string(),
 	awards: z.string(),
 	off_screen: z.string(),
-	consent: z.string()
+	consent: z.string(),
+	ats: AtsLabelsSchema
 });
 
 const ResumeSchema = z.object({

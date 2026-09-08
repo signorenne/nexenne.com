@@ -29,6 +29,9 @@
 				<button class="btn btn--primary" on:click={printCV} data-hover>
 					{resume.labels.download} <span class="arrow">↗</span>
 				</button>
+				<button class="btn btn--ghost" on:click={() => go('/resume/ats/')} data-hover>
+					{resume.labels.ats.link}
+				</button>
 				<button class="btn btn--ghost" on:click={() => go('/contact/')} data-hover>
 					{$t('hero.cta.contact')}
 				</button>

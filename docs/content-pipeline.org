@@ -30,6 +30,27 @@ Work bundles are sorted newest first using =src/lib/content/recency.ts=, which
 turns a free-text date into a sortable number. Drafts show in development and are
 skipped in production.
 
+* Resume Loader
+
+=src/lib/content/resume.server.ts= reads =content/resume/resume.md= (Italian) and
+=content/resume/resume.en.md= (English). Both files are required, and their
+frontmatter carries the whole document: the data (contact, experience, projects,
+skills, education, languages, awards) and the section headings that render it.
+
+Headings live under =labels=, co-located with the content so one file holds a
+complete resume in one language. Every label is required, so a missing one fails
+the build rather than rendering an empty heading.
+
+=labels.ats= is the separate heading set for =/resume/ats/=, the parser-friendly
+variant described in [[file:routes.org][Routes]]. Applicant tracking systems map
+a section by the wording of its title, so that set stays on the conventional
+names (Work Experience, Skills, Education) even when the styled page prefers a
+warmer voice. =resume.server.test.ts= pins that wording and checks the two
+languages declare the same keys.
+
+Both pages read the same parsed object. Write resume content once, in the
+frontmatter, and it reaches the styled sheet and the ATS variant together.
+
 * Covers
 
 A blog post declares =image= and a case study declares =cover=. Both are

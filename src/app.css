@@ -6291,6 +6291,120 @@ main[data-page="uses"] .uses-box h3 {
 	margin: 0;
 }
 
+/* --- /resume/ats -----------------------------------------------------------
+   The parser-safe twin of the CV sheet. It renders as a plain document: one
+   column, black on white in both themes, a common system font, no decoration.
+   An applicant tracking system reads the exported PDF top to bottom, so nothing
+   here may float, position absolutely, or reorder content. Dull on purpose. */
+
+.ats-page {
+	max-width: 210mm;
+	margin: 0 auto;
+}
+
+.ats-tools .meta {
+	display: block;
+	margin: 0 0 12px;
+}
+.ats-doc {
+	margin-top: var(--sp-4);
+	padding: 16mm 14mm;
+	background: #fff;
+	color: #000;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	/* A widely installed sans, not a brand webfont: the PDF has to stay readable
+	   and selectable wherever it lands. */
+	font-family: Arial, Helvetica, ui-sans-serif, system-ui, sans-serif;
+	font-size: 10.5pt;
+	line-height: 1.4;
+	letter-spacing: normal;
+}
+
+.ats-doc p {
+	margin: 0 0 6pt;
+}
+.ats-doc ul {
+	margin: 0 0 8pt;
+	padding-left: 16pt;
+}
+.ats-doc li {
+	margin: 0 0 2pt;
+}
+
+.ats-doc .ats-name {
+	margin: 0 0 2pt;
+	font-size: 20pt;
+	font-weight: 700;
+	letter-spacing: normal;
+}
+.ats-doc .ats-role {
+	margin: 0 0 6pt;
+	font-size: 12pt;
+	font-weight: 700;
+}
+.ats-doc .ats-contact {
+	list-style: none;
+	margin: 0 0 4pt;
+	padding: 0;
+}
+.ats-doc .ats-contact li {
+	margin: 0;
+}
+
+.ats-doc h2 {
+	margin: 13pt 0 5pt;
+	padding-bottom: 2pt;
+	border-bottom: 1px solid #000;
+	font-size: 12pt;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+.ats-doc h3 {
+	margin: 9pt 0 1pt;
+	font-size: 11pt;
+	font-weight: 700;
+}
+.ats-doc .ats-org {
+	margin: 0 0 1pt;
+	font-weight: 700;
+}
+.ats-doc .ats-meta {
+	margin: 0 0 4pt;
+}
+.ats-doc .ats-consent {
+	margin: 12pt 0 0;
+	font-size: 9pt;
+}
+
+@media print {
+	.ats-tools {
+		display: none !important;
+	}
+	.ats-page {
+		max-width: none;
+	}
+	.ats-doc {
+		margin: 0 !important;
+		padding: 0 !important;
+		border: 0 !important;
+		border-radius: 0 !important;
+		font-size: 10pt;
+	}
+	/* A heading stranded at the foot of a page splits the section it names, which
+	   is exactly the kind of gap that costs a parser a whole block. */
+	.ats-doc h2,
+	.ats-doc h3,
+	.ats-doc .ats-org {
+		break-after: avoid;
+		page-break-after: avoid;
+	}
+	.ats-doc li {
+		break-inside: avoid;
+		page-break-inside: avoid;
+	}
+}
 .lang-btn {
 	min-width: 38px;
 	padding: 0 10px !important;

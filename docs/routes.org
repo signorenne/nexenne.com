@@ -32,6 +32,13 @@ full routing picture, and always build internal links through =src/lib/paths.ts=
 - =uses/+page.svelte= tools and stack
 - =now/+page.svelte= current work
 - =resume/+page.svelte= resume
+- =resume/ats/+page.svelte= the same resume rendered for applicant tracking
+  systems: one column, plain text, no photo, no chips, conventional section
+  headings. It reads the same content files as the styled page, so the two can
+  never drift. The route is =noindex=, absent from navigation, search, and the
+  sitemap, and reachable only from a button on =/resume/=. Because the layout
+  derives its section from the first path segment, it inherits the resume title
+  and social metadata without a =SECTION_KEY= entry of its own
 - =brand/+page.svelte= brand asset library for print, channel, developer, and
   social graphics. The presets live in =src/lib/brand/banners.ts=: each one
   declares its canvas, the safe area that stays clear of the platform's own
@@ -69,6 +76,8 @@ page shared by both languages.
 - =work/+page.svelte= and =work/+page.server.ts= work index and its list data
 - =work/[slug]/+page.svelte= and =work/[slug]/+page.server.ts= one case study
 - =resume/+page.server.ts= loads the resume content
+- =resume/ats/+page.server.ts= loads the same content and lists both languages
+  in its =entries= generator, because nothing crawlable links to the page
 
 Each =[slug]= loader must emit both languages from its =entries= generator (one
 with =lang: ''= and one with =lang: 'it'=) so both URLs prerender.
