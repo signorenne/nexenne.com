@@ -9,14 +9,17 @@ describe('getResumes', () => {
 		expect(en.labels.title).toBe('Resume');
 		expect(en.labels.date).toBe('Period');
 		expect(en.contact.location).toBe('Bergamo, Italy');
-		expect(normalizedQuote).toMatch(/^I am a software architect based in Bergamo, Italy\./);
+		expect(normalizedQuote).toMatch(/^I am a Software Architect\./);
+		// The profile must not narrow to embedded work: the web, native, and library
+		// side is real experience, and a summary that hides it costs applications.
 		expect(normalizedQuote).toContain('native and web applications');
-		expect(normalizedQuote).toContain('hardware constraints');
+		expect(normalizedQuote).toContain('APIs, protocols, and system flows');
+		expect(normalizedQuote).toContain('C/C++, Qt/QML, real-time systems, Embedded Linux');
 		expect(en.experience).toHaveLength(6);
 		expect(en.projects).toHaveLength(2);
 		expect(en.skills.map((skill) => skill.title)).toEqual([
-			'Software design and system architecture',
-			'Languages',
+			'Software architecture and system design',
+			'Programming languages',
 			'Modern C++ and libraries',
 			'Firmware and embedded systems',
 			'HMI, graphics, and applications',
@@ -28,11 +31,11 @@ describe('getResumes', () => {
 		]);
 		expect(en.skills.flatMap((skill) => skill.items)).toEqual(
 			expect.arrayContaining([
-				'Stable API design',
+				'Abstraction and API design',
 				'RAII and ownership',
 				'OpenGL',
 				'TinyUSB',
-				'CAN/CAN FD',
+				'CAN FD',
 				'CRC and error detection',
 				'WireGuard',
 				'AddressSanitizer',
@@ -43,7 +46,7 @@ describe('getResumes', () => {
 			company: 'Work Louder',
 			current: true
 		});
-		expect(en.experience[0].points.join(' ')).toContain('RPC calls');
+		expect(en.experience[0].points.join(' ')).toContain('RPC integration');
 		expect(en.projects.map((project) => project.name)).toEqual(['Nexenne Library', 'TrackOMatic']);
 	});
 
